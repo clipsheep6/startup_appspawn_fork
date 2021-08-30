@@ -173,7 +173,7 @@ HWTEST(ServerSocketTest, Server_Socket_005, TestSize.Level0)
  */
 HWTEST(ServerSocketTest, Server_Socket_006, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "Server_Socket_006 start";
+     GTEST_LOG_(INFO) << "Server_Socket_006 start";
 
     std::string invalidSocketName =
         "InvalidInvalidInvalidInvalidInvalidInvalidInvalidInvalid"
