@@ -25,7 +25,6 @@
 
 namespace OHOS {
 namespace AppSpawn {
-
 class AppSpawnServer {
 public:
     /**
@@ -140,7 +139,6 @@ private:
     std::function<void(const std::string &)> errHandlerHook_ = nullptr;
     bool isRunning_{};
 };
-
 }  // namespace AppSpawn
 }  // namespace OHOS
 
