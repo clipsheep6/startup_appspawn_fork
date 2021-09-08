@@ -32,7 +32,6 @@
 
 namespace OHOS {
 namespace AppSpawn {
-
 namespace {
 constexpr int32_t ERR_PIPE_FAIL = -100;
 constexpr int32_t MAX_LEN_SHORT_NAME = 16;
@@ -51,7 +50,7 @@ static constexpr HiLogLabel LABEL = {LOG_CORE, 0, "AppSpawnServer"};
 extern "C" {
 #endif
 
-static void SignalHandler(int) /* signal_number */
+static void SignalHandler(int signal) /* signal_number */
 {
     pid_t pid;
     int status;
