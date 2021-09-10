@@ -32,7 +32,6 @@
 
 namespace OHOS {
 namespace AppSpawn {
-
 namespace {
 constexpr int32_t ERR_PIPE_FAIL = -100;
 constexpr int32_t MAX_LEN_SHORT_NAME = 16;
@@ -51,7 +50,7 @@ static constexpr HiLogLabel LABEL = {LOG_CORE, 0, "AppSpawnServer"};
 extern "C" {
 #endif
 
-static void SignalHandler(int) /* signal_number */
+static void SignalHandler([[maybe_unused]] int sig)
 {
     pid_t pid;
     int status;
@@ -205,16 +204,13 @@ bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
 
         if (pid == 0) {
             // special handle bundle name "com.ohos.photos" and "com.ohos.camera"
-            if ((strcmp(appProperty->processName, BUNDLE_NAME_CAMERA.data()) == 0) ||
-                (strcmp(appProperty->processName, BUNDLE_NAME_PHOTOS.data()) == 0)) {
-                if (appProperty->gidCount < MAX_GIDS) {
-                    appProperty->gidTable[appProperty->gidCount] = GID_MEDIA;
-                    appProperty->gidCount++;
-                } else {
-                    HiLog::Info(LABEL, "gidCount out of bounds !");
-                }
+            if (((strcmp(appProperty->processName, BUNDLE_NAME_CAMERA.data()) == 0) ||
+                    (strcmp(appProperty->processName, BUNDLE_NAME_PHOTOS.data()) == 0)) &&
+                appProperty->gidCount < MAX_GIDS) {
+                appProperty->gidTable[appProperty->gidCount] = GID_MEDIA;
+                appProperty->gidCount++;
+                HiLog::Info(LABEL, "Special handle gid groups!");
             }
-
             return SetAppProcProperty(connectFd, appProperty, longProcName, longProcNameLen, fd);
         }
         // parent process
