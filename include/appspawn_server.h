@@ -1,4 +1,12 @@
 /*
+ * @Author: your name
+ * @Date: 2021-09-18 11:54:34
+ * @LastEditTime: 2021-09-26 15:28:25
+ * @LastEditors: Please set LastEditors
+ * @Description: In User Settings Edit
+ * @FilePath: /appspawn_standard/include/appspawn_server.h
+ */
+/*
  * Copyright (c) 2021 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -142,6 +150,11 @@ private:
      * Check app process property.
      */
     bool CheckAppProperty(const ClientSocket::AppProperty *appProperty);
+
+    /**
+     * Load libace.z.so library when boot the devices
+     */  
+    void LoadAceLib();
 
 private:
     const std::string deviceNull_ = "/dev/null";

@@ -28,6 +28,11 @@
 #include "main_thread.h"
 #include "securec.h"
 
+#if defined(ABILITY_LIBRARY_LOADER) || defined(APPLICATION_LIBRARY_LOADER)
+#include <dirent.h>
+#include <dlfcn.h>
+#endif
+
 #define GRAPHIC_PERMISSION_CHECK
 
 namespace OHOS {
@@ -147,6 +152,20 @@ void AppSpawnServer::ConnectionPeer()
     }
 }
 
+void AppSpawnServer::LoadAceLib()
+{
+    std::string acelibdir("/system/lib/libace.z.so");
+    void *AceAbilityLib = nullptr;
+    HiLog::Info(LABEL, "MainThread::LoadAbilityLibrary. Start calling dlopen acelibdir.");
+    AceAbilityLib = dlopen(acelibdir.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    if (AceAbilityLib == nullptr) {
+        HiLog::Error(LABEL, "Fail to dlopen %{public}s, [%{public}s]", acelibdir.c_str(), dlerror());
+    } else {
+        HiLog::Info(LABEL, "Success to dlopen %{public}s", acelibdir.c_str());
+    }
+    HiLog::Info(LABEL, "MainThread::LoadAbilityLibrary. End calling dlopen.");
+}
+
 bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
 {
     if (socket_->RegisterServerSocket() != 0) {
@@ -154,7 +173,7 @@ bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
         return false;
     }
     std::thread(&AppSpawnServer::ConnectionPeer, this).detach();
-
+    LoadAceLib();
     while (isRunning_) {
         std::unique_lock<std::mutex> lock(mut_);
         dataCond_.wait(lock, [this] { return !this->appQueue_.empty(); });
