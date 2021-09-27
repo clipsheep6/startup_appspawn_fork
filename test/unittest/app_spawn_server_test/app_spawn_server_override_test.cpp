@@ -21,6 +21,8 @@
 #define private public
 #define protected public
 #include "appspawn_server.h"
+#include <dirent.h>
+#include <dlfcn.h>
 #undef private
 #undef protected
 
