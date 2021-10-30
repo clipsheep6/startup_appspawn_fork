@@ -57,7 +57,7 @@ HWTEST(AppSpawnMsgPeerTest, App_Spawn_Msg_Peer_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Msg_Peer_001 start";
 
     std::shared_ptr<ServerSocket> serverSocket = std::make_shared<ServerSocket>("ServerSocket");
-    int32_t connectFd = -1;
+    const int32_t connectFd = -1;
     std::unique_ptr<AppSpawnMsgPeer> appSpawnMsgPeer = std::make_unique<AppSpawnMsgPeer>(serverSocket, connectFd);
 
     EXPECT_EQ(-1, appSpawnMsgPeer->GetConnectFd());
@@ -79,7 +79,7 @@ HWTEST(AppSpawnMsgPeerTest, App_Spawn_Msg_Peer_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Msg_Peer_002 start";
 
     std::shared_ptr<ServerSocket> serverSocket = std::make_shared<ServerSocket>("ServerSocket");
-    int32_t connectFd = -1;
+    const int32_t connectFd = -1;
     std::unique_ptr<AppSpawnMsgPeer> appSpawnMsgPeer = std::make_unique<AppSpawnMsgPeer>(serverSocket, connectFd);
 
     EXPECT_EQ(-1, appSpawnMsgPeer->MsgPeer());
@@ -100,7 +100,7 @@ HWTEST(AppSpawnMsgPeerTest, App_Spawn_Msg_Peer_003, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Msg_Peer_003 start";
 
     std::shared_ptr<ServerSocket> serverSocket = nullptr;
-    int32_t connectFd = 1;
+    const int32_t connectFd = 1;
     std::unique_ptr<AppSpawnMsgPeer> appSpawnMsgPeer = std::make_unique<AppSpawnMsgPeer>(serverSocket, connectFd);
 
     EXPECT_EQ(-1, appSpawnMsgPeer->MsgPeer());
@@ -121,7 +121,7 @@ HWTEST(AppSpawnMsgPeerTest, App_Spawn_Msg_Peer_004, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Msg_Peer_004 start";
 
     std::shared_ptr<ServerSocket> serverSocket = std::make_shared<ServerSocket>("ServerSocket");
-    int32_t connectFd = -1;
+    const int32_t connectFd = -1;
     std::unique_ptr<AppSpawnMsgPeer> appSpawnMsgPeer = std::make_unique<AppSpawnMsgPeer>(serverSocket, connectFd);
 
     EXPECT_EQ(-1, appSpawnMsgPeer->Response(1));
@@ -142,7 +142,7 @@ HWTEST(AppSpawnMsgPeerTest, App_Spawn_Msg_Peer_005, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Msg_Peer_005 start";
 
     std::shared_ptr<ServerSocket> serverSocket = nullptr;
-    int32_t connectFd = 1;
+    const int32_t connectFd = 1;
     std::unique_ptr<AppSpawnMsgPeer> appSpawnMsgPeer = std::make_unique<AppSpawnMsgPeer>(serverSocket, connectFd);
 
     EXPECT_EQ(-1, appSpawnMsgPeer->Response(1));
@@ -163,7 +163,7 @@ HWTEST(AppSpawnMsgPeerTest, App_Spawn_Msg_Peer_006, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Msg_Peer_006 start";
 
     std::shared_ptr<MockServerSocket> mockServerSocket = std::make_shared<MockServerSocket>("MockServerSocket");
-    int32_t connectFd = 1;
+    const int32_t connectFd = 1;
     std::unique_ptr<AppSpawnMsgPeer> appSpawnMsgPeer = std::make_unique<AppSpawnMsgPeer>(mockServerSocket, connectFd);
 
     EXPECT_CALL(*mockServerSocket, ReadSocketMessage(_, _, _)).WillOnce(Return(-1));
@@ -186,7 +186,7 @@ HWTEST(AppSpawnMsgPeerTest, App_Spawn_Msg_Peer_007, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Msg_Peer_007 start";
 
     std::shared_ptr<MockServerSocket> mockServerSocket = std::make_shared<MockServerSocket>("MockServerSocket");
-    int32_t connectFd = 1;
+    const int32_t connectFd = 1;
     std::unique_ptr<AppSpawnMsgPeer> appSpawnMsgPeer = std::make_unique<AppSpawnMsgPeer>(mockServerSocket, connectFd);
 
     EXPECT_CALL(*mockServerSocket, ReadSocketMessage(_, _, _)).WillOnce(Return(sizeof(ClientSocket::AppProperty) + 1));
@@ -209,7 +209,7 @@ HWTEST(AppSpawnMsgPeerTest, App_Spawn_Msg_Peer_008, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Msg_Peer_008 start";
 
     std::shared_ptr<MockServerSocket> mockServerSocket = std::make_shared<MockServerSocket>("MockServerSocket");
-    int32_t connectFd = 1;
+    const int32_t connectFd = 1;
     std::unique_ptr<AppSpawnMsgPeer> appSpawnMsgPeer = std::make_unique<AppSpawnMsgPeer>(mockServerSocket, connectFd);
 
     EXPECT_EQ(nullptr, appSpawnMsgPeer->GetMsg());
