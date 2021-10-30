@@ -28,9 +28,6 @@
 #include "main_thread.h"
 #include "securec.h"
 
-#include <dirent.h>
-#include <dlfcn.h>
-
 #define GRAPHIC_PERMISSION_CHECK
 constexpr static size_t ERR_STRING_SZ = 64;
 
@@ -159,20 +156,6 @@ void AppSpawnServer::ConnectionPeer()
     }
 }
 
-void AppSpawnServer::LoadAceLib()
-{
-    std::string acelibdir("/system/lib/libace.z.so");
-    void *AceAbilityLib = nullptr;
-    HiLog::Info(LABEL, "MainThread::LoadAbilityLibrary. Start calling dlopen acelibdir.");
-    AceAbilityLib = dlopen(acelibdir.c_str(), RTLD_NOW | RTLD_GLOBAL);
-    if (AceAbilityLib == nullptr) {
-        HiLog::Error(LABEL, "Fail to dlopen %{public}s, [%{public}s]", acelibdir.c_str(), dlerror());
-    } else {
-        HiLog::Info(LABEL, "Success to dlopen %{public}s", acelibdir.c_str());
-    }
-    HiLog::Info(LABEL, "MainThread::LoadAbilityLibrary. End calling dlopen.");
-}
-
 bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
 {
     if (socket_->RegisterServerSocket() != 0) {
@@ -180,8 +163,6 @@ bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
         return false;
     }
     std::thread(&AppSpawnServer::ConnectionPeer, this).detach();
-
-    LoadAceLib();
 
     while (isRunning_) {
         std::unique_lock<std::mutex> lock(mut_);
@@ -213,8 +194,7 @@ bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
             continue;
         } else if (pid == 0) {
             SpecialHandle(appProperty);
-            SetAppProcProperty(connectFd, appProperty, longProcName, longProcNameLen, fd);
-            _exit(0);
+            return SetAppProcProperty(connectFd, appProperty, longProcName, longProcNameLen, fd);
         }
 
         read(fd[0], &buff, sizeof(buff));  // wait child process resutl
