@@ -24,9 +24,6 @@
 #undef private
 #undef protected
 
-#include <dirent.h>
-#include <dlfcn.h>
-
 using namespace testing;
 using namespace testing::ext;
 using namespace OHOS::AppSpawn;
