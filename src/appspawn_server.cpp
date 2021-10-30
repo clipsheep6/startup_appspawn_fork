@@ -28,9 +28,6 @@
 #include "main_thread.h"
 #include "securec.h"
 
-#include <dirent.h>
-#include <dlfcn.h>
-
 #define GRAPHIC_PERMISSION_CHECK
 constexpr static size_t ERR_STRING_SZ = 64;
 
@@ -45,6 +42,8 @@ constexpr int32_t MAX_GIDS = 64;
 
 constexpr std::string_view BUNDLE_NAME_CAMERA("com.ohos.camera");
 constexpr std::string_view BUNDLE_NAME_PHOTOS("com.ohos.photos");
+constexpr std::string_view BUNDLE_NAME_MEDIA_LIBRARY("com.ohos.medialibrary.MediaLibraryDataA");
+constexpr std::string_view BUNDLE_NAME_SCANNER("com.ohos.medialibrary.MediaScannerAbilityA");
 }  // namespace
 
 using namespace OHOS::HiviewDFX;
@@ -157,20 +156,6 @@ void AppSpawnServer::ConnectionPeer()
     }
 }
 
-void AppSpawnServer::LoadAceLib()
-{
-    std::string acelibdir("/system/lib/libace.z.so");
-    void *AceAbilityLib = nullptr;
-    HiLog::Info(LABEL, "MainThread::LoadAbilityLibrary. Start calling dlopen acelibdir.");
-    AceAbilityLib = dlopen(acelibdir.c_str(), RTLD_NOW | RTLD_GLOBAL);
-    if (AceAbilityLib == nullptr) {
-        HiLog::Error(LABEL, "Fail to dlopen %{public}s, [%{public}s]", acelibdir.c_str(), dlerror());
-    } else {
-        HiLog::Info(LABEL, "Success to dlopen %{public}s", acelibdir.c_str());
-    }
-    HiLog::Info(LABEL, "MainThread::LoadAbilityLibrary. End calling dlopen.");
-}
-
 bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
 {
     if (socket_->RegisterServerSocket() != 0) {
@@ -178,8 +163,6 @@ bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
         return false;
     }
     std::thread(&AppSpawnServer::ConnectionPeer, this).detach();
-
-    LoadAceLib();
 
     while (isRunning_) {
         std::unique_lock<std::mutex> lock(mut_);
@@ -211,8 +194,7 @@ bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
             continue;
         } else if (pid == 0) {
             SpecialHandle(appProperty);
-            SetAppProcProperty(connectFd, appProperty, longProcName, longProcNameLen, fd);
-            _exit(0);
+            return SetAppProcProperty(connectFd, appProperty, longProcName, longProcNameLen, fd);
         }
 
         read(fd[0], &buff, sizeof(buff));  // wait child process resutl
@@ -465,7 +447,9 @@ void AppSpawnServer::SpecialHandle(ClientSocket::AppProperty *appProperty)
     }
     // special handle bundle name "com.ohos.photos" and "com.ohos.camera"
     if ((strcmp(appProperty->processName, BUNDLE_NAME_CAMERA.data()) == 0) ||
-        (strcmp(appProperty->processName, BUNDLE_NAME_PHOTOS.data()) == 0)) {
+        (strcmp(appProperty->processName, BUNDLE_NAME_PHOTOS.data()) == 0) ||
+        (strcmp(appProperty->processName, BUNDLE_NAME_MEDIA_LIBRARY.data()) == 0) ||
+        (strcmp(appProperty->processName, BUNDLE_NAME_SCANNER.data()) == 0)) {
         if (appProperty->gidCount < MAX_GIDS) {
             appProperty->gidTable[appProperty->gidCount] = GID_MEDIA;
             appProperty->gidCount++;

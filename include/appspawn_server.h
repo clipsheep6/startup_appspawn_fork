@@ -143,8 +143,6 @@ private:
      */
     bool CheckAppProperty(const ClientSocket::AppProperty *appProperty);
 
-    void LoadAceLib();
-
 private:
     const std::string deviceNull_ = "/dev/null";
     std::string socketName_ {};

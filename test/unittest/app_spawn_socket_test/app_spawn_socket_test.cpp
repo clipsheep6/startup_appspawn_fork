@@ -274,7 +274,7 @@ HWTEST(AppSpawnSocketTest, App_Spawn_Socket_010, TestSize.Level0)
     EXPECT_TRUE(appSpawnSocket);
     std::string content = "hiworld";
     int32_t len = content.length();
-    EXPECT_TRUE(len);
+    EXPECT_TRUE(len > 0);
     std::unique_ptr<int8_t[]> buff = std::make_unique<int8_t[]>(len);
     EXPECT_TRUE(buff);
     int32_t fd[2] = {0, 0};
@@ -405,7 +405,7 @@ HWTEST(AppSpawnSocketTest, App_Spawn_Socket_015, TestSize.Level0)
     EXPECT_TRUE(appSpawnSocket);
     std::string content = "hiworld";
     int32_t len = content.length();
-    EXPECT_TRUE(len);
+    EXPECT_TRUE(len > 0);
     std::unique_ptr<int8_t[]> buff = std::make_unique<int8_t[]>(len);
     EXPECT_TRUE(buff);
     int32_t fd[2] = {0, 0};
