@@ -401,10 +401,12 @@ void AppSpawnServer::SetServerSocket(const std::shared_ptr<ServerSocket> &server
 bool AppSpawnServer::SetAppProcProperty(int connectFd, const ClientSocket::AppProperty *appProperty, char *longProcName,
     int64_t longProcNameLen, const int32_t fd[FDLEN2])
 {
+    int rc;
     if (appProperty == nullptr) {
         HiLog::Error(LABEL, "appProperty is nullptr");
         return false;
     }
+
     pid_t newPid = getpid();
     HiLog::Debug(LABEL, "AppSpawnServer::Success to fork new process, pid = %{public}d", newPid);
     // close socket connection and peer socket in child process
@@ -412,6 +414,72 @@ bool AppSpawnServer::SetAppProcProperty(int connectFd, const ClientSocket::AppPr
     socket_->CloseServerMonitor();
     close(fd[0]);  // close read fd
     UninstallSigHandler();
+
+    // create /mnt/sandbox/<packagename> path
+    std::string rootPath = "/mnt/sandbox/";
+    mkdir(rootPath.c_str(), 0755);
+    rootPath += appProperty->processName;
+    mkdir(rootPath.c_str(), 0755);
+
+    // to create /mnt/sandbox/<packagename>/data/storage/el1 related path, later should delete this code.
+    std::string tmpPath = rootPath + "/data/";
+    mkdir(tmpPath.c_str(), 0755);
+    tmpPath = rootPath + "/data/storage";
+    mkdir(tmpPath.c_str(), 0755);
+    tmpPath = rootPath + "/data/storage/el1";
+    mkdir(tmpPath.c_str(), 0755);
+    tmpPath = rootPath + "/data/storage/el1/0";
+    mkdir(tmpPath.c_str(), 0755);
+    tmpPath = rootPath + "/data/storage/el1/0/base";
+    mkdir(tmpPath.c_str(), 0755);
+
+    // to create /mnt/sandbox/<packagename>/data/storage/el1 related path, later should delete this code.
+    mkdir(tmpPath.c_str(), 0755);
+    tmpPath = rootPath + "/data/storage/el2";
+    mkdir(tmpPath.c_str(), 0755);
+    tmpPath = rootPath + "/data/storage/el2/bundle";
+    mkdir(tmpPath.c_str(), 0755);
+
+    // add pid to a new mnt namespace
+    rc = unshare(CLONE_NEWNS);
+    if (rc) {
+        HiLog::Error(LABEL, "unshare failed, packagename is %{public}s", appProperty->processName);
+        return false;
+    }
+
+    // bind mount "/" to /mnt/sandbox/<packageName> path
+    // TODO: to do more resouces bind mount here to get more strict resources constraints
+    rc = mount("/", rootPath.c_str(), NULL, MS_BIND | MS_REC, NULL);
+    if (rc) {
+        HiLog::Error(LABEL, "mount bind / failed, packagename is %{public}s", appProperty->processName);
+        return false;
+    }
+
+    // do bind mount again after unshare
+    std::string oriInstallPath = "/data/app/el1/base/";
+    std::string oriDataPath = "/data/app/el2/0/bundle/";
+    std::string destInstallPath = rootPath + "/data/storage/el1/0/base";
+    std::string destDataPath = rootPath + "/data/storage/el2/bundle";
+    oriInstallPath += appProperty->processName;
+    oriDataPath += appProperty->processName;
+
+    rc = mount(oriInstallPath.c_str(), destInstallPath.c_str(), NULL, MS_BIND | MS_PRIVATE, NULL);
+    if (rc) {
+        HiLog::Error(LABEL, "mount bind package install path failed, packagename is %{public}s", appProperty->processName);
+        return false;
+    }
+
+    rc = mount(oriDataPath.c_str(), destDataPath.c_str(), NULL, MS_BIND | MS_PRIVATE, NULL);
+    if (rc) {
+        HiLog::Error(LABEL, "mount bind package data path failed, packagename is %{public}s", appProperty->processName);
+        return false;
+    }
+
+    rc = chroot(rootPath.c_str());
+    if (rc) {
+        HiLog::Error(LABEL, "chroot failed, packagename is %{public}s", appProperty->processName);
+        return false;
+    }
 
     int32_t ret = ERR_OK;
     ret = SetKeepCapabilities(appProperty->uid);
