@@ -64,6 +64,7 @@ ohos_static_library("appspawn_server") {
   external_deps = [
     "hiviewdfx_hilog_native:libhilog",
     "ipc:ipc_core",
+    "access_token:accesstoken_build_module",
   ]
 
   subsystem_name = "${subsystem_name}"

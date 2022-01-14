@@ -27,6 +27,7 @@
 #include "hilog/log.h"
 #include "main_thread.h"
 #include "securec.h"
+#include "token_setproc.h"
 
 #include <dirent.h>
 #include <dlfcn.h>
@@ -424,6 +425,11 @@ bool AppSpawnServer::SetAppProcProperty(int connectFd, const ClientSocket::AppPr
     if (FAILED(ret)) {
         NotifyResToParentProc(fd[1], ret);
         return false;
+    }
+
+    ret = SetSelfTokenID(appProperty->tokenId);
+    if(ret != 0) {
+        HiLog::Error(LABEL, "AppSpawnServer::Failed to set access token id, errno = %{public}d", errno);
     }
 
 #ifdef GRAPHIC_PERMISSION_CHECK
