@@ -428,7 +428,7 @@ bool AppSpawnServer::SetAppProcProperty(int connectFd, const ClientSocket::AppPr
     }
 
     ret = SetSelfTokenID(appProperty->tokenId);
-    if(ret != 0) {
+    if (ret != 0) {
         HiLog::Error(LABEL, "AppSpawnServer::Failed to set access token id, errno = %{public}d", errno);
     }
 
