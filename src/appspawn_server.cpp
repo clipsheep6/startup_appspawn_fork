@@ -42,6 +42,8 @@ constexpr int32_t WAIT_DELAY_US = 100 * 1000;  // 100ms
 constexpr int32_t GID_MEDIA = 1023;
 constexpr int32_t MAX_GIDS = 64;
 
+constexpr mode_t APP_DEFAULT_MASK = 0002;
+
 constexpr std::string_view BUNDLE_NAME_CAMERA("com.ohos.camera");
 constexpr std::string_view BUNDLE_NAME_PHOTOS("com.ohos.photos");
 constexpr std::string_view BUNDLE_NAME_MEDIA_LIBRARY("com.ohos.medialibrary.MediaLibraryDataA");
@@ -54,6 +56,11 @@ static constexpr HiLogLabel LABEL = {LOG_CORE, 0, "AppSpawnServer"};
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+static void SetUmask()
+{
+    umask(APP_DEFAULT_MASK);
+}
 
 static void SignalHandler([[maybe_unused]] int sig)
 {
@@ -421,6 +428,8 @@ bool AppSpawnServer::SetAppProcProperty(int connectFd, const ClientSocket::AppPr
         return false;
     }
 #endif
+
+    SetUmask();
 
     ret = SetFileDescriptors();
     if (FAILED(ret)) {
