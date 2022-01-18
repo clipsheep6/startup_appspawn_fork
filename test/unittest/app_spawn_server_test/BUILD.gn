@@ -17,7 +17,9 @@ import("//build/test.gni")
 ohos_unittest("AppSpawnServerOverrideTest") {
   module_out_path = "${module_output_path}"
 
-  include_dirs = [ "//base/security/access_token/interfaces/innerkits/token_setproc/include" ]
+  include_dirs = [
+    "//base/security/access_token/interfaces/innerkits/token_setproc/include",
+  ]
 
   sources = [
     "${appspawn_path}/src/appspawn_server.cpp",
@@ -32,8 +34,8 @@ ohos_unittest("AppSpawnServerOverrideTest") {
   ]
 
   deps = [
+    "${appspawn_path}/test:appspawn_test_source",
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc", 
-    "${appspawn_path}/test:appspawn_test_source"
   ]
 
   external_deps = [
@@ -45,7 +47,9 @@ ohos_unittest("AppSpawnServerOverrideTest") {
 ohos_unittest("AppSpawnServerMockTest") {
   module_out_path = "${module_output_path}"
 
-  include_dirs = [ "//base/security/access_token/interfaces/innerkits/token_setproc/include" ]
+  include_dirs = [
+    "//base/security/access_token/interfaces/innerkits/token_setproc/include",
+  ]
 
   sources = [
     "${appspawn_path}/src/appspawn_msg_peer.cpp",
@@ -60,8 +64,8 @@ ohos_unittest("AppSpawnServerMockTest") {
   ]
 
   deps = [
-    "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
     "${appspawn_path}/test:appspawn_test_source",
+    "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
   ]
 
   external_deps = [
