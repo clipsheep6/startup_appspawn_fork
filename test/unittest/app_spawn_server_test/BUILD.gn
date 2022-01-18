@@ -17,7 +17,7 @@ import("//build/test.gni")
 ohos_unittest("AppSpawnServerOverrideTest") {
   module_out_path = "${module_output_path}"
 
-  include_dirs = []
+  include_dirs = [ "//base/security/access_token/interfaces/innerkits/token_setproc/include" ]
 
   sources = [
     "${appspawn_path}/src/appspawn_server.cpp",
@@ -31,7 +31,10 @@ ohos_unittest("AppSpawnServerOverrideTest") {
     "app_spawn_server_override_test.cpp",
   ]
 
-  deps = [ "${appspawn_path}/test:appspawn_test_source" ]
+  deps = [
+    "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc", 
+    "${appspawn_path}/test:appspawn_test_source"
+  ]
 
   external_deps = [
     "hiviewdfx_hilog_native:libhilog",
@@ -57,8 +60,8 @@ ohos_unittest("AppSpawnServerMockTest") {
   ]
 
   deps = [
-    "${appspawn_path}/test:appspawn_test_source",
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
+    "${appspawn_path}/test:appspawn_test_source",
   ]
 
   external_deps = [
