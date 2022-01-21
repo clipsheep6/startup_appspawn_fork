@@ -415,6 +415,7 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
     std::string oriInstallPath = "/data/app/el1/bundle/";
     std::string oriDataPath = "/data/app/el2/0/base/";
     std::string oriDatabasePath = "/data/app/el2/0/database/";
+    std::string oriApi7InstallPath = "/data/app/el1/bundle/public/";
     std::string destAPI7InstallPath = rootPath + "/data/accounts/account_0/applications";
     std::string destDatabasePath = rootPath + "/data/storage/el2/database";
     std::string destInstallPath = rootPath + "/data/storage/el1/0/bundle";
@@ -424,9 +425,10 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
     oriInstallPath += appProperty->processName;
     oriDataPath += appProperty->processName;
     oriDatabasePath += appProperty->processName;
+    oriApi7InstallPath += appProperty->processName;
 
     std::map<std::string, std::string> mountMap;
-    mountMap[oriInstallPath] = destAPI7InstallPath;
+    mountMap[oriApi7InstallPath] = destAPI7InstallPath;
     mountMap[oriDatabasePath] = destDatabasePath;
     mountMap[oriInstallPath] = destInstallPath;
     mountMap[oriDataPath] = destDataPath;
