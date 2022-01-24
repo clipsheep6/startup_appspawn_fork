@@ -95,6 +95,7 @@ public:
         uint32_t gidCount;                // the size of gidTable
         char processName[LEN_PROC_NAME];  // process name
         char soPath[LEN_SO_PATH];         // so lib path
+        uint32_t tokenId;
     };
 
 private:
