@@ -412,12 +412,13 @@ int32_t AppSpawnServer::DoAppSandboxMountOnce(const std::string originPath, cons
 
 int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appProperty, std::string rootPath)
 {
+    std::string currentUserId = std::to_string(appProperty->uid / 200000);
     std::string oriInstallPath = "/data/app/el1/bundle/";
-    std::string oriDataPath = "/data/app/el2/0/base/";
-    std::string oriDatabasePath = "/data/app/el2/0/database/";
+    std::string oriDataPath = "/data/app/el2/" + currentUserId + "/base/";
+    std::string oriDatabasePath = "/data/app/el2/" + currentUserId + "/database/";
     std::string destAPI7InstallPath = rootPath + "/data/accounts/account_0/applications";
     std::string destDatabasePath = rootPath + "/data/storage/el2/database";
-    std::string destInstallPath = rootPath + "/data/storage/el1/0/bundle";
+    std::string destInstallPath = rootPath + "/data/storage/el1/bundle";
     std::string destDataPath = rootPath + "/data/storage/el2/base";
     int rc = 0;
 
@@ -452,9 +453,9 @@ void AppSpawnServer::DoAppSandboxMkdir(std::string sandboxPackagePath, const Cli
     mkdir(dirPath.c_str(), FILE_MODE);
     dirPath = sandboxPackagePath + "/data/storage/el1";
     mkdir(dirPath.c_str(), FILE_MODE);
-    dirPath = sandboxPackagePath + "/data/storage/el1/0";
+    dirPath = sandboxPackagePath + "/data/storage/el1";
     mkdir(dirPath.c_str(), FILE_MODE);
-    dirPath = sandboxPackagePath + "/data/storage/el1/0/bundle";
+    dirPath = sandboxPackagePath + "/data/storage/el1/bundle";
     mkdir(dirPath.c_str(), FILE_MODE);
 
     // to create /mnt/sandbox/<packagename>/data/storage/el1 related path, later should delete this code.
