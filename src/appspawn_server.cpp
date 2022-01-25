@@ -602,6 +602,17 @@ bool AppSpawnServer::SetAppProcProperty(int connectFd, const ClientSocket::AppPr
         return false;
     }
 
+    ret = SetSelfTokenID(appProperty->accessTokenId);
+    if (ret != 0) {
+        HiLog::Error(LABEL, "AppSpawnServer::Failed to set access token id, errno = %{public}d", errno);
+    }
+
+    HapContext hapContext;
+    ret = hapContext.HapDomainSetcontext(appProperty->apl, appProperty->processName);
+    if (ret != 0) {
+        HiLog::Error(LABEL, "AppSpawnServer::Failed to hap domain set context, errno = %{public}d", errno);
+    }
+
     ret = SetProcessName(longProcName, longProcNameLen, appProperty->processName, strlen(appProperty->processName) + 1);
     if (FAILED(ret)) {
         NotifyResToParentProc(fd[1], ret);
