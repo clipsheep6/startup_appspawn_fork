@@ -27,6 +27,8 @@
 #include "hilog/log.h"
 #include "main_thread.h"
 #include "securec.h"
+#include "token_setproc.h"
+#include "hap_restorecon.h"
 
 #include <dirent.h>
 #include <dlfcn.h>
