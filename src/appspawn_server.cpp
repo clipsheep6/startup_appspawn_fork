@@ -29,6 +29,10 @@
 #include "securec.h"
 #include "token_setproc.h"
 #include "hap_restorecon.h"
+#include "bundle_mgr_interface.h"
+#include "if_system_ability_manager.h"
+#include "iservice_registry.h"
+#include "system_ability_definition.h"
 
 #include <dirent.h>
 #include <dlfcn.h>
