@@ -19,6 +19,7 @@ ohos_unittest("AppSpawnServerOverrideTest") {
 
   include_dirs = [
     "//base/security/access_token/interfaces/innerkits/token_setproc/include",
+    "//base/security/selinux/interfaces/policycoreutils/include",
   ]
 
   sources = [
@@ -36,6 +37,7 @@ ohos_unittest("AppSpawnServerOverrideTest") {
   deps = [
     "${appspawn_path}/test:appspawn_test_source",
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
+    "//base/security/selinux:libload_policy",
   ]
 
   external_deps = [
@@ -49,6 +51,7 @@ ohos_unittest("AppSpawnServerMockTest") {
 
   include_dirs = [
     "//base/security/access_token/interfaces/innerkits/token_setproc/include",
+    "//base/security/selinux/interfaces/policycoreutils/include",
   ]
 
   sources = [
@@ -66,6 +69,7 @@ ohos_unittest("AppSpawnServerMockTest") {
   deps = [
     "${appspawn_path}/test:appspawn_test_source",
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
+    "//base/security/selinux:libload_policy",
   ]
 
   external_deps = [
