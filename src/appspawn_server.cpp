@@ -459,14 +459,14 @@ int32_t AppSpawnServer::DoAppSandboxMountOnce(const std::string originPath, cons
 int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appProperty, std::string rootPath)
 {
     std::string currentUserId = std::to_string(appProperty->uid / 200000);
-    std::string oriInstallPath = "/data/app/el1/bundle/";
+    std::string oriInstallPath = "/data/app/el1/bundle/public/";
     std::string oriDataPath = "/data/app/el2/" + currentUserId + "/base/";
     std::string oriDatabasePath = "/data/app/el2/" + currentUserId + "/database/";
     std::string destDatabasePath = rootPath + "/data/storage/el2/database";
     std::string destInstallPath = rootPath + "/data/storage/el1/bundle";
     std::string destDataPath = rootPath + "/data/storage/el2/base";
     int rc = 0;
-
+    HiLog::Error(LABEL, "wanghang rootPath:%{public}s, %{public}s", rootPath.c_str(), currentUserId.c_str());
     std::string bundleName = GetApplicationNameById(appProperty->uid);
     oriInstallPath += bundleName;
     oriDataPath += bundleName;
@@ -484,7 +484,7 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
             return rc;
         }
     }
-
+    HiLog::Error(LABEL, "wanghang start");
     // Add distributedfile module support, later reconstruct it
     std::string oriDistributedPath = "/mnt/hmdfs/" +  currentUserId + "/merge_view/data/" + bundleName;
     std::string destDistributedPath = rootPath + "/data/storage/el2/distributedfiles";
@@ -498,14 +498,15 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
     std::string destMediaPath = rootPath + "/storage/media";
     DoAppSandboxMountOnce(oriMediaPath.c_str(), destMediaPath.c_str());
 
-    std::string oriappdataPath = "/data/accounts/account_0/appdata/";
+    std::string oriappdataPath = "/data/accounts/account_0/appdata";
     std::string destappdataPath = rootPath + oriappdataPath;
     DoAppSandboxMountOnce(oriappdataPath.c_str(), destappdataPath.c_str());
 
-    std::string oriapplicationsPath = "/data/accounts/account_0/applications/";
+    std::string api8Applications = "/data/app/el1/bundle/public";
+    std::string oriapplicationsPath = "/data/accounts/account_0/applications";
     std::string destapplicationsPath = rootPath + oriapplicationsPath;
-    DoAppSandboxMountOnce(oriapplicationsPath.c_str(), destapplicationsPath.c_str());
-
+    DoAppSandboxMountOnce(api8Applications.c_str(), destapplicationsPath.c_str());
+    HiLog::Error(LABEL, "wanghang end");
     return 0;
 }
 
