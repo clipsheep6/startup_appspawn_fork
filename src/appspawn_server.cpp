@@ -23,6 +23,8 @@
 #include <sys/prctl.h>
 #include <sys/capability.h>
 #include <sys/syscall.h>
+#include <iostream>
+#include <fstream>
 #include <thread>
 #include <string>
 #include <map>
@@ -121,6 +123,7 @@ AppSpawnServer::AppSpawnServer(const std::string &socketName)
 {
     socketName_ = socketName;
     socket_ = std::make_shared<ServerSocket>(socketName_);
+    sandboxFolderName_ = GetRandomFolderName();
     isRunning_ = true;
 }
 
@@ -417,9 +420,9 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
     std::string oriInstallPath = "/data/app/el1/bundle/public/";
     std::string oriDataPath = "/data/app/el2/" + currentUserId + "/base/";
     std::string oriDatabasePath = "/data/app/el2/" + currentUserId + "/database/";
-    std::string destDatabasePath = rootPath + "/data/storage/el2/database";
-    std::string destInstallPath = rootPath + "/data/storage/el1/bundle";
-    std::string destDataPath = rootPath + "/data/storage/el2/base";
+    std::string destDatabasePath = rootPath + "/data/" + sandboxFolderName_ + "/el2/database";
+    std::string destInstallPath = rootPath + "/data/" + sandboxFolderName_ + "/el1/bundle";
+    std::string destDataPath = rootPath + "/data/" + sandboxFolderName_ + "/el2/base";
     int rc = 0;
 
     std::string bundleName = appProperty->bundleName;
@@ -442,11 +445,11 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
 
     // Add distributedfile module support, later reconstruct it
     std::string oriDistributedPath = "/mnt/hmdfs/" +  currentUserId + "/account/merge_view/data/" + bundleName;
-    std::string destDistributedPath = rootPath + "/data/storage/el2/distributedfiles";
+    std::string destDistributedPath = rootPath + "/data/" + sandboxFolderName_ + "/el2/distributedfiles";
     DoAppSandboxMountOnce(oriDistributedPath.c_str(), destDistributedPath.c_str());
 
     std::string oriDistributedGroupPath = "/mnt/hmdfs/" +  currentUserId + "/non_account/merge_view/data/" + bundleName;
-    std::string destDistributedGroupPath = rootPath + "/data/storage/el2/auth_groups";
+    std::string destDistributedGroupPath = rootPath + "/data/" + sandboxFolderName_ + "/el2/auth_groups";
     DoAppSandboxMountOnce(oriDistributedGroupPath.c_str(), destDistributedGroupPath.c_str());
 
     const std::string oriappdataPath = "/data/accounts/account_0/appdata/";
@@ -456,11 +459,11 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
     // to create some useful dir when mount point created
     std::vector<std::string> mkdirInfo;
     std::string dirPath;
-    mkdirInfo.push_back("/data/storage/el1/bundle/webview");
-    mkdirInfo.push_back("/data/storage/el2/base/el3");
-    mkdirInfo.push_back("/data/storage/el2/base/el3/base");
-    mkdirInfo.push_back("/data/storage/el2/base/el4");
-    mkdirInfo.push_back("/data/storage/el2/base/el4/base");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el1/bundle/webview");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el2/base/el3");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el2/base/el3/base");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el2/base/el4");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el2/base/el4/base");
 
     for (int i = 0; i < mkdirInfo.size(); i++) {
         dirPath = rootPath + mkdirInfo[i];
@@ -507,17 +510,17 @@ void AppSpawnServer::DoAppSandboxMkdir(std::string sandboxPackagePath, const Cli
     mkdirInfo.push_back("/data/");
     mkdirInfo.push_back("/storage/");
     mkdirInfo.push_back("/storage/media");
-    mkdirInfo.push_back("/data/storage");
-    // to create /mnt/sandbox/<packagename>/data/storage/el1 related path, later should delete this code.
-    mkdirInfo.push_back("/data/storage/el1");
-    mkdirInfo.push_back("/data/storage/el1/bundle");
-    mkdirInfo.push_back("/data/storage/el1/base");
-    mkdirInfo.push_back("/data/storage/el1/database");
-    mkdirInfo.push_back("/data/storage/el2");
-    mkdirInfo.push_back("/data/storage/el2/base");
-    mkdirInfo.push_back("/data/storage/el2/database");
-    mkdirInfo.push_back("/data/storage/el2/distributedfiles");
-    mkdirInfo.push_back("/data/storage/el2/auth_groups");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_);
+    // to create /mnt/sandbox/<packagename>/data/<randomid>/el1 related path, later should delete this code.
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el1");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el1/bundle");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el1/base");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el1/database");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el2");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el2/base");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el2/database");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el2/distributedfiles");
+    mkdirInfo.push_back("/data/" + sandboxFolderName_ + "/el2/auth_groups");
     // create applications folder for compatibility purpose
     mkdirInfo.push_back("/data/accounts");
     mkdirInfo.push_back("/data/accounts/account_0");
@@ -609,6 +612,18 @@ int32_t AppSpawnServer::DoSandboxRootFolderCreate(std::string sandboxPackagePath
     return 0;
 }
 
+std::string AppSpawnServer::GetRandomFolderName()
+{
+    std::string data;
+    std::ifstream infile;
+
+    infile.open("/proc/sys/kernel/random/boot_id");
+    infile >> data;
+
+    infile.close();
+    return data.substr(0, 4);
+}
+
 int32_t AppSpawnServer::SetAppSandboxProperty(const ClientSocket::AppProperty *appProperty)
 {
     int rc = 0;
@@ -637,7 +652,7 @@ int32_t AppSpawnServer::SetAppSandboxProperty(const ClientSocket::AppProperty *a
         return rc;
     }
 
-    // to create /mnt/sandbox/<packagename>/data/storage related path
+    // to create /mnt/sandbox/<packagename>/data/<randomid> related path
     DoAppSandboxMkdir(sandboxPackagePath, appProperty);
 
     rc = DoAppSandboxMount(appProperty, sandboxPackagePath);
