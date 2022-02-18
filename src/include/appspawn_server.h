@@ -193,6 +193,8 @@ private:
     void WaitRebootEvent();
 
     void HandleSignal();
+
+    void Mkdirs(const std::string &path, mode_t mode);
 private:
     const std::string deviceNull_ = "/dev/null";
     std::string socketName_ {};

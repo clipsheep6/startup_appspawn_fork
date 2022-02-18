@@ -733,6 +733,24 @@ int32_t AppSpawnServer::DoSandboxRootFolderCreateAdapt(std::string sandboxPackag
     return 0;
 }
 
+void AppSpawnServer::Mkdirs(const std::string &path, mode_t mode)
+{
+    size_t size = path.size();
+    if (size == 0)
+            return;
+    
+    size_t index = 0;
+    do {
+            size_t pathIndex = path.find_first_of('/', index);
+            index = pathIndex == std::string::npos ? size : pathIndex + 1;
+            std::string dir = path.substr(0, index);
+            if (access(dir.c_str(), F_OK) < 0 && mkdir(dir.c_str(), mode) < 0) {
+                    HiLog::Error(LABEL, "mkdir %{public}s error", dir.c_str());
+                    return;
+            }
+    } while (index < size);
+}
+
 int32_t AppSpawnServer::DoSandboxRootFolderCreate(std::string sandboxPackagePath)
 {
     int rc = mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL);
@@ -754,11 +772,11 @@ int32_t AppSpawnServer::DoSandboxRootFolderCreate(std::string sandboxPackagePath
     vecInfo.push_back("/sys");
     vecInfo.push_back("/sys-prod");
     vecInfo.push_back("/system");
-    vecInfo.push_back("/mnt");
+    vecInfo.push_back("/mnt/hmdfs");
 
     for (int i = 0; i < vecInfo.size(); i++) {
         tmpDir = sandboxPackagePath + vecInfo[i];
-        mkdir(tmpDir.c_str(), FILE_MODE);
+        Mkdirs(tmpDir.c_str(), FILE_MODE);
         mountMap[vecInfo[i]] = tmpDir;
     }
 
