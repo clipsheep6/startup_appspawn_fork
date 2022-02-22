@@ -153,6 +153,11 @@ private:
     void DoAppSandboxMkdir(std::string rootPath, const ClientSocket::AppProperty *appProperty);
 
     /**
+     * Get random sandbox folder name
+     */
+    std::string GetRandomFolderName();
+
+    /**
      * Sets app sandbox property.
      */
     int32_t SetAppSandboxProperty(const ClientSocket::AppProperty *appProperty);
@@ -183,7 +188,8 @@ private:
     void SetAppAccessToken(const ClientSocket::AppProperty *appProperty);
 private:
     const std::string deviceNull_ = "/dev/null";
-    std::string socketName_ {};
+    std::string sandboxFolderName_ {};
+    std::string socketName_ {}; 
     std::shared_ptr<ServerSocket> socket_ = nullptr;
     std::mutex mut_ {};
     mutable std::condition_variable dataCond_ {};
