@@ -103,7 +103,8 @@ static sptr<AppExecFwk::IBundleMgr> GetBundleMgrProxy()
     return bundleMgr;
 }
 
-static int GetApplicationInfo(const std::string &bundleName, int applicationFlag, int userId, AppExecFwk::ApplicationInfo &appInfo)
+static int GetApplicationInfo(const std::string &bundleName, int applicationFlag, int userId, 
+           AppExecFwk::ApplicationInfo &appInfo)
 {
     sptr<AppExecFwk::IBundleMgr> bundleMgr = GetBundleMgrProxy();
     if (!bundleMgr) {
@@ -849,7 +850,7 @@ void AppSpawnServer::SetAppAccessToken(const ClientSocket::AppProperty *appPrope
         HiLog::Error(LABEL, "AppSpawnServer::Failed to hap domain set context, errno = %{public}d", errno);
     } else {
         HiLog::Info(LABEL, "AppSpawnServer::Success to hap domain set context, ret = %{public}d", ret);
-	}
+    }
 #endif
 }
 
@@ -1023,6 +1024,5 @@ int AppSpawnServer::AppColdStart(char *longProcName,
     printf("Clod start %s success. \n", appName.c_str());
     return 0;
 }
-
 }  // namespace AppSpawn
 }  // namespace OHOS

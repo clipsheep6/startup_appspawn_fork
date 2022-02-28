@@ -53,6 +53,7 @@ ohos_unittest("AppSpawnServerOverrideTest") {
     "ipc:ipc_core",
     "safwk:system_ability_fwk",
     "samgr_standard:samgr_proxy",
+    "os_account_standard:os_account_innerkits"
   ]
 
   if (build_selinux) {
@@ -101,6 +102,7 @@ ohos_unittest("AppSpawnServerMockTest") {
     "ipc:ipc_core",
     "safwk:system_ability_fwk",
     "samgr_standard:samgr_proxy",
+    "os_account_standard:os_account_innerkits"
   ]
 
   if (build_selinux) {
