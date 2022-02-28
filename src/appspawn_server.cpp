@@ -921,8 +921,10 @@ bool AppSpawnServer::SetAppProcProperty(const ClientSocket::AppProperty *appProp
 
 void AppSpawnServer::NotifyResToParentProc(const int32_t fd, const int32_t value)
 {
-    write(fd, &value, sizeof(value));
-    close(fd);
+    if (fd != FD_INIT_VALUE) {
+        write(fd, &value, sizeof(value));
+        close(fd);
+    }
 }
 
 void AppSpawnServer::SpecialHandle(ClientSocket::AppProperty *appProperty)

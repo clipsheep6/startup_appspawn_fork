@@ -103,9 +103,7 @@ ohos_executable("appspawntools") {
     "${appspawn_path}:appspawn_server",
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
   ]
-  external_deps = [
-      "hiviewdfx_hilog_native:libhilog",
-       ]
+  external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
 
   install_enable = true
   subsystem_name = "${subsystem_name}"
