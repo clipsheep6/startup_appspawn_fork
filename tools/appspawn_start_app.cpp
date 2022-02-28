@@ -28,7 +28,7 @@ int main(int argc, char *const argv[])
     uintptr_t start = reinterpret_cast<uintptr_t>(argv[0]);
     uintptr_t end = reinterpret_cast<uintptr_t>(strchr(argv[argc - 1], 0));
     if (end == nullptr) {
-        printf("end result is error!!");
+        printf("end result is error!!\n");
         return 0;
     }
     uintptr_t argvSize = end - start;
