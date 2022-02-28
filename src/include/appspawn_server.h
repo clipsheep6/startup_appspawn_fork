@@ -70,6 +70,7 @@ public:
      */
     void SetServerSocket(const std::shared_ptr<ServerSocket> &serverSocket);
 
+    int AppColdStart(char *longProcName, int64_t longProcNameLen, const std::string &appName, const std::string uid);
 private:
     static constexpr uint8_t BITLEN32 = 32;
     static constexpr uint8_t FDLEN2 = 2;

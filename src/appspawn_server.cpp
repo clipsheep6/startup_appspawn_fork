@@ -41,6 +41,7 @@
 #include "token_setproc.h"
 #include "parameter.h"
 #include "beget_ext.h"
+#include "os_account_manager.h"
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
 #endif
@@ -79,6 +80,49 @@ static constexpr HiLogLabel LABEL = {LOG_CORE, 0, "AppSpawnServer"};
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+static sptr<AppExecFwk::IBundleMgr> GetBundleMgrProxy()
+{
+    sptr<ISystemAbilityManager> systemAbilityManager =
+        SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (!systemAbilityManager) {
+        APPSPAWN_LOGI("Failed to get for systemAbilityManager");
+        return nullptr;
+    }
+
+    sptr<IRemoteObject> remoteObject = systemAbilityManager->GetSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID);
+    if (!remoteObject) {
+        APPSPAWN_LOGI("Failed to get for remoteObject");
+        return nullptr;
+    }
+    sptr<OHOS::AppExecFwk::IBundleMgr> bundleMgr = iface_cast<OHOS::AppExecFwk::IBundleMgr>(remoteObject);
+    if (!bundleMgr) {
+        APPSPAWN_LOGI("Failed to get for bundleMgr");
+        return nullptr;
+    }
+    return bundleMgr;
+}
+
+static int GetApplicationInfo(const std::string &bundleName, int applicationFlag, int userId, AppExecFwk::ApplicationInfo &appInfo)
+{
+    sptr<AppExecFwk::IBundleMgr> bundleMgr = GetBundleMgrProxy();
+    if (!bundleMgr) {
+        APPSPAWN_LOGI("appInfo can not get bundleMgr for %s", bundleName.c_str());
+        HiLog::Error(LABEL, "can not get bundleMgr for %{public}s", bundleName.c_str());
+        return -1;
+    }
+
+    APPSPAWN_LOGI("GetApplicationInfo userId %d", userId);
+    if (!bundleMgr->GetApplicationInfo(bundleName, applicationFlag, userId, appInfo)) {
+        APPSPAWN_LOGI("Failed to cold start %s", bundleName.c_str());
+        HiLog::Error(LABEL, "Failed to cold start %{public}s", bundleName.c_str());
+        return -1;
+    }
+    APPSPAWN_LOGI("GetApplicationInfo bundleName %s", appInfo.bundleName.c_str());
+    APPSPAWN_LOGI("GetApplicationInfo accessTokenId %d", appInfo.accessTokenId);
+    APPSPAWN_LOGI("GetApplicationInfo appPrivilegeLevel %s", appInfo.appPrivilegeLevel.c_str());
+    return 0;
+}
 
 static void SignalHandler([[maybe_unused]] int sig)
 {
@@ -327,7 +371,8 @@ bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
             appMap_[pid] = appProperty->processName;
         }
         socket_->CloseConnection(connectFd); // close socket connection
-        APPSPAWN_LOGI("AppSpawnServer::parent process create app finish, pid = %d %s", pid, appProperty->processName);
+        APPSPAWN_LOGI("AppSpawnServer::parent process create app finish, pid = %d uid %d %s %s",
+            pid, appProperty->uid, appProperty->processName, appProperty->bundleName);
     }
 
     while (appMap_.size() > 0) {
@@ -794,15 +839,17 @@ int32_t AppSpawnServer::SetAppSandboxProperty(const ClientSocket::AppProperty *a
 void AppSpawnServer::SetAppAccessToken(const ClientSocket::AppProperty *appProperty)
 {
     int32_t ret = SetSelfTokenID(appProperty->accessTokenId);
-    if (ret != 0) {
-        HiLog::Error(LABEL, "AppSpawnServer::Failed to set access token id, errno = %{public}d", errno);
-    }
+    HiLog::Info(LABEL, "AppSpawnServer::set access token id = %{public}d, ret = %{public}d",
+        appProperty->accessTokenId, ret);
+
 #ifdef WITH_SELINUX
     HapContext hapContext;
     ret = hapContext.HapDomainSetcontext(appProperty->apl, appProperty->processName);
     if (ret != 0) {
         HiLog::Error(LABEL, "AppSpawnServer::Failed to hap domain set context, errno = %{public}d", errno);
-    }
+    } else {
+        HiLog::Info(LABEL, "AppSpawnServer::Success to hap domain set context, ret = %{public}d", ret);
+	}
 #endif
 }
 
@@ -927,5 +974,55 @@ bool AppSpawnServer::CheckAppProperty(const ClientSocket::AppProperty *appProper
 
     return true;
 }
+
+int AppSpawnServer::AppColdStart(char *longProcName,
+    int64_t longProcNameLen, const std::string &appName, const std::string uidStr)
+{
+    APPSPAWN_LOGI("AppColdStart appName %s uid %s", appName.c_str(), uidStr.c_str());
+    LoadAceLib();
+    AppExecFwk::ApplicationInfo appInfo = {};
+    int ret = -1;
+    if (uidStr.empty()) {
+        std::vector<int> activeUserIds = {};
+        OHOS::AccountSA::OsAccountManager::QueryActiveOsAccountIds(activeUserIds);
+        APPSPAWN_LOGI("AppColdStart activeUserIds %d", activeUserIds.size());
+        for (int userId : activeUserIds) {
+            APPSPAWN_LOGI("AppColdStart appName %s uid %d", appName.c_str(), userId);
+            ret = GetApplicationInfo(appName, OHOS::AppExecFwk::GET_BASIC_APPLICATION_INFO, userId, appInfo);
+            if (ret == 0) {
+                break;
+            }
+        }
+    } else {
+        uint32_t uid = atoi(uidStr.c_str());
+        int32_t userId = uid / 200000; // 200000 uid to userId
+        ret = GetApplicationInfo(appName, OHOS::AppExecFwk::GET_BASIC_APPLICATION_INFO, userId, appInfo);
+    }
+    if (ret != 0) {
+        return ret;
+    }
+    auto appProperty = std::make_unique<ClientSocket::AppProperty>();
+    if (appProperty == nullptr) {
+        return -1;
+    }
+    appProperty->uid = appInfo.uid;
+    appProperty->accessTokenId = appInfo.accessTokenId;
+    (void)strcpy_s(appProperty->processName, sizeof(appProperty->processName), appInfo.name.c_str());
+    (void)strcpy_s(appProperty->bundleName, sizeof(appProperty->bundleName), appInfo.bundleName.c_str());
+    (void)strcpy_s(appProperty->apl, sizeof(appProperty->apl), appInfo.appPrivilegeLevel.c_str());
+
+    int32_t fd[FDLEN2] = {FD_INIT_VALUE, FD_INIT_VALUE};
+    SpecialHandle(appProperty.get());
+    SetAppProcProperty(appProperty.get(), longProcName, longProcNameLen, fd);
+    if (ret != 0) {
+        return ret;
+    }
+    while (1) {
+        pause();
+    }
+    printf("Clod start %s success. \n", appName.c_str());
+    return 0;
+}
+
 }  // namespace AppSpawn
 }  // namespace OHOS
