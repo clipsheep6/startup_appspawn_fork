@@ -40,6 +40,7 @@
 #include "system_ability_definition.h"
 #include "token_setproc.h"
 #include "parameter.h"
+#include "parameters.h"
 #include "beget_ext.h"
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
