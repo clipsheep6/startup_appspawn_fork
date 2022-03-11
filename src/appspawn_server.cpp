@@ -609,6 +609,7 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
     std::string oriInstallPath = "/data/app/el1/bundle/public/";
     std::string oriel1DataPath = "/data/app/el1/" + currentUserId + "/base/";
     std::string oriel2DataPath = "/data/app/el2/" + currentUserId + "/base/";
+    std::string oriel2DataBasePath = "/data/app/el2/" + currentUserId + "/base/";
     std::string oriDatabasePath = "/data/app/el2/" + currentUserId + "/database/";
     const std::string oriappdataPath = "/data/accounts/account_0/appdata/";
     std::string destDatabasePath = rootPath + "/data/storage/el2/database";
@@ -630,7 +631,6 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
     mountMap[destInstallPath] = oriInstallPath;
     mountMap[destel1DataPath] = oriel1DataPath;
     mountMap[destel2DataPath] = oriel2DataPath;
-    mountMap[destappdataPath] = oriappdataPath;
 
     std::map<std::string, std::string>::iterator iter;
     for (iter = mountMap.begin(); iter != mountMap.end(); ++iter) {
