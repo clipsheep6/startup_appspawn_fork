@@ -37,6 +37,8 @@
 #include "bundle_mgr_interface.h"
 #include "if_system_ability_manager.h"
 #include "iservice_registry.h"
+#include "sandbox.h"
+#include "sandbox_namespace.h"
 #include "system_ability_definition.h"
 #include "token_setproc.h"
 #include "parameter.h"
@@ -80,6 +82,28 @@ static constexpr HiLogLabel LABEL = {LOG_CORE, 0, "AppSpawnServer"};
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+static void RegisterSandbox(const char *sandbox)
+{
+    if (sandbox == NULL) {
+        HiLog::Error(LABEL, "AppSpawnServer::invalid parameters");
+        return;
+    }
+    InitDefaultNamespace();
+    if (!InitSandboxWithName(sandbox)) {
+        HiLog::Error(LABEL, "AppSpawnServer::Failed to init sandbox with name %s", sandbox);
+    }
+
+    DumpSandboxByName(sandbox);
+    if (PrepareSandbox(sandbox) != 0) {
+        HiLog::Error(LABEL, "AppSpawnServer::Failed to prepare sandbox %s", sandbox);
+        DestroySandbox(sandbox);
+    }
+    if (EnterDefaultNamespace() < 0) {
+        HiLog::Error(LABEL, "AppSpawnServer::Failed to set default namespace");
+    }
+    CloseDefaultNamespace();
+}
 
 static void SignalHandler([[maybe_unused]] int sig)
 {
@@ -336,6 +360,13 @@ int AppSpawnServer::StartApp(char *longProcName, int64_t longProcNameLen,
         close(fd[1]);
         return -errno;
     } else if (pid == 0) {
+        if (strcmp("system_basic", appProperty->apl) == 0) {
+            EnterSandbox("priv-app");
+        } else if (strcmp("normal", appProperty->apl) == 0) {
+            EnterSandbox("app");
+        } else {
+            HiLog::Error(LABEL, "AppSpawnServer::Failed to match appspawn sandbox");
+        }
         SpecialHandle(appProperty);
         // close socket connection and peer socket in child process
         if (socket_ != NULL) {
@@ -377,6 +408,8 @@ bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
         return false;
     }
     std::thread(&AppSpawnServer::ConnectionPeer, this).detach();
+    RegisterSandbox("priv-app");
+    RegisterSandbox("app");
     LoadAceLib();
 
     std::thread(&AppSpawnServer::WaitRebootEvent, this).detach();
@@ -823,6 +856,13 @@ int32_t AppSpawnServer::SetAppSandboxProperty(const ClientSocket::AppProperty *a
 
     // create /mnt/sandbox/<packagename> path， later put it to rootfs module
     std::string sandboxPackagePath = "/mnt/sandbox/";
+    if (strcmp("normal", appProperty->apl) == 0) {
+        sandboxPackagePath += "app/";
+    } else if (strcmp("system_basic", appProperty->apl) == 0) {
+        sandboxPackagePath += "priv-app/";
+    } else {
+        HiLog::Error(LABEL, "Failed to match appspawn sandbox");
+    }
     mkdir(sandboxPackagePath.c_str(), FILE_MODE);
     sandboxPackagePath += appProperty->bundleName;
     mkdir(sandboxPackagePath.c_str(), FILE_MODE);
