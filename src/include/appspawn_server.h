@@ -195,6 +195,8 @@ private:
     void HandleSignal();
 
     void QuickExitMain();
+
+    void RegisterSandbox(const char *sandbox);
 private:
     const std::string deviceNull_ = "/dev/null";
     std::string socketName_ {};
@@ -209,6 +211,8 @@ private:
     bool isChildDie_ { false };
     pid_t childPid_ {};
     std::map<pid_t, std::string> appMap_;
+    bool isAppSandboxCreated_ {false};
+    bool isPrivAppSandboxCreated_ {false};
 #ifdef NWEB_SPAWN
     void *nwebHandle = nullptr;
 #endif

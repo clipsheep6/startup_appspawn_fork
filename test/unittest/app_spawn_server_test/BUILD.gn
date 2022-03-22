@@ -21,6 +21,7 @@ ohos_unittest("AppSpawnServerOverrideTest") {
     "//base/security/access_token/interfaces/innerkits/token_setproc/include",
     "//base/startup/init_lite/services/log",
     "//base/startup/init_lite/interfaces/innerkits/include",
+    "//base/startup/init_lite/interfaces/innerkits/sandbox/include",
     "//base/startup/syspara_lite/interfaces/innerkits/native/syspara/include",
   ]
 
@@ -41,6 +42,7 @@ ohos_unittest("AppSpawnServerOverrideTest") {
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
     "//base/startup/init_lite/interfaces/innerkits:libbegetutil",
     "//base/startup/init_lite/services/log:init_log",
+    "//base/startup/init_lite/interfaces/innerkits/sandbox:libsandbox",
     "//base/startup/syspara_lite/interfaces/innerkits/native/syspara:syspara",
   ]
 
@@ -68,6 +70,7 @@ ohos_unittest("AppSpawnServerMockTest") {
     "//base/security/access_token/interfaces/innerkits/token_setproc/include",
     "//base/startup/init_lite/services/log",
     "//base/startup/init_lite/interfaces/innerkits/include",
+    "//base/startup/init_lite/interfaces/innerkits/sandbox/include",
     "//base/startup/syspara_lite/interfaces/innerkits/native/syspara/include",
   ]
 
@@ -89,6 +92,7 @@ ohos_unittest("AppSpawnServerMockTest") {
     "//base/startup/init_lite/interfaces/innerkits:libbegetutil",
     "//base/startup/init_lite/interfaces/innerkits/socket:libsocket_static",
     "//base/startup/init_lite/services/log:init_log",
+    "//base/startup/init_lite/interfaces/innerkits/sandbox:libsandbox",
     "//base/startup/syspara_lite/interfaces/innerkits/native/syspara:syspara",
   ]
 

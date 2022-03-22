@@ -43,6 +43,8 @@
 #include "parameter.h"
 #include "parameters.h"
 #include "beget_ext.h"
+#include "sandbox.h"
+#include "sandbox_namespace.h"
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
 #endif
@@ -343,6 +345,40 @@ int AppSpawnServer::DoColdStartApp(ClientSocket::AppProperty *appProperty, int f
     return 0;
 }
 
+void AppSpawnServer::RegisterSandbox(const char *sandbox)
+{
+    if (sandbox == NULL) {
+        HiLog::Error(LABEL, "AppSpawnServer::invalid parameters");
+        return;
+    }
+    InitDefaultNamespace();
+    if (!InitSandboxWithName(sandbox)) {
+        CloseDefaultNamespace();
+        HiLog::Error(LABEL, "AppSpawnServer::Failed to init sandbox with name %s", sandbox);
+        return;
+    }
+
+    DumpSandboxByName(sandbox);
+    if (PrepareSandbox(sandbox) != 0) {
+        HiLog::Error(LABEL, "AppSpawnServer::Failed to prepare sandbox %s", sandbox);
+        DestroySandbox(sandbox);
+        CloseDefaultNamespace();
+        return;
+    }
+    if (EnterDefaultNamespace() < 0) {
+        HiLog::Error(LABEL, "AppSpawnServer::Failed to set default namespace");
+        DestroySandbox(sandbox);
+        CloseDefaultNamespace();
+        return;
+    }
+    CloseDefaultNamespace();
+    if (strcmp(sandbox, "app") == 0) {
+        isAppSandboxCreated_ = true;
+    } else if (strcmp(sandbox, "priv-app") == 0) {
+        isPrivAppSandboxCreated_ = true;
+    }
+}
+
 int AppSpawnServer::StartApp(char *longProcName, int64_t longProcNameLen,
     ClientSocket::AppProperty *appProperty, int connectFd, pid_t &pid)
 {
@@ -357,6 +393,16 @@ int AppSpawnServer::StartApp(char *longProcName, int64_t longProcNameLen,
     }
 
     InstallSigHandler();
+    if (isPrivAppSandboxCreated_ == false) {
+        if (strcmp("system_basic", appProperty->apl) == 0) {
+            RegisterSandbox("priv-app");
+        }
+    }
+    if (isAppSandboxCreated_ == false) {
+        if (strcmp("normal", appProperty->apl) == 0) {
+            RegisterSandbox("app");
+        }
+    }
     pid = fork();
     if (pid < 0) {
         HiLog::Error(LABEL, "AppSpawnServer::Failed to fork new process, errno = %{public}d", errno);
@@ -364,6 +410,13 @@ int AppSpawnServer::StartApp(char *longProcName, int64_t longProcNameLen,
         close(fd[1]);
         return -errno;
     } else if (pid == 0) {
+        if (strcmp("system_basic", appProperty->apl) == 0) {
+            EnterSandbox("priv-app");
+        } else if (strcmp("normal", appProperty->apl) == 0) {
+            EnterSandbox("app");
+        } else {
+            HiLog::Error(LABEL, "AppSpawnServer::Failed to match appspawn sandbox");
+        }
         InitDebugParams(appProperty);
         SpecialHandle(appProperty);
         // close socket connection and peer socket in child process
@@ -866,8 +919,7 @@ int32_t AppSpawnServer::SetAppSandboxProperty(const ClientSocket::AppProperty *a
     int rc = 0;
 
     // create /mnt/sandbox/<packagename> path， later put it to rootfs module
-    std::string sandboxPackagePath = "/mnt/sandbox/";
-    mkdir(sandboxPackagePath.c_str(), FILE_MODE);
+    std::string sandboxPackagePath = "/";
     sandboxPackagePath += appProperty->bundleName;
     mkdir(sandboxPackagePath.c_str(), FILE_MODE);
 
