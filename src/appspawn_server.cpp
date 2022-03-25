@@ -69,8 +69,6 @@ constexpr int32_t GID_USER_DATA_RW = 1008;
 constexpr int32_t MAX_GIDS = 64;
 constexpr int32_t UID_BASE = 200000;
 constexpr int32_t WAIT_PARAM_TIME = 5;
-constexpr int32_t RETRY_TIME = 10;
-constexpr int32_t DELAY_US = 10 * 1000;  // 10ms
 
 constexpr std::string_view BUNDLE_NAME_MEDIA_LIBRARY("com.ohos.medialibrary.MediaLibraryDataA");
 constexpr std::string_view BUNDLE_NAME_SCANNER("com.ohos.medialibrary.MediaScannerAbilityA");
@@ -319,21 +317,24 @@ int AppSpawnServer::DoColdStartApp(ClientSocket::AppProperty *appProperty, int f
 
 static int WaitChild(int fd, int pid, ClientSocket::AppProperty *appProperty)
 {
-    int result = 0;
-    int count = 0;
-    while (count < RETRY_TIME) { // wait child process resutl
-        int readLen = read(fd, &result, sizeof(result));
-        if (readLen == sizeof(result)) {
-            break;
-        }
-        usleep(DELAY_US);
-        count++;
-    }
-    if (count >= RETRY_TIME) {
+    int result = ERR_OK;
+    fd_set rd;
+    struct timeval tv;
+    FD_ZERO(&rd);
+    FD_SET(fd, &rd);
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    int ret = select(1, &rd, nullptr, nullptr, &tv);
+    if (ret == 0) { // timeout
         APPSPAWN_LOGI("Time out for child %d %s ", appProperty->processName, pid);
         result = ERR_OK;
+    } else if (ret == -1) {
+        APPSPAWN_LOGI("Error for child %d %s ", appProperty->processName, pid);
+        result = ERR_OK;
+    } else {
+        ret = read(fd, &result, sizeof(result));
     }
-    HiLog::Info(LABEL, "child process %{public}s %{public}s pid %{public}d",
+    APPSPAWN_LOGI("child process %s %s pid %d",
         appProperty->processName, (result == ERR_OK) ? "success" : "fail", pid);
     return (result == ERR_OK) ? 0 : result;
 }
