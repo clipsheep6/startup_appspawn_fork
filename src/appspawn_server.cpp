@@ -15,6 +15,7 @@
 
 #include "appspawn_server.h"
 
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <memory>
 #include <csignal>
@@ -72,6 +73,8 @@ constexpr int32_t WAIT_PARAM_TIME = 5;
 
 constexpr std::string_view BUNDLE_NAME_MEDIA_LIBRARY("com.ohos.medialibrary.MediaLibraryDataA");
 constexpr std::string_view BUNDLE_NAME_SCANNER("com.ohos.medialibrary.MediaScannerAbilityA");
+constexpr std::string_view APL_SYSTEM_CORE("system_core");
+constexpr std::string_view APL_SYSTEM_BASIC("system_basic");
 }  // namespace
 
 using namespace OHOS::HiviewDFX;
@@ -114,14 +117,14 @@ static void UninstallSigHandler()
     sa.sa_handler = nullptr;
     int err = sigaction(SIGCHLD, &sa, nullptr);
     if (err < 0) {
-        HiLog::Error(LABEL, "Error uninstalling SIGCHLD handler: %d", errno);
+        HiLog::Error(LABEL, "Error uninstalling SIGCHLD handler: %{public}d", errno);
     }
 
     struct sigaction sah = {};
     sah.sa_handler = nullptr;
     err = sigaction(SIGHUP, &sah, nullptr);
     if (err < 0) {
-        HiLog::Error(LABEL, "Error uninstalling SIGHUP handler: %d", errno);
+        HiLog::Error(LABEL, "Error uninstalling SIGHUP handler: %{public}d", errno);
     }
 }
 #ifdef __cplusplus
@@ -139,7 +142,7 @@ void AppSpawnServer::MsgPeer(int connectFd)
 {
     std::unique_ptr<AppSpawnMsgPeer> msgPeer = std::make_unique<AppSpawnMsgPeer>(socket_, connectFd);
     if (msgPeer == nullptr || msgPeer->MsgPeer() != 0) {
-        HiLog::Error(LABEL, "Failed to listen connection %d, %d", connectFd, errno);
+        HiLog::Error(LABEL, "Failed to listen connection %{public}d, %{public}d", connectFd, errno);
         return;
     }
 
@@ -266,6 +269,31 @@ void AppSpawnServer::LoadAceLib()
 #endif
 }
 
+static void InitDebugParams(const ClientSocket::AppProperty *appProperty)
+{
+    if (access("/system/lib/libhidebug.so", F_OK) != 0) {
+        HiLog::Error(LABEL, "access failed, errno = %{public}d", errno);
+        return;
+    }
+    void* handle = dlopen("/system/lib/libhidebug.so", RTLD_LAZY);
+    if (handle == nullptr) {
+        HiLog::Error(LABEL, "Failed to dlopen libhidebug.so, %{public}s", dlerror());
+        return;
+    }
+    bool (* initParam)(const char *name);
+    initParam = (bool (*)(const char *name))dlsym(handle, "InitEnvironmentParam");
+    if (initParam == nullptr) {
+        HiLog::Error(LABEL, "Failed to dlsym InitEnvironmentParam, %{public}s", dlerror());
+        dlclose(handle);
+        return;
+    }
+    bool ret = (*initParam)(appProperty->processName);
+    if (!ret) {
+        HiLog::Error(LABEL, "init parameters failed.");
+    }
+    dlclose(handle);
+}
+
 static void ClearEnvironment(void)
 {
     sigset_t mask;
@@ -308,7 +336,7 @@ int AppSpawnServer::DoColdStartApp(ClientSocket::AppProperty *appProperty, int f
     extractedCmds.push_back(nullptr);
     APPSPAWN_LOGI("DoColdStartApp extractedCmds %d", extractedCmds.size());
     int ret = execv(extractedCmds[0], extractedCmds.data());
-    if (ret != 0) {
+    if (ret) {
         HiLog::Error(LABEL, "Failed to execv, errno = %{public}d", errno);
         NotifyResToParentProc(fd, -1);
     }
@@ -350,7 +378,7 @@ int AppSpawnServer::StartApp(char *longProcName, int64_t longProcNameLen,
         HiLog::Error(LABEL, "create pipe fail, errno = %{public}d", errno);
         return ERR_PIPE_FAIL;
     }
-    fcntl(fd[0], F_SETFL, O_NONBLOCK);
+    fcntl(fd[0], F_SETFL, O_NDELAY);
 
     InstallSigHandler();
     pid = fork();
@@ -360,6 +388,7 @@ int AppSpawnServer::StartApp(char *longProcName, int64_t longProcNameLen,
         close(fd[1]);
         return -errno;
     } else if (pid == 0) {
+        InitDebugParams(appProperty);
         SpecialHandle(appProperty);
         // close socket connection and peer socket in child process
         if (socket_ != NULL) {
@@ -426,7 +455,7 @@ bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
         ClientSocket::AppProperty *appProperty = msg->GetMsg();
         pid_t pid = 0;
         int ret = StartApp(longProcName, longProcNameLen, appProperty, connectFd, pid);
-        if (ret != 0) {
+        if (ret) {
             msg->Response(ret);
         } else {
             msg->Response(pid);
@@ -642,12 +671,10 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
     std::string oriel1DataPath = "/data/app/el1/" + currentUserId + "/base/";
     std::string oriel2DataPath = "/data/app/el2/" + currentUserId + "/base/";
     std::string oriDatabasePath = "/data/app/el2/" + currentUserId + "/database/";
-    const std::string oriappdataPath = "/data/accounts/account_0/appdata/";
     std::string destDatabasePath = rootPath + "/data/storage/el2/database";
     std::string destInstallPath = rootPath + "/data/storage/el1/bundle";
     std::string destel1DataPath = rootPath + "/data/storage/el1/base";
     std::string destel2DataPath = rootPath + "/data/storage/el2/base";
-    std::string destappdataPath = rootPath + oriappdataPath;
 
     int rc = 0;
 
@@ -662,7 +689,6 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
     mountMap[destInstallPath] = oriInstallPath;
     mountMap[destel1DataPath] = oriel1DataPath;
     mountMap[destel2DataPath] = oriel2DataPath;
-    mountMap[destappdataPath] = oriappdataPath;
 
     std::map<std::string, std::string>::iterator iter;
     for (iter = mountMap.begin(); iter != mountMap.end(); ++iter) {
@@ -676,6 +702,7 @@ int32_t AppSpawnServer::DoAppSandboxMount(const ClientSocket::AppProperty *appPr
     std::vector<std::string> mkdirInfo;
     std::string dirPath;
     mkdirInfo.push_back("/data/storage/el1/bundle/nweb");
+    mkdirInfo.push_back("/data/storage/el1/bundle/ohos.global.systemres");
 
     for (int i = 0; i < mkdirInfo.size(); i++) {
         dirPath = rootPath + mkdirInfo[i];
@@ -690,15 +717,23 @@ int32_t AppSpawnServer::DoAppSandboxMountCustomized(const ClientSocket::AppPrope
     std::string bundleName = appProperty->bundleName;
     std::string currentUserId = std::to_string(appProperty->uid / UID_BASE);
     std::string destInstallPath = rootPath + "/data/storage/el1/bundle";
+    bool AuthFlag = false;
+    const std::vector<std::string> AuthAppList = {"com.ohos.launcher", "com.ohos.permissionmanager"};
+    if (std::find(AuthAppList.begin(), AuthAppList.end(), bundleName) != AuthAppList.end()) {
+        AuthFlag = true;
+    }
 
-    // account_0/applications/ dir can still access other packages' data now for compatibility purpose
-    std::string oriapplicationsPath = "/data/app/el1/bundle/public/";
-    std::string destapplicationsPath = rootPath + "/data/accounts/account_0/applications/";
-    DoAppSandboxMountOnce(oriapplicationsPath.c_str(), destapplicationsPath.c_str());
+    if (strcmp(appProperty->apl, APL_SYSTEM_BASIC.data()) == 0 ||
+        strcmp(appProperty->apl, APL_SYSTEM_CORE.data()) == 0 || AuthFlag) {
+        // account_0/applications/ dir can still access other packages' data now for compatibility purpose
+        std::string oriapplicationsPath = "/data/app/el1/bundle/public/";
+        std::string destapplicationsPath = rootPath + "/data/accounts/account_0/applications/";
+        DoAppSandboxMountOnce(oriapplicationsPath.c_str(), destapplicationsPath.c_str());
 
-    // need permission check for system app here
-    std::string destbundlesPath = rootPath + "/data/bundles/";
-    DoAppSandboxMountOnce(oriapplicationsPath.c_str(), destbundlesPath.c_str());
+        // need permission check for system app here
+        std::string destbundlesPath = rootPath + "/data/bundles/";
+        DoAppSandboxMountOnce(oriapplicationsPath.c_str(), destbundlesPath.c_str());
+    }
 
     std::string orimntHmdfsPath = "/mnt/hmdfs/";
     std::string destmntHmdfsPath = rootPath + orimntHmdfsPath;
@@ -718,6 +753,12 @@ int32_t AppSpawnServer::DoAppSandboxMountCustomized(const ClientSocket::AppPrope
     std::string destnwebPath = destInstallPath + "/nweb";
     chmod(destnwebPath.c_str(), NWEB_FILE_MODE);
     DoAppSandboxMountOnce(orinwebPath.c_str(), destnwebPath.c_str());
+
+    // do systemres adaption
+    std::string oriSysresPath = "/data/app/el1/bundle/public/ohos.global.systemres";
+    std::string destSysresPath = destInstallPath + "/ohos.global.systemres";
+    chmod(destSysresPath.c_str(), NWEB_FILE_MODE);
+    DoAppSandboxMountOnce(oriSysresPath.c_str(), destSysresPath.c_str());
 
     if (bundleName.find("medialibrary") != std::string::npos) {
         std::string oriMediaPath = "/storage/media/" +  currentUserId;
@@ -753,7 +794,6 @@ void AppSpawnServer::DoAppSandboxMkdir(std::string sandboxPackagePath, const Cli
     mkdirInfo.push_back("/data/accounts");
     mkdirInfo.push_back("/data/accounts/account_0");
     mkdirInfo.push_back("/data/accounts/account_0/applications/");
-    mkdirInfo.push_back("/data/accounts/account_0/appdata/");
     mkdirInfo.push_back("/data/bundles/");
 
     for (int i = 0; i < mkdirInfo.size(); i++) {
@@ -771,7 +811,7 @@ int32_t AppSpawnServer::DoSandboxRootFolderCreateAdapt(std::string sandboxPackag
     }
 
     // bind mount "/" to /mnt/sandbox/<packageName> path
-    // rootfs: to do more resouces bind mount here to get more strict resources constraints
+    // rootfs: to do more resources bind mount here to get more strict resources constraints
     rc = mount("/", sandboxPackagePath.c_str(), NULL, MS_BIND | MS_REC, NULL);
     if (rc) {
         HiLog::Error(LABEL, "mount bind / failed");
@@ -800,7 +840,7 @@ int32_t AppSpawnServer::DoSandboxRootFolderCreate(std::string sandboxPackagePath
     vecInfo.push_back("/dev");
     vecInfo.push_back("/proc");
     vecInfo.push_back("/sys");
-    vecInfo.push_back("/sys-prod");
+    vecInfo.push_back("/sys_prod");
     vecInfo.push_back("/system");
 
     for (int i = 0; i < vecInfo.size(); i++) {
@@ -914,7 +954,7 @@ void AppSpawnServer::SetAppAccessToken(const ClientSocket::AppProperty *appPrope
 #ifdef WITH_SELINUX
     HapContext hapContext;
     ret = hapContext.HapDomainSetcontext(appProperty->apl, appProperty->processName);
-    if (ret != 0) {
+    if (ret) {
         HiLog::Error(LABEL, "AppSpawnServer::Failed to hap domain set context, errno = %{public}d %{public}s",
             errno, appProperty->apl);
     } else {
