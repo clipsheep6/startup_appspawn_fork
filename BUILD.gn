@@ -74,6 +74,7 @@ ohos_static_library("appspawn_server") {
     "//utils/native/base:utils",
   ]
   external_deps = [
+    "ability_base:want",
     "hilog_native:libhilog",
     "hiviewdfx_hilog_native:libhilog",
   ]
@@ -145,6 +146,7 @@ ohos_static_library("nwebspawn_server") {
     "//utils/native/base:utils",
   ]
   external_deps = [
+    "ability_base:want",
     "hilog_native:libhilog",
     "hiviewdfx_hilog_native:libhilog",
   ]
