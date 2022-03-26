@@ -76,14 +76,8 @@ ohos_static_library("appspawn_server") {
     "//utils/native/base:utils",
   ]
   external_deps = [
-    "ability_base:want",
-    "bundle_framework:appexecfwk_base",
-    "bundle_framework:appexecfwk_core",
     "hilog_native:libhilog",
     "hiviewdfx_hilog_native:libhilog",
-    "ipc:ipc_core",
-    "safwk:system_ability_fwk",
-    "samgr_standard:samgr_proxy",
   ]
 
   if (build_selinux) {
@@ -153,14 +147,8 @@ ohos_static_library("nwebspawn_server") {
     "//utils/native/base:utils",
   ]
   external_deps = [
-    "ability_base:want",
-    "bundle_framework:appexecfwk_base",
-    "bundle_framework:appexecfwk_core",
     "hilog_native:libhilog",
     "hiviewdfx_hilog_native:libhilog",
-    "ipc:ipc_core",
-    "safwk:system_ability_fwk",
-    "samgr_standard:samgr_proxy",
   ]
 
   if (build_selinux) {
