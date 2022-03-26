@@ -33,6 +33,7 @@
 
 #include "errors.h"
 #include "hilog/log.h"
+#include "main_thread.h"
 #include "securec.h"
 #include "if_system_ability_manager.h"
 #include "iservice_registry.h"
