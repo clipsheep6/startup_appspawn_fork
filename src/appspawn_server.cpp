@@ -33,7 +33,6 @@
 
 #include "errors.h"
 #include "hilog/log.h"
-#include "main_thread.h"
 #include "securec.h"
 #include "bundle_mgr_interface.h"
 #include "if_system_ability_manager.h"
