@@ -14,18 +14,12 @@
  */
 #include <cstring>
 
-#include "appspawn_server.h"
-#include "client_socket.h"
 #include "hilog/log.h"
 #include "securec.h"
 
-using namespace OHOS;
-using namespace OHOS::HiviewDFX;
-static constexpr HiLogLabel LABEL = {LOG_CORE, 0, "AppSpawnServer"};
-static const int DECIMAL = 10;
-
 int main(int argc, char *const argv[])
 {
+    #if 0
     if (argc <= 11) { // 11 min argc
         HiLog::Error(LABEL, "Invalid argc %{public}d", argc);
         return -1;
@@ -71,5 +65,6 @@ int main(int argc, char *const argv[])
             HiLog::Error(LABEL, "Cold start %{public}s fail.", appProperty->bundleName);
         }
     }
+    #endif
     return 0;
 }
