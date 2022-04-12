@@ -53,7 +53,7 @@ static int32_t DoAppSandboxMountOnce(const std::string originPath, const std::st
 
 static int32_t DoAppSandboxMount(const AppParameter &appProperty, std::string rootPath)
 {
-    std::string currentUserId = std::to_string(appProperty->uid / UID_BASE);
+    std::string currentUserId = std::to_string(appProperty.uid / UID_BASE);
     std::string oriInstallPath = "/data/app/el1/bundle/public/";
     std::string oriel1DataPath = "/data/app/el1/" + currentUserId + "/base/";
     std::string oriel2DataPath = "/data/app/el2/" + currentUserId + "/base/";
