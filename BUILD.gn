@@ -57,7 +57,6 @@ ohos_executable("appspawn") {
   configs = [ ":appspawn_config" ]
   deps = [
     "${appspawn_path}:appspawn_server",
-    "//base/startup/init_lite/interfaces/innerkits/sandbox:libsandbox",
     "//foundation/aafwk/standard/frameworks/kits/appkit:appkit_native",
   ]
   external_deps = [
@@ -88,10 +87,10 @@ ohos_static_library("appspawn_server") {
   deps = [
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
     "//base/startup/init_lite/interfaces/innerkits:libbegetutil",
+    "//base/startup/init_lite/interfaces/innerkits/sandbox:libsandbox",
     "//base/startup/syspara_lite/interfaces/innerkits/native/syspara:syspara",
     "//third_party/libuv:uv_static",
     "//utils/native/base:utils",
-    "//base/startup/init_lite/interfaces/innerkits/sandbox:libsandbox",
   ]
   external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
   if (build_selinux) {
@@ -127,7 +126,10 @@ ohos_executable("nwebspawn") {
     "${appspawn_path}/standard/main.c",
   ]
   configs = [ ":appspawn_config" ]
-  deps = [ "${appspawn_path}:appspawn_server" ]
+  deps = [
+    "${appspawn_path}:appspawn_server",
+    "//base/startup/init_lite/interfaces/innerkits/sandbox:libsandbox",
+  ]
 
   install_enable = true
   subsystem_name = "${subsystem_name}"

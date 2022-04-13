@@ -30,6 +30,7 @@ void SetAppAccessToken(struct AppSpawnContent_ *content, AppSpawnClient *client)
 void LoadExtendLib(AppSpawnContent *content);
 void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client);
 
+void RegisterAppSandbox(struct AppSpawnContent_ *content, AppSpawnClient *client);
 #ifdef __cplusplus
 }
 #endif
