@@ -40,6 +40,7 @@ config("appspawn_config") {
     "//base/startup/init_lite/services/include",
     "//base/startup/init_lite/services/loopevent/include",
     "//base/startup/init_lite/interfaces/innerkits/include",
+    "//base/startup/init_lite/interfaces/innerkits/sandbox/include",
     "//base/startup/syspara_lite/interfaces/innerkits/native/syspara/include",
   ]
 
@@ -56,6 +57,7 @@ ohos_executable("appspawn") {
   configs = [ ":appspawn_config" ]
   deps = [
     "${appspawn_path}:appspawn_server",
+    "//base/startup/init_lite/interfaces/innerkits/sandbox:libsandbox",
     "//foundation/aafwk/standard/frameworks/kits/appkit:appkit_native",
   ]
   external_deps = [
@@ -89,6 +91,7 @@ ohos_static_library("appspawn_server") {
     "//base/startup/syspara_lite/interfaces/innerkits/native/syspara:syspara",
     "//third_party/libuv:uv_static",
     "//utils/native/base:utils",
+    "//base/startup/init_lite/interfaces/innerkits/sandbox:libsandbox",
   ]
   external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
   if (build_selinux) {
