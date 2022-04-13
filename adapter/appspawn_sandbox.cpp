@@ -81,7 +81,7 @@ void RegisterAppSandbox(struct AppSpawnContent_ *content, AppSpawnClient *client
             RegisterSandbox("priv-app");
         }
     }
-    if (isAppSandboxCreated_ == false) {
+    if (g_isAppSandboxCreated_ == false) {
         if (strcmp("normal", appProperty->property.apl) == 0) {
             RegisterSandbox("app");
         }
