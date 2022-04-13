@@ -28,6 +28,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "sandbox.h"
 #include "appspawn_adapter.h"
 #include "securec.h"
 
@@ -170,7 +171,6 @@ static void ClearEnvironment(AppSpawnContent *content, AppSpawnClient *client)
     sigaddset(&mask, SIGCHLD);
     sigaddset(&mask, SIGTERM);
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
-    AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
     // close child fd
     close(appProperty->fd[0]);
     if (strcmp("system_basic", appProperty->property.apl) == 0) {
