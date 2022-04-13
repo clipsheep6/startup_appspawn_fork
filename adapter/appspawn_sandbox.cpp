@@ -27,72 +27,20 @@
 #include <unistd.h>
 #include <vector>
 
-#include "sandbox.h"
-#include "sandbox_namespace.h"
-
-bool g_isPrivAppSandboxCreated = false;
-bool g_isAppSandboxCreated = false;
-
 constexpr std::string_view APL_SYSTEM_CORE("system_core");
 constexpr std::string_view APL_SYSTEM_BASIC("system_basic");
 constexpr static int UID_BASE = 200000;
 constexpr static mode_t FILE_MODE = 0711;
 constexpr static mode_t NWEB_FILE_MODE = 0511;
 
-static void RegisterSandbox(const char *sandbox)
-{
-    if (sandbox == NULL) {
-        APPSPAWN_LOGE("AppSpawnServer::invalid parameters");
-        return;
-    }
-    InitDefaultNamespace();
-    if (!InitSandboxWithName(sandbox)) {
-        CloseDefaultNamespace();
-        APPSPAWN_LOGE("AppSpawnServer::Failed to init sandbox with name %s", sandbox);
-        return;
-    }
-
-    DumpSandboxByName(sandbox);
-    if (PrepareSandbox(sandbox) != 0) {
-        APPSPAWN_LOGE("AppSpawnServer::Failed to prepare sandbox %s", sandbox);
-        DestroySandbox(sandbox);
-        CloseDefaultNamespace();
-        return;
-    }
-    if (EnterDefaultNamespace() < 0) {
-        APPSPAWN_LOGE("AppSpawnServer::Failed to set default namespace");
-        DestroySandbox(sandbox);
-        CloseDefaultNamespace();
-        return;
-    }
-    CloseDefaultNamespace();
-    if (strcmp(sandbox, "app") == 0) {
-        g_isAppSandboxCreated = true;
-    } else if (strcmp(sandbox, "priv-app") == 0) {
-        g_isPrivAppSandboxCreated = true;
-    }
-}
-
-void RegisterAppSandbox(struct AppSpawnContent_ *content, AppSpawnClient *client)
-{
-    AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
-    if (g_isPrivAppSandboxCreated == false) {
-        if (strcmp("system_basic", appProperty->property.apl) == 0) {
-            RegisterSandbox("priv-app");
-        }
-    }
-    if (g_isAppSandboxCreated == false) {
-        if (strcmp("normal", appProperty->property.apl) == 0) {
-            RegisterSandbox("app");
-        }
-    }
-}
 static int32_t DoAppSandboxMountOnce(const std::string originPath, const std::string destinationPath)
 {
     int rc = 0;
+
     rc = mount(originPath.c_str(), destinationPath.c_str(), NULL, MS_BIND | MS_REC, NULL);
     if (rc) {
-        APPSPAWN_LOGE("bind mount %s to %s failed %d", originPath.c_str(), destinationPath.c_str(), errno);
+        APPSPAWN_LOGE("bind mount %s to %s failed %d", originPath.c_str(),
+            destinationPath.c_str(), errno);
         return rc;
     }
 
@@ -112,12 +60,10 @@ static int32_t DoAppSandboxMount(const AppParameter &appProperty, std::string ro
     std::string oriel1DataPath = "/data/app/el1/" + currentUserId + "/base/";
     std::string oriel2DataPath = "/data/app/el2/" + currentUserId + "/base/";
     std::string oriDatabasePath = "/data/app/el2/" + currentUserId + "/database/";
-    const std::string oriappdataPath = "/data/accounts/account_0/appdata/";
     std::string destDatabasePath = rootPath + "/data/storage/el2/database";
     std::string destInstallPath = rootPath + "/data/storage/el1/bundle";
     std::string destel1DataPath = rootPath + "/data/storage/el1/base";
     std::string destel2DataPath = rootPath + "/data/storage/el2/base";
-    std::string destappdataPath = rootPath + oriappdataPath;
 
     int rc = 0;
 
@@ -132,7 +78,6 @@ static int32_t DoAppSandboxMount(const AppParameter &appProperty, std::string ro
     mountMap[destInstallPath] = oriInstallPath;
     mountMap[destel1DataPath] = oriel1DataPath;
     mountMap[destel2DataPath] = oriel2DataPath;
-    mountMap[destappdataPath] = oriappdataPath;
 
     std::map<std::string, std::string>::iterator iter;
     for (iter = mountMap.begin(); iter != mountMap.end(); ++iter) {
@@ -184,11 +129,11 @@ static int32_t DoAppSandboxMountCustomized(const AppParameter &appProperty, cons
     DoAppSandboxMountOnce(orimntHmdfsPath.c_str(), destmntHmdfsPath.c_str());
 
     // Add distributedfile module support, later reconstruct it
-    std::string oriDistributedPath = "/mnt/hmdfs/" + currentUserId + "/account/merge_view/data/" + bundleName;
+    std::string oriDistributedPath = "/mnt/hmdfs/" +  currentUserId + "/account/merge_view/data/" + bundleName;
     std::string destDistributedPath = rootPath + "/data/storage/el2/distributedfiles";
     DoAppSandboxMountOnce(oriDistributedPath.c_str(), destDistributedPath.c_str());
 
-    std::string oriDistributedGroupPath = "/mnt/hmdfs/" + currentUserId + "/non_account/merge_view/data/" + bundleName;
+    std::string oriDistributedGroupPath = "/mnt/hmdfs/" +  currentUserId + "/non_account/merge_view/data/" + bundleName;
     std::string destDistributedGroupPath = rootPath + "/data/storage/el2/auth_groups";
     DoAppSandboxMountOnce(oriDistributedGroupPath.c_str(), destDistributedGroupPath.c_str());
 
@@ -205,7 +150,7 @@ static int32_t DoAppSandboxMountCustomized(const AppParameter &appProperty, cons
     DoAppSandboxMountOnce(oriSysresPath.c_str(), destSysresPath.c_str());
 
     if (bundleName.find("medialibrary") != std::string::npos) {
-        std::string oriMediaPath = "/storage/media/" + currentUserId;
+        std::string oriMediaPath = "/storage/media/" +  currentUserId;
         std::string destMediaPath = rootPath + "/storage/media";
         DoAppSandboxMountOnce(oriMediaPath.c_str(), destMediaPath.c_str());
     }
@@ -238,10 +183,9 @@ static void DoAppSandboxMkdir(const std::string &sandboxPackagePath, const AppPa
     mkdirInfo.push_back("/data/accounts");
     mkdirInfo.push_back("/data/accounts/account_0");
     mkdirInfo.push_back("/data/accounts/account_0/applications/");
-    mkdirInfo.push_back("/data/accounts/account_0/appdata/");
     mkdirInfo.push_back("/data/bundles/");
 
-    for (size_t i = 0; i < mkdirInfo.size(); i++) {
+    for (int i = 0; i < mkdirInfo.size(); i++) {
         dirPath = sandboxPackagePath + mkdirInfo[i];
         mkdir(dirPath.c_str(), FILE_MODE);
     }
@@ -288,7 +232,7 @@ static int32_t DoSandboxRootFolderCreate(const std::string &sandboxPackagePath)
     vecInfo.push_back("/sys_prod");
     vecInfo.push_back("/system");
 
-    for (size_t i = 0; i < vecInfo.size(); i++) {
+    for (int i = 0; i < vecInfo.size(); i++) {
         tmpDir = sandboxPackagePath + vecInfo[i];
         mkdir(tmpDir.c_str(), FILE_MODE);
         mountMap[vecInfo[i]] = tmpDir;
@@ -315,12 +259,15 @@ static int32_t DoSandboxRootFolderCreate(const std::string &sandboxPackagePath)
     symlinkMap["/sys/kernel/debug"] = sandboxPackagePath + "/d";
     symlinkMap["/system/etc"] = sandboxPackagePath + "/etc";
     symlinkMap["/system/bin/init"] = sandboxPackagePath + "/init";
+#ifdef __aarch64__
+    symlinkMap["/system/lib64"] = sandboxPackagePath + "/lib64";
+#else
     symlinkMap["/system/lib"] = sandboxPackagePath + "/lib";
+#endif
 
     for (iter = symlinkMap.begin(); iter != symlinkMap.end(); ++iter) {
         symlink(iter->first.c_str(), iter->second.c_str());
     }
-
     return 0;
 }
 
@@ -329,7 +276,8 @@ int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *
     int rc = 0;
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
     // create /mnt/sandbox/<packagename> path， later put it to rootfs module
-    std::string sandboxPackagePath = "/";   
+    std::string sandboxPackagePath = "/mnt/sandbox/";
+    mkdir(sandboxPackagePath.c_str(), FILE_MODE);
     sandboxPackagePath += appProperty->property.bundleName;
     mkdir(sandboxPackagePath.c_str(), FILE_MODE);
 
@@ -339,6 +287,7 @@ int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *
         APPSPAWN_LOGE("unshare failed, packagename is %s", appProperty->property.processName);
         return rc;
     }
+
     // to make wargnar work
     if (access("/3rdmodem", F_OK) == 0) {
         rc = DoSandboxRootFolderCreateAdapt(sandboxPackagePath);
@@ -349,31 +298,36 @@ int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *
         APPSPAWN_LOGE("DoSandboxRootFolderCreate failed, %s", appProperty->property.processName);
         return rc;
     }
+
     // to create /mnt/sandbox/<packagename>/data/storage related path
-    DoAppSandboxMkdir(sandboxPackagePath, appProperty->property);
+    DoAppSandboxMkdir(sandboxPackagePath, appProperty-->property);
 
     rc = DoAppSandboxMount(appProperty->property, sandboxPackagePath);
     if (rc) {
         APPSPAWN_LOGE("DoAppSandboxMount failed, packagename is %s", appProperty->property.processName);
         return rc;
     }
+
     rc = DoAppSandboxMountCustomized(appProperty->property, sandboxPackagePath);
     if (rc) {
         APPSPAWN_LOGE("DoAppSandboxMountCustomized failed, packagename is %s", appProperty->property.processName);
         return rc;
     }
+
     rc = chdir(sandboxPackagePath.c_str());
     if (rc) {
-        APPSPAWN_LOGE("chdir failed, packagename is %s, path is %s",
+        APPSPAWN_LOGE("chdir failed, packagename is %s, path is %s", \
             appProperty->property.processName, sandboxPackagePath.c_str());
         return rc;
     }
+
     rc = syscall(SYS_pivot_root, sandboxPackagePath.c_str(), sandboxPackagePath.c_str());
     if (rc) {
-        APPSPAWN_LOGE("pivot root failed, packagename is %s, errno is %d",
+        APPSPAWN_LOGE("pivot root failed, packagename is %s, errno is %d", \
             appProperty->property.processName, errno);
         return rc;
     }
+
     rc = umount2(".", MNT_DETACH);
     if (rc) {
         APPSPAWN_LOGE("MNT_DETACH failed, packagename is %s", appProperty->property.processName);
