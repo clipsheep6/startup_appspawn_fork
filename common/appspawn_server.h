@@ -67,6 +67,7 @@ typedef struct AppSpawnContent_ {
 
     // for cold start
     int (*coldStartApp)(struct AppSpawnContent_ *content, AppSpawnClient *client);
+    int (*registerAppSandbox)(struct AppSpawnContent_ *content, AppSpawnClient *client);
 } AppSpawnContent;
 
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, int64_t longProcNameLen, int cold);

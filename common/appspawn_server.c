@@ -74,7 +74,11 @@ int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client,
     APPSPAWN_CHECK(content != NULL, return -1, "Invalid content for appspawn");
     APPSPAWN_CHECK(client != NULL && childPid != NULL, return -1, "Invalid client for appspawn");
     APPSPAWN_LOGI("AppSpawnProcessMsg id %d 0x%x", client->id, client->flags);
-    RegisterAppSandbox(content, client);
+
+    if (content->registerAppSandbox != NULL) {
+        content->registerAppSandbox(content, client);
+    }
+
     pid_t pid = fork();
     if (pid < 0) {
         return -errno;
