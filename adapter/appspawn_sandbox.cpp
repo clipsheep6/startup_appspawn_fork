@@ -300,7 +300,7 @@ int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *
     }
 
     // to create /mnt/sandbox/<packagename>/data/storage related path
-    DoAppSandboxMkdir(sandboxPackagePath, appProperty-->property);
+    DoAppSandboxMkdir(sandboxPackagePath, appProperty->property);
 
     rc = DoAppSandboxMount(appProperty->property, sandboxPackagePath);
     if (rc) {
