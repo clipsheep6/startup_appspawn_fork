@@ -27,11 +27,66 @@
 #include <unistd.h>
 #include <vector>
 
+#include "sandbox.h"
+#include "sandbox_namespace.h"
+
+bool g_isPrivAppSandboxCreated = false;
+bool g_isAppSandboxCreated = false;
+
 constexpr std::string_view APL_SYSTEM_CORE("system_core");
 constexpr std::string_view APL_SYSTEM_BASIC("system_basic");
 constexpr static int UID_BASE = 200000;
 constexpr static mode_t FILE_MODE = 0711;
 constexpr static mode_t NWEB_FILE_MODE = 0511;
+
+static void RegisterSandbox(const char *sandbox)
+{
+    if (sandbox == NULL) {
+        APPSPAWN_LOGE("AppSpawnServer::invalid parameters");
+        return;
+    }
+    InitDefaultNamespace();
+    if (!InitSandboxWithName(sandbox)) {
+        CloseDefaultNamespace();
+        APPSPAWN_LOGE("AppSpawnServer::Failed to init sandbox with name %s", sandbox);
+        return;
+    }
+
+    DumpSandboxByName(sandbox);
+    if (PrepareSandbox(sandbox) != 0) {
+        APPSPAWN_LOGE("AppSpawnServer::Failed to prepare sandbox %s", sandbox);
+        DestroySandbox(sandbox);
+        CloseDefaultNamespace();
+        return;
+    }
+    if (EnterDefaultNamespace() < 0) {
+        APPSPAWN_LOGE("AppSpawnServer::Failed to set default namespace");
+        DestroySandbox(sandbox);
+        CloseDefaultNamespace();
+        return;
+    }
+    CloseDefaultNamespace();
+    if (strcmp(sandbox, "app") == 0) {
+        g_isAppSandboxCreated = true;
+    } else if (strcmp(sandbox, "priv-app") == 0) {
+        g_isPrivAppSandboxCreated = true;
+    }
+}
+
+void RegisterAppSandbox(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+    AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
+    if (g_isPrivAppSandboxCreated == false) {
+        if (strcmp("system_basic", appProperty->property.apl) == 0) {
+            RegisterSandbox("priv-app");
+        }
+    }
+    if (isAppSandboxCreated_ == false) {
+        if (strcmp("normal", appProperty->property.apl) == 0) {
+            RegisterSandbox("app");
+        }
+    }
+}
 
 static int32_t DoAppSandboxMountOnce(const std::string originPath, const std::string destinationPath)
 {
