@@ -110,7 +110,7 @@ static int GetMessageSt(MessageSt *msgSt, IpcIo *req)
 }
 
 static AppSpawnContentLite *g_appSpawnContentLite = NULL;
-AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, int64_t longProcNameLen)
+AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, int64_t longProcNameLen, int cold)
 {
     UNUSED(longProcName);
     UNUSED(longProcNameLen);
