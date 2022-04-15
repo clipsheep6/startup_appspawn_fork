@@ -41,7 +41,6 @@ executable("appspawn") {
   include_dirs = [
     ".",
     "../common",
-    "//base/startup/appspawn_standard/lite",
     "//base/startup/appspawn_standard/interfaces/innerkits/include",
     "//base/startup/init_lite/interfaces/innerkits/include",
     "//foundation/distributedschedule/samgr_lite/interfaces/kits/samgr",

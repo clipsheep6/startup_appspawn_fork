@@ -88,11 +88,11 @@ static void AddAppInfo(pid_t pid, const char *processName)
 
 static void RemoveAppInfo(pid_t pid)
 {
-    HashNode *node = HashMapGet(g_appSpawnContent->appMap, (const void *)pid);
+    HashNode *node = HashMapGet(g_appSpawnContent->appMap, (const void *)&pid);
     APPSPAWN_CHECK(node != NULL, return, "Invalid node %d", pid);
     AppInfo *appInfo = HASHMAP_ENTRY(node, AppInfo, node);
     APPSPAWN_CHECK(appInfo != NULL, return, "Invalid node %d", pid);
-    HashMapRemove(g_appSpawnContent->appMap, (const void *)pid);
+    HashMapRemove(g_appSpawnContent->appMap, (const void *)&pid);
     free(appInfo);
 }
 
