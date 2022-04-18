@@ -75,6 +75,7 @@ static void RegisterSandbox(const char *sandbox)
 
 void RegisterAppSandbox(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
+    APPSPAWN_LOGE("AppSpawnServer::RegisterAppSandbox");
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
     if (g_isPrivAppSandboxCreated == false) {
         if (strcmp("system_basic", appProperty->property.apl) == 0) {
