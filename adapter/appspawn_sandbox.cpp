@@ -330,9 +330,8 @@ int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *
 {
     int rc = 0;
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
-    // create /mnt/sandbox/<packagename> pathï¼Œ later put it to rootfs module
-    std::string sandboxPackagePath = "/mnt/sandbox/";
-    mkdir(sandboxPackagePath.c_str(), FILE_MODE);
+    // create /mnt/sandbox/<packagename> pathï¼?later put it to rootfs module
+    std::string sandboxPackagePath = "/";
     sandboxPackagePath += appProperty->property.bundleName;
     mkdir(sandboxPackagePath.c_str(), FILE_MODE);
 

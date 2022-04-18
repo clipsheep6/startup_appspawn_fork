@@ -26,6 +26,9 @@ extern "C" {
 #endif /* __cplusplus */
 #endif /* __cplusplus */
 
+#define APPSPAWN_LOGI(fmt, ...) STARTUP_LOGI(0, "APPSPAWN_LITE", fmt, ##__VA_ARGS__)
+#define APPSPAWN_LOGE(fmt, ...) STARTUP_LOGE(0, "APPSPAWN_LITE", fmt, ##__VA_ARGS__)
+
 typedef struct {
     char *bundleName;
     char *identityID;

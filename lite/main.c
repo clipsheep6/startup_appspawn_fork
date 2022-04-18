@@ -25,7 +25,7 @@
 void __attribute__((weak)) HOS_SystemInit(void)
 {
     SAMGR_Bootstrap();
-    STARTUP_LOGI("[appspawn] HOS_SystemInit is called!");
+    APPSPAWN_LOGI("[appspawn] HOS_SystemInit is called!");
 }
 
 static void SignalHandler(int sig)
@@ -39,7 +39,7 @@ static void SignalHandler(int sig)
                 if (sigPID <= 0) {
                     break;
                 }
-                STARTUP_LOGE("SignalHandler sigPID %d.", sigPID);
+                APPSPAWN_LOGE("SignalHandler sigPID %d.", sigPID);
             }
             break;
         }
@@ -54,18 +54,18 @@ void SignalRegist()
     act.sa_handler = SignalHandler;
     act.sa_flags   = SA_RESTART;
     if (sigfillset(&act.sa_mask) != 0) {
-        STARTUP_LOGE("[appspawn] sigfillset failed! err %d.", errno);
+        APPSPAWN_LOGE("[appspawn] sigfillset failed! err %d.", errno);
     }
 
     if (sigaction(SIGCHLD, &act, NULL) != 0) {
-        STARTUP_LOGE("[appspawn] sigaction failed! err %d.", errno);
+        APPSPAWN_LOGE("[appspawn] sigaction failed! err %d.", errno);
     }
 }
 
 int main(int argc, char * const argv[])
 {
     sleep(1);
-    STARTUP_LOGI("[appspawn] main, enter.");
+    APPSPAWN_LOGI("[appspawn] main, enter.");
 
     AppSpawnContent *content = AppSpawnCreateContent("AppSpawn", NULL, 0, 0);
     SetContentFunction(content);
@@ -76,7 +76,7 @@ int main(int argc, char * const argv[])
     SignalRegist();
 
     // 3. keep process alive
-    STARTUP_LOGI("[appspawn] main, entering wait.");
+    APPSPAWN_LOGI("[appspawn] main, entering wait.");
     while (1) {
         // pause only returns when a signal was caught and the signal-catching function returned.
         // pause only returns -1, no need to process the return value.
