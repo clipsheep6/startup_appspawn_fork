@@ -21,6 +21,7 @@
 #include "samgr_lite.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
+#include "appspawn_message.h"
 
 void __attribute__((weak)) HOS_SystemInit(void)
 {
