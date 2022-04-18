@@ -68,12 +68,12 @@ static int SetCapability(unsigned int capsCnt, const unsigned int *caps)
     }
 
     if (capset(&capHeader, capData) != 0) {
-        APPSPAWN_LOGE("[appspawn] capset failed, err: %d.", errno);
+        STARTUP_LOGE("[appspawn] capset failed, err: %d.", errno);
         return -1;
     }
     for (unsigned int i = 0; i < capsCnt; ++i) {
         if (SetAmbientCapability(caps[i]) != 0) {
-            APPSPAWN_LOGE("[appspawn] SetAmbientCapability failed, err: %d.", errno);
+            STARTUP_LOGE("[appspawn] SetAmbientCapability failed, err: %d.", errno);
             return -1;
         }
     }
@@ -89,7 +89,7 @@ static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *clie
 
 static int SetKeepCapabilities(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
-    APPSPAWN_LOGE("SetKeepCapabilities");
+    STARTUP_LOGE("SetKeepCapabilities");
 #ifdef __LINUX__
     if (prctl(PR_SET_SECUREBITS, SECBIT_NO_SETUID_FIXUP | SECBIT_NO_SETUID_FIXUP_LOCKED)) {
         printf("prctl failed\n");
@@ -102,14 +102,14 @@ static int SetKeepCapabilities(struct AppSpawnContent_ *content, AppSpawnClient 
 static int SetUidGid(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     AppSpawnClientLite *appProperty = (AppSpawnClientLite *)client;
-    APPSPAWN_LOGE("SetUidGid %d %d", appProperty->message.uID, appProperty->message.gID);
+    STARTUP_LOGE("SetUidGid %d %d", appProperty->message.uID, appProperty->message.gID);
     if (setgid(appProperty->message.gID) != 0) {
-        APPSPAWN_LOGE("[appspawn] setgid failed, gID %u, err: %d.", appProperty->message.gID, errno);
+        STARTUP_LOGE("[appspawn] setgid failed, gID %u, err: %d.", appProperty->message.gID, errno);
         return -1;
     }
 
     if (setuid(appProperty->message.uID) != 0) {
-        APPSPAWN_LOGE("[appspawn] setuid failed, uID %u, err: %d.", appProperty->message.uID, errno);
+        STARTUP_LOGE("[appspawn] setuid failed, uID %u, err: %d.", appProperty->message.uID, errno);
         return -1;
     }
     gid_t groups[GRP_NUM];
@@ -118,7 +118,7 @@ static int SetUidGid(struct AppSpawnContent_ *content, AppSpawnClient *client)
         groups[0] = appProperty->message.gID;
         groups[1] = DEVMGR_GRP;
         if (setgroups(GRP_NUM, groups)) {
-            APPSPAWN_LOGE("[appspawn] setgroups failed, uID %u, err: %d.", appProperty->message.uID, errno);
+            STARTUP_LOGE("[appspawn] setgroups failed, uID %u, err: %d.", appProperty->message.uID, errno);
             return -1;
         }
     }
@@ -131,7 +131,7 @@ static int SetUidGid(struct AppSpawnContent_ *content, AppSpawnClient *client)
 static int SetCapabilities(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     AppSpawnClientLite *appProperty = (AppSpawnClientLite *)client;
-    APPSPAWN_LOGE("SetCapabilities appProperty->message.capsCnt %d", appProperty->message.capsCnt);
+    STARTUP_LOGE("SetCapabilities appProperty->message.capsCnt %d", appProperty->message.capsCnt);
     // set rlimit
 #ifdef __LINUX__
     static const rlim_t DEFAULT_RLIMIT = 40;
@@ -139,42 +139,42 @@ static int SetCapabilities(struct AppSpawnContent_ *content, AppSpawnClient *cli
     rlim.rlim_cur = DEFAULT_RLIMIT;
     rlim.rlim_max = DEFAULT_RLIMIT;
     if (setrlimit(RLIMIT_NICE, &rlim) != 0) {
-        APPSPAWN_LOGE("[appspawn] setrlimit failed, err: %d.", errno);
+        STARTUP_LOGE("[appspawn] setrlimit failed, err: %d.", errno);
         return -1;
     }
 
     unsigned int tmpCaps[] = {17};  // 17 means CAP_SYS_RAWIO
     unsigned int tmpsCapCnt = sizeof(tmpCaps) / sizeof(tmpCaps[0]);
     if (SetCapability(tmpsCapCnt, tmpCaps) != 0) {
-        APPSPAWN_LOGE("[appspawn] setrlimit failed, err: %d.", errno);
+        STARTUP_LOGE("[appspawn] setrlimit failed, err: %d.", errno);
         return -1;
     }
 #else
     if (SetCapability(appProperty->message.capsCnt, appProperty->message.caps) != 0) {
-        APPSPAWN_LOGE("[appspawn] SetCapability failed, err: %d.", errno);
+        STARTUP_LOGE("[appspawn] SetCapability failed, err: %d.", errno);
         return -1;
     }
 #endif  // __LINUX__
-    APPSPAWN_LOGE("SetCapabilities appProperty->message.capsCnt %d", appProperty->message.capsCnt);
+    STARTUP_LOGE("SetCapabilities appProperty->message.capsCnt %d", appProperty->message.capsCnt);
     return 0;
 }
 
 static void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
-    APPSPAWN_LOGI("AbilityMain");
+    STARTUP_LOGI("AbilityMain");
     AppSpawnClientLite *appProperty = (AppSpawnClientLite *)client;
-    APPSPAWN_LOGI("[appspawn] invoke, msg<%s,%s,%d,%d>",
+    STARTUP_LOGI("[appspawn] invoke, msg<%s,%s,%d,%d>",
         appProperty->message.bundleName, appProperty->message.identityID, appProperty->message.uID, appProperty->message.gID);
 
     if (AbilityMain(appProperty->message.identityID) != 0) {
-        APPSPAWN_LOGE("[appspawn] AbilityMain execute failed, pid %d.", getpid());
+        STARTUP_LOGE("[appspawn] AbilityMain execute failed, pid %d.", getpid());
         exit(0x7f);  // 0x7f: user specified
     }
 }
 
 void SetContentFunction(AppSpawnContent *content)
 {
-    APPSPAWN_LOGI("SetContentFunction");
+    STARTUP_LOGI("SetContentFunction");
     content->setProcessName = SetProcessName;
     content->setKeepCapabilities = SetKeepCapabilities;
     content->setUidGid = SetUidGid;

@@ -44,21 +44,21 @@ typedef struct AppSpawnService {
 static const char *GetName(Service *service)
 {
     (void)service;
-    APPSPAWN_LOGI("[appspawn] get service name %s.", APPSPAWN_SERVICE_NAME);
+    STARTUP_LOGI("[appspawn] get service name %s.", APPSPAWN_SERVICE_NAME);
     return APPSPAWN_SERVICE_NAME;
 }
 
 static BOOL Initialize(Service *service, Identity identity)
 {
     if (service == NULL) {
-        APPSPAWN_LOGE("[appspawn] initialize, service NULL!");
+        STARTUP_LOGE("[appspawn] initialize, service NULL!");
         return FALSE;
     }
 
     AppSpawnService *spawnService = (AppSpawnService *)service;
     spawnService->identity = identity;
 
-    APPSPAWN_LOGI("[appspawn] initialize, identity<%d, %d, %p>", \
+    STARTUP_LOGI("[appspawn] initialize, identity<%d, %d, %p>", \
         identity.serviceId, identity.featureId, identity.queueId);
     return TRUE;
 }
@@ -67,7 +67,7 @@ static BOOL MessageHandle(Service *service, Request *msg)
 {
     (void)service;
     (void)msg;
-    APPSPAWN_LOGE("[appspawn] message handle not support yet!");
+    STARTUP_LOGE("[appspawn] message handle not support yet!");
     return FALSE;
 }
 
@@ -87,7 +87,7 @@ static int GetMessageSt(MessageSt *msgSt, IpcIo *req)
     size_t len = 0;
     char *str = IpcIoPopString(req, &len);
     if (str == NULL || len == 0) {
-        APPSPAWN_LOGE("[appspawn] invoke, get data failed.");
+        STARTUP_LOGE("[appspawn] invoke, get data failed.");
         return EC_FAILURE;
     }
 
@@ -95,7 +95,7 @@ static int GetMessageSt(MessageSt *msgSt, IpcIo *req)
 #else
     BuffPtr *dataPtr = IpcIoPopDataBuff(req);
     if (dataPtr == NULL) {
-        APPSPAWN_LOGE("[appspawn] invoke, get data failed.");
+        STARTUP_LOGE("[appspawn] invoke, get data failed.");
         return EC_FAILURE;
     }
 
@@ -103,7 +103,7 @@ static int GetMessageSt(MessageSt *msgSt, IpcIo *req)
 
     // release buffer
     if (FreeBuffer(NULL, dataPtr->buff) != LITEIPC_OK) {
-        APPSPAWN_LOGE("[appspawn] invoke, free buffer failed!");
+        STARTUP_LOGE("[appspawn] invoke, free buffer failed!");
     }
 #endif
     return ret;
@@ -114,7 +114,7 @@ AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcNam
 {
     UNUSED(longProcName);
     UNUSED(longProcNameLen);
-    APPSPAWN_LOGI("AppSpawnCreateContent %s", socketName);
+    STARTUP_LOGI("AppSpawnCreateContent %s", socketName);
     AppSpawnContentLite *appSpawnContent = (AppSpawnContentLite *)malloc(sizeof(AppSpawnContentLite));
     APPSPAWN_CHECK(appSpawnContent != NULL, return NULL, "Failed to alloc memory for appspawn");
     appSpawnContent->content.longProcName = NULL;
@@ -134,7 +134,7 @@ static int Invoke(IServerProxy *iProxy, int funcId, void *origin, IpcIo *req, Ip
     (void)origin;
 
     if (reply == NULL || funcId != ID_CALL_CREATE_SERVICE || req == NULL) {
-        APPSPAWN_LOGE("[appspawn] invoke, funcId %d invalid, reply %d.", funcId, INVALID_PID);
+        STARTUP_LOGE("[appspawn] invoke, funcId %d invalid, reply %d.", funcId, INVALID_PID);
         IpcIoPushInt64(reply, INVALID_PID);
         return EC_BADPTR;
     }
@@ -143,12 +143,12 @@ static int Invoke(IServerProxy *iProxy, int funcId, void *origin, IpcIo *req, Ip
     client->client.id = 100;
     client->client.flags = 0;
     if (GetMessageSt(&client->message, req) != EC_SUCCESS) {
-        APPSPAWN_LOGE("[appspawn] invoke, parse failed! reply %d.", INVALID_PID);
+        STARTUP_LOGE("[appspawn] invoke, parse failed! reply %d.", INVALID_PID);
         IpcIoPushInt64(reply, INVALID_PID);
         return EC_FAILURE;
     }
 
-    APPSPAWN_LOGI("[appspawn] invoke, msg<%s,%s,%d,%d %d>", client->message.bundleName, client->message.identityID,
+    STARTUP_LOGI("[appspawn] invoke, msg<%s,%s,%d,%d %d>", client->message.bundleName, client->message.identityID,
         client->message.uID, client->message.gID, client->message.capsCnt);
 
     pid_t newPid = 0;
@@ -165,9 +165,9 @@ static int Invoke(IServerProxy *iProxy, int funcId, void *origin, IpcIo *req, Ip
     GetCurTime(&tmEnd);
     // 1s = 1000000000ns
     long timeUsed = (tmEnd.tv_sec - tmStart.tv_sec) * 1000000000L + (tmEnd.tv_nsec - tmStart.tv_nsec);
-    APPSPAWN_LOGI("[appspawn] invoke, reply pid %d, timeused %ld ns.", newPid, timeUsed);
+    STARTUP_LOGI("[appspawn] invoke, reply pid %d, timeused %ld ns.", newPid, timeUsed);
 #else
-    APPSPAWN_LOGI("[appspawn] invoke, reply pid %d.", newPid);
+    STARTUP_LOGI("[appspawn] invoke, reply pid %d.", newPid);
 #endif  // OHOS_DEBUG
 
     return ((newPid > 0) ? EC_SUCCESS : EC_FAILURE);
@@ -186,20 +186,20 @@ static AppSpawnService g_appSpawnService = {
 void AppSpawnInit(void)
 {
     if (SAMGR_GetInstance()->RegisterService((Service *)&g_appSpawnService) != TRUE) {
-        APPSPAWN_LOGE("[appspawn] register service failed!");
+        STARTUP_LOGE("[appspawn] register service failed!");
         return;
     }
 
-    APPSPAWN_LOGI("[appspawn] register service succeed. %p.", &g_appSpawnService);
+    STARTUP_LOGI("[appspawn] register service succeed. %p.", &g_appSpawnService);
 
     if (SAMGR_GetInstance()->RegisterDefaultFeatureApi(APPSPAWN_SERVICE_NAME, \
         GET_IUNKNOWN(g_appSpawnService)) != TRUE) {
         (void)SAMGR_GetInstance()->UnregisterService(APPSPAWN_SERVICE_NAME);
-        APPSPAWN_LOGE("[appspawn] register featureapi failed!");
+        STARTUP_LOGE("[appspawn] register featureapi failed!");
         return;
     }
 
-    APPSPAWN_LOGI("[appspawn] register featureapi succeed.");
+    STARTUP_LOGI("[appspawn] register featureapi succeed.");
 }
 
 SYSEX_SERVICE_INIT(AppSpawnInit);

@@ -106,7 +106,7 @@ static int GetCaps(const cJSON *curItem, MessageSt *msgSt)
     msgSt->caps = NULL;
     cJSON *capItem = cJSON_GetObjectItem(curItem, "capability");
     if (!cJSON_IsArray(capItem)) {
-        APPSPAWN_LOGE("[appspawn] GetCaps failed, no caps array found.");
+        STARTUP_LOGE("[appspawn] GetCaps failed, no caps array found.");
         return EC_INVALID;
     }
 
@@ -117,28 +117,28 @@ static int GetCaps(const cJSON *curItem, MessageSt *msgSt)
     }
 
     if (capsCnt > MAX_CAPABILITY_COUNT) {
-        APPSPAWN_LOGE("[appspawn] GetCaps, too many caps[cnt %d], max %d",
+        STARTUP_LOGE("[appspawn] GetCaps, too many caps[cnt %d], max %d",
             capsCnt, MAX_CAPABILITY_COUNT);
         return EC_INVALID;
     }
 
     msgSt->caps = (unsigned int *)malloc(sizeof(unsigned int) * capsCnt);
     if (msgSt->caps == NULL) {
-        APPSPAWN_LOGE("[appspawn] GetCaps, malloc failed! capsCnt[cnt %d].", capsCnt);
+        STARTUP_LOGE("[appspawn] GetCaps, malloc failed! capsCnt[cnt %d].", capsCnt);
         return EC_NOMEMORY;
     }
 
     for (int i = 0; i < capsCnt; ++i) {
         cJSON *capJ = cJSON_GetArrayItem(capItem, i);
         if (!cJSON_IsNumber(capJ) || cJSON_GetNumberValue(capJ) < 0) {
-            APPSPAWN_LOGE("[appspawn] GetCaps, invalid cap value detected!");
+            STARTUP_LOGE("[appspawn] GetCaps, invalid cap value detected!");
             free(msgSt->caps);
             msgSt->caps = NULL;
             return EC_INVALID;
         }
         msgSt->caps[i] = (unsigned int)cJSON_GetNumberValue(capJ);
         if (msgSt->caps[i] > CAP_LAST_CAP) {
-            APPSPAWN_LOGE("[appspawn] GetCaps, invalid cap value %u detected!", \
+            STARTUP_LOGE("[appspawn] GetCaps, invalid cap value %u detected!", \
                 msgSt->caps[i]);
             free(msgSt->caps);
             msgSt->caps = NULL;
