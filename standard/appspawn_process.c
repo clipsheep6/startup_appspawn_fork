@@ -164,6 +164,8 @@ static void InitDebugParams(struct AppSpawnContent_ *content, AppSpawnClient *cl
 
 static void ClearEnvironment(AppSpawnContent *content, AppSpawnClient *client)
 {
+    APPSPAWN_LOGI("ClearEnvironment id %d", client->id);
+    AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
     if (strcmp("system_basic", appProperty->property.apl) == 0) {
         EnterSandbox("priv-app");
     } else if (strcmp("normal", appProperty->property.apl) == 0) {
@@ -172,8 +174,6 @@ static void ClearEnvironment(AppSpawnContent *content, AppSpawnClient *client)
         APPSPAWN_LOGE("AppSpawnServer::Failed to match appspawn sandbox");
     }
 
-    APPSPAWN_LOGI("ClearEnvironment id %d", client->id);
-    AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGCHLD);
