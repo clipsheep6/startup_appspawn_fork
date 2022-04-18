@@ -19,7 +19,6 @@
 #include "appspawn_service.h"
 
 #include <dlfcn.h>
-#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
