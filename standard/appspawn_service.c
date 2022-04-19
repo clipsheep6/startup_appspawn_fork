@@ -125,7 +125,8 @@ static int SendResponse(AppSpawnClientExt *client, const char *buff, size_t buff
     uint32_t bufferSize = buffSize;
     BufferHandle handle = LE_CreateBuffer(LE_GetDefaultLoop(), bufferSize);
     char *buffer = (char *)LE_GetBufferInfo(handle, NULL, &bufferSize);
-    memcpy_s(buffer, bufferSize, buff, buffSize);
+    int ret = memcpy_s(buffer, bufferSize, buff, buffSize);
+    APPSPAWN_CHECK(ret == 0, return -1, "Failed to memcpy_s bufferSize");
     return LE_Send(LE_GetDefaultLoop(), client->stream, handle, buffSize);
 }
 
@@ -206,14 +207,12 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
     APPSPAWN_CHECK(buffer != NULL && buffLen >= sizeof(AppParameter), LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "Invalid buffer buffLen %u", buffLen);
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)LE_GetUserData(taskHandle);
-    APPSPAWN_CHECK(appProperty != NULL, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
-        return, "Failed to alloc client");
+    APPSPAWN_CHECK(appProperty != NULL, LE_CloseTask(LE_GetDefaultLoop(), taskHandle); return, "alloc client Failed");
     int ret = memcpy_s(&appProperty->property, sizeof(appProperty->property), buffer, buffLen);
     APPSPAWN_CHECK(ret == 0, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "Invalid buffer buffLen %u", buffLen);
     APPSPAWN_CHECK(appProperty->property.gidCount <= APP_MAX_GIDS && strlen(appProperty->property.processName) > 0,
-        LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
-        return, "Invalid property %u", appProperty->property.gidCount);
+        LE_CloseTask(LE_GetDefaultLoop(), taskHandle); return, "Invalid property %u", appProperty->property.gidCount);
     // special handle bundle name medialibrary and scanner
     HandleSpecial(appProperty);
     if (g_appSpawnContent->timer != NULL) {

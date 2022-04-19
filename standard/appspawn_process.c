@@ -248,7 +248,6 @@ static int32_t SetFileDescriptors(void)
 static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     AppParameter *appProperty = &((AppSpawnClientExt *)client)->property;
-    APPSPAWN_LOGI("ColdStartApp::appName %s", appProperty->processName);
     char buffer[32] = {0};  // 32 buffer for fd
     int len = sprintf_s(buffer, sizeof(buffer), "%d", ((AppSpawnClientExt *)client)->fd[1]);
     APPSPAWN_CHECK(len > 0, return -1, "Invalid to format fd");
@@ -259,8 +258,7 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
     const int32_t originLen = sizeof(AppParameter) + PARAM_BUFFER_LEN;
     // param
     char *param = malloc(originLen);
-    APPSPAWN_CHECK(param != NULL, free(argv);
-        return -1, "Failed to malloc for param");
+    APPSPAWN_CHECK(param != NULL, free(argv); return -1, "Failed to malloc for param");
 
     int ret = -1;
     do {

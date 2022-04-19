@@ -25,7 +25,7 @@
 #include "hilog/log.h"
 #include "securec.h"
 
-AppspawnLogLevel g_logLevel = AppspawnLogLevel::INFO;
+static AppspawnLogLevel g_logLevel = AppspawnLogLevel::INFO;
 static constexpr int MAX_LOG_SIZE = 1024;
 static constexpr int BASE_YEAR = 1900;
 static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, 0, APPSPAWN_LABEL};
@@ -78,6 +78,6 @@ void AppspawnLogPrint(AppspawnLogLevel logLevel, const char *file, int line, con
         (t->tm_year + BASE_YEAR), (t->tm_mon + 1), t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec,
         getpid(), file, line, tmpFmt);
     (void)fflush(outfile);
-    fclose(outfile);
+    (void)fclose(outfile);
     return;
 }

@@ -25,6 +25,7 @@ int main(int argc, char *const argv[])
     // calculate child process long name size
     uintptr_t start = (uintptr_t)argv[0];
     uintptr_t end = (uintptr_t)strchr(argv[argc - 1], 0);
+    APPSPAWN_CHECK(end != NULL, return -1, "strchr argv Failed");
     int64_t argvSize = end - start;
     int cold = (argc > PARAM_INDEX) && (strcmp(argv[START_INDEX], "cold-start") == 0);
 

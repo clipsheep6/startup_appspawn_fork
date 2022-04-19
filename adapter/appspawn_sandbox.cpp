@@ -77,12 +77,12 @@ void RegisterAppSandbox(struct AppSpawnContent_ *content, AppSpawnClient *client
 {
     APPSPAWN_LOGE("AppSpawnServer::RegisterAppSandbox");
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
-    if (g_isPrivAppSandboxCreated == false) {
+    if (!g_isPrivAppSandboxCreated) {
         if (strcmp("system_basic", appProperty->property.apl) == 0) {
             RegisterSandbox("priv-app");
         }
     }
-    if (g_isAppSandboxCreated == false) {
+    if (!g_isAppSandboxCreated) {
         if (strcmp("normal", appProperty->property.apl) == 0) {
             RegisterSandbox("app");
         }
@@ -331,7 +331,7 @@ int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *
 {
     int rc = 0;
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
-    // create /mnt/sandbox/<packagename> pathï¼?later put it to rootfs module
+    // create /mnt/sandbox/<packagename> pathï¿?later put it to rootfs module
     std::string sandboxPackagePath = "/";
     sandboxPackagePath += appProperty->property.bundleName;
     mkdir(sandboxPackagePath.c_str(), FILE_MODE);

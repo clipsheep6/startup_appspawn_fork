@@ -53,8 +53,8 @@ void LoadExtendLib(AppSpawnContent *content)
 void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
-    typedef void (*FuncType)(const char *cmd);
-    FuncType funcNWebRenderMain = (FuncType)(dlsym(g_nwebHandle, "NWebRenderMain"));
+    using FuncType = void (*)(const char *cmd);
+    FuncType funcNWebRenderMain = reinterpret_cast<FuncType>(dlsym(g_nwebHandle, "NWebRenderMain"));
     if (funcNWebRenderMain == nullptr) {
         APPSPAWN_LOGI("webviewspawn dlsym ERROR=%s", dlerror());
         return;

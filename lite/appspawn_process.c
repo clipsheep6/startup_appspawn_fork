@@ -164,7 +164,8 @@ static void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
     APPSPAWN_LOGI("AbilityMain");
     AppSpawnClientLite *appProperty = (AppSpawnClientLite *)client;
     APPSPAWN_LOGI("[appspawn] invoke, msg<%s,%s,%d,%d>",
-        appProperty->message.bundleName, appProperty->message.identityID, appProperty->message.uID, appProperty->message.gID);
+        appProperty->message.bundleName, appProperty->message.identityID, appProperty->message.uID,
+        appProperty->message.gID);
 
     if (AbilityMain(appProperty->message.identityID) != 0) {
         APPSPAWN_LOGE("[appspawn] AbilityMain execute failed, pid %d.", getpid());

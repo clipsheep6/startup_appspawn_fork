@@ -141,6 +141,7 @@ static int Invoke(IServerProxy *iProxy, int funcId, void *origin, IpcIo *req, Ip
     }
 
     AppSpawnClientLite *client = (AppSpawnClientLite *)malloc(sizeof(AppSpawnClientLite));
+    APPSPAWN_CHECK(client != NULL, return -1, "malloc AppSpawnClientLite Failed");
     client->client.id = CLIENT_ID;
     client->client.flags = 0;
     if (GetMessageSt(&client->message, req) != EC_SUCCESS) {
