@@ -16,8 +16,6 @@
 #ifndef APPSPAWN_MSG_H
 #define APPSPAWN_MSG_H
 
-#include <stddef.h>
-#include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
 

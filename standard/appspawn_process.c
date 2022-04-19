@@ -210,7 +210,7 @@ static int SetUidGid(struct AppSpawnContent_ *content, AppSpawnClient *client)
     return 0;
 }
 
-static int32_t SetFileDescriptors()
+static int32_t SetFileDescriptors(void)
 {
     // close stdin stdout stderr
     close(STDIN_FILENO);
@@ -272,7 +272,7 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
         argv[FD_INDEX] = strdup(buffer);
         APPSPAWN_CHECK(argv[FD_INDEX] != NULL, break, "Invalid strdup");
 
-        int len = sprintf_s(param + startLen, originLen - startLen, "%u:%u:%u:%d",
+        len = sprintf_s(param + startLen, originLen - startLen, "%u:%u:%u:%d",
             ((AppSpawnClientExt *)client)->client.id,
             appProperty->uid, appProperty->gid, appProperty->gidCount);
         APPSPAWN_CHECK(len > 0 && (len < (originLen - startLen)), break, "Invalid to format");

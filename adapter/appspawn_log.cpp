@@ -15,11 +15,11 @@
  
 #include "appspawn_server.h"
 
-#include <errno.h>
+#include <cerrno>
+#include <ctime>
+#include <cstdarg>
 #include <fcntl.h>
-#include <stdarg.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "hilog/log.h"

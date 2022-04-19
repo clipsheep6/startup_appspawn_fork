@@ -15,7 +15,7 @@
 
 #include "appspawn_adapter.h"
 
-#include <errno.h>
+#include <cerrno>
 
 #include "token_setproc.h"
 #ifdef WITH_SELINUX

@@ -38,7 +38,10 @@ executable("appspawn") {
     "-Wno-format-extra-args",
   ]
 
-  defines = [ "INIT_AGENT" ]
+  defines = [
+    "INIT_AGENT",
+    _GNU_SOURCE
+    ]
 
   include_dirs = [
     ".",

@@ -34,6 +34,8 @@
 
 static AppSpawnContentExt *g_appSpawnContent = NULL;
 
+static const int TV_SEC = 60;
+
 static int AppInfoHashNodeCompare(const HashNode *node1, const HashNode *node2)
 {
     AppInfo *testNode1 = HASHMAP_ENTRY(node1, AppInfo, node);
@@ -184,7 +186,7 @@ static int WaitChild(int fd, int pid, const AppSpawnClientExt *appProperty)
     struct timeval tv;
     FD_ZERO(&rd);
     FD_SET(fd, &rd);
-    tv.tv_sec = 60;
+    tv.tv_sec = TV_SEC;
     tv.tv_usec = 0;
     int ret = select(fd + 1, &rd, NULL, NULL, &tv);
     if (ret == 0) {  // timeout

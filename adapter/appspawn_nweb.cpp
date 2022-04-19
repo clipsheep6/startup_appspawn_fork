@@ -18,7 +18,7 @@
 #include <dlfcn.h>
 #include <string>
 
-void *g_nwebHandle = NULL;
+void *g_nwebHandle = nullptr;
 
 void LoadExtendLib(AppSpawnContent *content)
 {
@@ -55,7 +55,7 @@ void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
     typedef void (*FuncType)(const char *cmd);
     FuncType funcNWebRenderMain = (FuncType)(dlsym(g_nwebHandle, "NWebRenderMain"));
-    if (funcNWebRenderMain == NULL) {
+    if (funcNWebRenderMain == nullptr) {
         APPSPAWN_LOGI("webviewspawn dlsym ERROR=%s", dlerror());
         return;
     }

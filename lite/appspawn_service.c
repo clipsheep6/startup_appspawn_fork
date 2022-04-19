@@ -30,6 +30,7 @@
 #include "service.h"
 
 static const int INVALID_PID = -1;
+static const int CLIENT_ID = 100;
 
 typedef struct AppSpawnFeatureApi {
     INHERIT_SERVER_IPROXY;
@@ -140,7 +141,7 @@ static int Invoke(IServerProxy *iProxy, int funcId, void *origin, IpcIo *req, Ip
     }
 
     AppSpawnClientLite *client = (AppSpawnClientLite *)malloc(sizeof(AppSpawnClientLite));
-    client->client.id = 100;
+    client->client.id = CLIENT_ID;
     client->client.flags = 0;
     if (GetMessageSt(&client->message, req) != EC_SUCCESS) {
         APPSPAWN_LOGE("[appspawn] invoke, parse failed! reply %d.", INVALID_PID);
@@ -157,7 +158,6 @@ static int Invoke(IServerProxy *iProxy, int funcId, void *origin, IpcIo *req, Ip
         newPid = -1;
     }
     FreeMessageSt(&client->message);
-    // free(client);
     IpcIoPushInt64(reply, newPid);
 
 #ifdef OHOS_DEBUG

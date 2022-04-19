@@ -15,7 +15,7 @@
 
 #include "appspawn_adapter.h"
 
-#include <errno.h>
+#include <cerrno>
 #include <fcntl.h>
 #include <map>
 #include <sched.h>
@@ -41,7 +41,7 @@ constexpr static mode_t NWEB_FILE_MODE = 0511;
 
 static void RegisterSandbox(const char *sandbox)
 {
-    if (sandbox == NULL) {
+    if (sandbox == nullptr) {
         APPSPAWN_LOGE("AppSpawnServer::invalid parameters");
         return;
     }
@@ -249,7 +249,7 @@ static void DoAppSandboxMkdir(const std::string &sandboxPackagePath, const AppPa
 
 static int32_t DoSandboxRootFolderCreateAdapt(const std::string &sandboxPackagePath)
 {
-    int rc = mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL);
+    int rc = mount(nullptr, "/", NULL, MS_REC | MS_SLAVE, nullptr);
     if (rc) {
         APPSPAWN_LOGE("set propagation slave failed");
         return rc;

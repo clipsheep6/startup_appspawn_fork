@@ -48,7 +48,7 @@ static void SignalHandler(int sig)
     }
 }
 
-void SignalRegist()
+void SignalRegist(void)
 {
     struct sigaction act;
     act.sa_handler = SignalHandler;
