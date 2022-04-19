@@ -78,7 +78,6 @@ void DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *
 void GetCurTime(struct timespec* tmCur);
 #endif
 
-//#ifdef APPSPAWN_LOG
 typedef enum {
     DEBUG = 0,
     INFO,
@@ -103,7 +102,6 @@ void AppspawnLogPrint(AppspawnLogLevel logLevel, const char *file, int line, con
 #define APPSPAWN_LOGE(fmt, ...) AppspawnLogPrint(ERROR, FILE_NAME, __LINE__, fmt, ##__VA_ARGS__)
 #define APPSPAWN_LOGV(fmt, ...) AppspawnLogPrint(DEBUG, FILE_NAME, __LINE__, fmt, ##__VA_ARGS__)
 #define APPSPAWN_LOGW(fmt, ...) AppspawnLogPrint(WARN, FILE_NAME, __LINE__, fmt, ##__VA_ARGS__)
-//#endif
 
 #define APPSPAWN_CHECK(retCode, exper, ...) \
     if (!(retCode)) {                    \

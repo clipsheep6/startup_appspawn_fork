@@ -20,8 +20,8 @@ lite_component("appspawn_lite") {
 # feature: appspawn
 executable("appspawn") {
   sources = [
-    "../common/appspawn_server.c",
     "../adapter/appspawn_log.cpp",
+    "../common/appspawn_server.c",
     "appspawn_message.c",
     "appspawn_process.c",
     "appspawn_service.c",
@@ -40,7 +40,6 @@ executable("appspawn") {
   ]
 
   defines = [
-    "INIT_AGENT",
     "_GNU_SOURCE",
   ]
 
