@@ -21,7 +21,7 @@ lite_component("appspawn_lite") {
 executable("appspawn") {
   sources = [
     "../common/appspawn_server.c",
-    "../adapter/appspawn_log.cpp"
+    "../adapter/appspawn_log.cpp",
     "appspawn_message.c",
     "appspawn_process.c",
     "appspawn_service.c",
