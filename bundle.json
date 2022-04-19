@@ -51,6 +51,10 @@
                     },
                     "name": "//base/startup/appspawn_standard/interfaces/innerkits:appspawn_socket_client"
                 }
+            ],
+            "test": [
+                "//base/startup/appspawn_standard/test:moduletest",
+                "//base/startup/appspawn_standard/test:unittest"
             ]
         }
     }

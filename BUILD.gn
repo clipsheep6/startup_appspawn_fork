@@ -85,6 +85,8 @@ ohos_static_library("appspawn_server") {
   configs = [ ":appspawn_config" ]
   ldflags = [ "-Wl,--dynamic-linker,/system/bin/linker64z" ]
   deps = [
+    "//base/startup/init_lite/services/utils:libinit_tools",
+    "//base/startup/init_lite/services/loopevent:loopevent",
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
     "//base/startup/init_lite/interfaces/innerkits:libbegetutil",
     "//base/startup/init_lite/interfaces/innerkits/sandbox:libsandbox",

@@ -20,6 +20,7 @@ lite_component("appspawn_lite") {
 # feature: appspawn
 executable("appspawn") {
   sources = [
+    "../adapter/appspawn_log.cpp",
     "../common/appspawn_server.c",
     "appspawn_message.c",
     "appspawn_process.c",
@@ -39,14 +40,12 @@ executable("appspawn") {
   ]
 
   defines = [
-    "INIT_AGENT",
     "_GNU_SOURCE",
   ]
 
   include_dirs = [
     ".",
     "../common",
-    "//base/startup/appspawn_standard/lite",
     "//base/startup/appspawn_standard/interfaces/innerkits/include",
     "//base/startup/init_lite/interfaces/innerkits/include",
     "//foundation/distributedschedule/samgr_lite/interfaces/kits/samgr",

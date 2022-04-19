@@ -47,7 +47,7 @@ static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *clie
 
     char shortName[MAX_LEN_SHORT_NAME] = {0};
     // process short name max length 16 bytes.
-    if (len > MAX_LEN_SHORT_NAME) {
+    if (len >= 4) {
         if (strncpy_s(shortName, MAX_LEN_SHORT_NAME, appProperty->processName, MAX_LEN_SHORT_NAME - 1) != EOK) {
             APPSPAWN_LOGE("strncpy_s short name error: %d", errno);
             return -EINVAL;
@@ -210,7 +210,7 @@ static int SetUidGid(struct AppSpawnContent_ *content, AppSpawnClient *client)
     return 0;
 }
 
-static int32_t SetFileDescriptors(void)
+static int32_t SetFileDescriptors(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     // close stdin stdout stderr
     close(STDIN_FILENO);
@@ -291,7 +291,9 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
 
     if (ret == 0) {
         argv[NULL_INDEX] = NULL;
+        #ifndef APPSPAWN_TEST
         ret = execv(argv[0], argv);
+        #endif
         if (ret) {
             APPSPAWN_LOGE("Failed to execv, errno = %d", errno);
         }

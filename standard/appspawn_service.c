@@ -98,7 +98,7 @@ static void RemoveAppInfo(pid_t pid)
     free(appInfo);
 }
 
-static void KillProcess(HashNode *node, const void *context)
+static void KillProcess(const HashNode *node, const void *context)
 {
     AppInfo *hashNode = (AppInfo *)node;
     kill(hashNode->pid, SIGKILL);
@@ -240,7 +240,7 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
 
     fcntl(appProperty->fd[0], F_SETFL, O_NONBLOCK);
     pid_t pid = 0;
-    int result = AppSpawnProcessMsg(g_appSpawnContent, &appProperty->client, &pid);
+    int result = AppSpawnProcessMsg(&g_appSpawnContent->content, &appProperty->client, &pid);
     if (result == 0) {  // wait child process resutl
         result = WaitChild(appProperty->fd[0], pid, appProperty);
     }
