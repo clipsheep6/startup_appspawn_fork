@@ -40,8 +40,8 @@ executable("appspawn") {
 
   defines = [
     "INIT_AGENT",
-    _GNU_SOURCE
-    ]
+    "_GNU_SOURCE",
+  ]
 
   include_dirs = [
     ".",
