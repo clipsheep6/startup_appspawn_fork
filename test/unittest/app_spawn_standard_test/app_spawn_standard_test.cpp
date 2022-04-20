@@ -135,9 +135,6 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003, TestSize.Level0)
     EXPECT_EQ(content->setKeepCapabilities(content, &clientExt->client), 0);
     EXPECT_EQ(content->setUidGid(content, &clientExt->client), 0);
     EXPECT_EQ(content->setCapabilities(content, &clientExt->client), 0);
-GTEST_LOG_(INFO) << "there is ok 7";
-//    EXPECT_EQ(content->setFileDescriptors(content, &clientExt->client), 0);
-GTEST_LOG_(INFO) << "there is ok 8"; 
     content->setAppSandbox(content, &clientExt->client);
     content->setAppAccessToken(content, &clientExt->client);
     EXPECT_EQ(content->coldStartApp(content, &clientExt->client), 0);

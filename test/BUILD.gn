@@ -19,8 +19,8 @@ group("unittest") {
 
   deps = [
     "unittest/app_spawn_socket_test:unittest",
-    "unittest/client_socket_test:unittest",
     "unittest/app_spawn_standard_test:unittest",
+    "unittest/client_socket_test:unittest",
   ]
 }
 

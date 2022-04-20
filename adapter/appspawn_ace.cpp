@@ -22,9 +22,9 @@ void LoadExtendLib(AppSpawnContent *content)
     const char *acelibdir = "/system/lib/libace.z.so";
     void *AceAbilityLib = NULL;
     APPSPAWN_LOGI("MainThread::LoadAbilityLibrary. Start calling dlopen acelibdir.");
-    #ifndef APPSPAWN_TEST
+#ifndef APPSPAWN_TEST
     AceAbilityLib = dlopen(acelibdir, RTLD_NOW | RTLD_GLOBAL);
-    #endif
+#endif
     if (AceAbilityLib == NULL) {
         APPSPAWN_LOGE("Fail to dlopen %s, [%s]", acelibdir, dlerror());
     } else {
@@ -36,7 +36,7 @@ void LoadExtendLib(AppSpawnContent *content)
 void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("AppExecFwk::MainThread::Start");
-    #ifndef APPSPAWN_TEST
+#ifndef APPSPAWN_TEST
     OHOS::AppExecFwk::MainThread::Start();
-    #endif
+#endif
 }
