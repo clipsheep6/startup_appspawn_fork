@@ -39,8 +39,8 @@ ohos_unittest("AppSpawnStandardTest") {
   deps = [
     "${appspawn_path}:appspawn_server",
     "${appspawn_path}/test:appspawn_test_source",
-    "//foundation/aafwk/standard/frameworks/kits/appkit:appkit_native",
     "//base/startup/init_lite/interfaces/innerkits/sandbox:libsandbox",
+    "//foundation/aafwk/standard/frameworks/kits/appkit:appkit_native",
   ]
 
   external_deps = [

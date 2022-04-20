@@ -33,7 +33,7 @@
 #include "securec.h"
 
 #define DEVICE_NULL_STR "/dev/null"
-#define PROCESS_NAME_LENGTH 4 
+#define PROCESS_NAME_LENGTH 4
 
 static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *client,
     char *longProcName, int64_t longProcNameLen)
