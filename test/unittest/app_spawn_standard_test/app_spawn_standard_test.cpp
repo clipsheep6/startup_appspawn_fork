@@ -31,6 +31,7 @@
 using namespace testing;
 using namespace testing::ext;
 
+namespace OHOS {
 class AppSpawnStandardTest : public testing::Test {
 public:
     static void SetUpTestCase();
@@ -75,19 +76,24 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_002, TestSize.Level0)
     string longProcName = "AppSpawnStandardTest2";
     int64_t longProcNameLen = longProcName.length();
 
-    AppSpawnClient* client = (AppSpawnClient*)malloc(sizeof(AppSpawnClient));
-    client->id = 1;
-    client->flags = 1;
+    AppSpawnClientExt* client = (AppSpawnClientExt*)malloc(sizeof(AppSpawnClientExt));
+    client->client.id = 1;
+    client->client.flags = 1;
+    if (strcpy_s(client->property.apl, APP_APL_MAX_LEN, "system_basic") != 0) {
+        GTEST_LOG_(INFO) << "strcpy_s failed";
+    }
     pid_t pid = 100;
-
     AppSpawnContentExt* appSpawnContent = (AppSpawnContentExt*)malloc(sizeof(AppSpawnContentExt));
-    strcpy_s(appSpawnContent->content.longProcName, longProcNameLen, longProcName.c_str());
+    EXPECT_TRUE(appSpawnContent);
+    if (strcpy_s(appSpawnContent->content.longProcName, longProcNameLen, longProcName.c_str()) != 0) {
+        GTEST_LOG_(INFO) << "strcpy_s failed";
+    };
     appSpawnContent->content.longProcNameLen = longProcNameLen;
     appSpawnContent->timer = NULL;
     appSpawnContent->content.runAppSpawn = NULL;
     appSpawnContent->content.initAppSpawn = NULL;
-
-    AppSpawnProcessMsg(&appSpawnContent->content, client, &pid);
+    appSpawnContent->content.registerAppSandbox = NULL;
+    AppSpawnProcessMsg(&appSpawnContent->content, &client->client, &pid);
     free(appSpawnContent);
     free(client);
     GTEST_LOG_(INFO) << "App_Spawn_Standard_002 end";
@@ -180,6 +186,4 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_004, TestSize.Level0)
     free(client);
     GTEST_LOG_(INFO) << "App_Spawn_Standard_004 end";
 }
-
-
-
+} // namespace OHOS

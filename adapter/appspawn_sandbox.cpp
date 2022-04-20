@@ -249,7 +249,7 @@ static void DoAppSandboxMkdir(const std::string &sandboxPackagePath, const AppPa
 
 static int32_t DoSandboxRootFolderCreateAdapt(const std::string &sandboxPackagePath)
 {
-    int rc = mount(nullptr, "/", NULL, MS_REC | MS_SLAVE, nullptr);
+    int rc = mount(nullptr, "/", nullptr, MS_REC | MS_SLAVE, nullptr);
     if (rc) {
         APPSPAWN_LOGE("set propagation slave failed");
         return rc;
@@ -257,7 +257,7 @@ static int32_t DoSandboxRootFolderCreateAdapt(const std::string &sandboxPackageP
 
     // bind mount "/" to /mnt/sandbox/<packageName> path
     // rootfs: to do more resources bind mount here to get more strict resources constraints
-    rc = mount("/", sandboxPackagePath.c_str(), NULL, MS_BIND | MS_REC, NULL);
+    rc = mount("/", sandboxPackagePath.c_str(), nullptr, MS_BIND | MS_REC, nullptr);
     if (rc) {
         APPSPAWN_LOGE("mount bind / failed");
         return rc;
@@ -268,7 +268,7 @@ static int32_t DoSandboxRootFolderCreateAdapt(const std::string &sandboxPackageP
 
 static int32_t DoSandboxRootFolderCreate(const std::string &sandboxPackagePath)
 {
-    int rc = mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL);
+    int rc = mount(nullptr, "/", nullptr, MS_REC | MS_SLAVE, nullptr);
     if (rc) {
         return rc;
     }

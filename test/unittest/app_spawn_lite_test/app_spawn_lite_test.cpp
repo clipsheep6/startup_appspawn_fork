@@ -157,7 +157,6 @@ public:
             "{\"bundleName\":\"nameV\",\"identityID\":\"1234\",\"uID\":1000,\"gID\":1000,\"capability\":\"0\"}"));
         g_badStrings.push_back(std::string(
             "{\"bundleName\": 250,\"identityID\":\"1234\",\"uID\":1000,\"gID\":1000,\"capability\":[0]}"));
-
         g_goodStrings.push_back(std::string(
             "{\"bundleName\":\"testvalid1\",\"identityID\":\"1234\",\"uID\":1000,\"gID\":1000,\"capability\":[0]}"));
         g_goodStrings.push_back(std::string(

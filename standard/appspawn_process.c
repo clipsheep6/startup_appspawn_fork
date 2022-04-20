@@ -33,6 +33,7 @@
 #include "securec.h"
 
 #define DEVICE_NULL_STR "/dev/null"
+#define PROCESS_NAME_LENGTH 4 
 
 static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *client,
     char *longProcName, int64_t longProcNameLen)
@@ -47,7 +48,7 @@ static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *clie
 
     char shortName[MAX_LEN_SHORT_NAME] = {0};
     // process short name max length 16 bytes.
-    if (len >= 4) {
+    if (len >= PROCESS_NAME_LENGTH) {
         if (strncpy_s(shortName, MAX_LEN_SHORT_NAME, appProperty->processName, MAX_LEN_SHORT_NAME - 1) != EOK) {
             APPSPAWN_LOGE("strncpy_s short name error: %d", errno);
             return -EINVAL;
@@ -258,7 +259,7 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
     const int32_t originLen = sizeof(AppParameter) + PARAM_BUFFER_LEN;
     // param
     char *param = malloc(originLen);
-    APPSPAWN_CHECK(param != NULL, free(argv); 
+    APPSPAWN_CHECK(param != NULL, free(argv);
         return -1, "Failed to malloc for param");
 
     int ret = -1;
