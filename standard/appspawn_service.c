@@ -207,12 +207,14 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
     APPSPAWN_CHECK(buffer != NULL && buffLen >= sizeof(AppParameter), LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "Invalid buffer buffLen %u", buffLen);
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)LE_GetUserData(taskHandle);
-    APPSPAWN_CHECK(appProperty != NULL, LE_CloseTask(LE_GetDefaultLoop(), taskHandle); return, "alloc client Failed");
+    APPSPAWN_CHECK(appProperty != NULL, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
+        return, "alloc client Failed");
     int ret = memcpy_s(&appProperty->property, sizeof(appProperty->property), buffer, buffLen);
     APPSPAWN_CHECK(ret == 0, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "Invalid buffer buffLen %u", buffLen);
     APPSPAWN_CHECK(appProperty->property.gidCount <= APP_MAX_GIDS && strlen(appProperty->property.processName) > 0,
-        LE_CloseTask(LE_GetDefaultLoop(), taskHandle); return, "Invalid property %u", appProperty->property.gidCount);
+        LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
+        return, "Invalid property %u", appProperty->property.gidCount);
     // special handle bundle name medialibrary and scanner
     HandleSpecial(appProperty);
     if (g_appSpawnContent->timer != NULL) {
@@ -383,11 +385,13 @@ AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcNam
         APP_HASH_BUTT
     };
     int ret = HashMapCreate(&appSpawnContent->appMap, &hashInfo);
-    APPSPAWN_CHECK(ret == 0, free(appSpawnContent); return NULL, "Failed to create hash for app");
+    APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
+        return NULL, "Failed to create hash for app");
 
     char path[128] = {0};  // 128 max path
     ret = snprintf_s(path, sizeof(path), sizeof(path) - 1, "%s%s", SOCKET_DIR, socketName);
-    APPSPAWN_CHECK(ret >= 0, free(appSpawnContent); return NULL, "Failed to snprintf_s %d", ret);
+    APPSPAWN_CHECK(ret >= 0, free(appSpawnContent);
+        return NULL, "Failed to snprintf_s %d", ret);
     int socketId = GetControlSocket(socketName);
     APPSPAWN_LOGI("get socket form env %s socketId %d", socketName, socketId);
     if (socketId > 0) {
@@ -401,10 +405,12 @@ AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcNam
     info.baseInfo.close = NULL;
     info.incommingConntect = OnConnection;
     ret = LE_CreateStreamServer(LE_GetDefaultLoop(), &appSpawnContent->servcer, &info);
-    APPSPAWN_CHECK(ret == 0, free(appSpawnContent); return NULL, "Failed to create socket for %s", path);
+    APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
+        return NULL, "Failed to create socket for %s", path);
     // create socket
     ret = chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-    APPSPAWN_CHECK(ret == 0, free(appSpawnContent); return NULL, "Failed to chmod %s, err %d. ", path, errno);
+    APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
+        return NULL, "Failed to chmod %s, err %d. ", path, errno);
     APPSPAWN_LOGI("AppSpawnCreateContent path %s fd %d", path, LE_GetSocketFd(appSpawnContent->servcer));
     g_appSpawnContent = appSpawnContent;
     return &g_appSpawnContent->content;

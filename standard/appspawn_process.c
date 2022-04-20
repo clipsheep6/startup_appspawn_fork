@@ -258,7 +258,8 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
     const int32_t originLen = sizeof(AppParameter) + PARAM_BUFFER_LEN;
     // param
     char *param = malloc(originLen);
-    APPSPAWN_CHECK(param != NULL, free(argv); return -1, "Failed to malloc for param");
+    APPSPAWN_CHECK(param != NULL, free(argv); 
+        return -1, "Failed to malloc for param");
 
     int ret = -1;
     do {
@@ -291,9 +292,9 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
 
     if (ret == 0) {
         argv[NULL_INDEX] = NULL;
-        #ifndef APPSPAWN_TEST
+#ifndef APPSPAWN_TEST
         ret = execv(argv[0], argv);
-        #endif
+#endif
         if (ret) {
             APPSPAWN_LOGE("Failed to execv, errno = %d", errno);
         }
