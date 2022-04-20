@@ -12,12 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <sys/types.h>
-#include <time.h>
+#include <ctime>
 #include <vector>
 #include "gtest/gtest.h"
 #include "appspawn_message.h"
@@ -136,11 +136,7 @@ public:
         g_badStrings.push_back(std::string(
             "{\"bundleName\":\"\",\"identityID\":\"1234\",\"uID\":1000,\"gID\":1000,\"capability\":[0]}"));
         g_badStrings.push_back(std::string(
-            "{\"bundleName\":\"test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1test1\",\"identityID\":\"1234\",\"uID\":1000,\"gID\":1000,\"capability\":[0]}"));
-        g_badStrings.push_back(std::string(
             "{\"bundleName\":\"nameV\",\"identityID\":\"\",\"uID\":1000,\"gID\":1000,\"capability\":[0]}"));
-        g_badStrings.push_back(std::string(
-            "{\"bundleName\":\"nameV\",\"identityID\":\"012345978901234597890123459789\",\"uID\":1000,\"gID\":1000,\"capability\":[0]}"));
         g_badStrings.push_back(std::string(
             "{\"bundleName\":\"nameV\",\"identityID\":\"1234\",\"uID\":-1000,\"gID\":1000,\"capability\":[0]}"));
         g_badStrings.push_back(std::string(
@@ -265,7 +261,7 @@ HWTEST_F(AppSpawnLiteTest, msgFuncFreeTest_002, TestSize.Level1)
     EXPECT_EQ(msgSt.capsCnt, 0);
     EXPECT_EQ(msgSt.uID, -1);
     EXPECT_EQ(msgSt.gID, -1);
-};
+}
 
 static void GetCurrentTime(struct timespec* tmCur)
 {
