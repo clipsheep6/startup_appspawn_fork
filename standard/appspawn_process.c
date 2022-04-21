@@ -140,11 +140,16 @@ static int SetCapabilities(struct AppSpawnContent_ *content, AppSpawnClient *cli
 static void InitDebugParams(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
-    if (access("/system/lib/libhidebug.so", F_OK) != 0) {
+#ifdef __aarch64__
+    const char *debugSoPath = "/libhidebug.so";
+#else
+    const char *debugSoPath = "/system/lib/libhidebug.so";
+#endif
+    if (access(debugSoPath, F_OK) != 0) {
         APPSPAWN_LOGE("access failed, errno = %d", errno);
         return;
     }
-    void *handle = dlopen("/system/lib/libhidebug.so", RTLD_LAZY);
+    void *handle = dlopen(debugSoPath, RTLD_LAZY);
     if (handle == NULL) {
         APPSPAWN_LOGE("Failed to dlopen libhidebug.so, %s", dlerror());
         return;

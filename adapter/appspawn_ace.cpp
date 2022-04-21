@@ -19,7 +19,11 @@
 
 void LoadExtendLib(AppSpawnContent *content)
 {
-    const char *acelibdir = "/system/lib/libace.z.so";
+#ifdef __aarch64__
+    const char *acelibdir("/system/lib64/libace.z.so");
+#else
+    const char *acelibdir("/system/lib/libace.z.so");
+#endif
     void *AceAbilityLib = NULL;
     APPSPAWN_LOGI("MainThread::LoadAbilityLibrary. Start calling dlopen acelibdir.");
 #ifndef APPSPAWN_TEST

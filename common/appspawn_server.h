@@ -97,11 +97,12 @@ void AppspawnLogPrint(AppspawnLogLevel logLevel, const char *file, int line, con
 #ifndef APPSPAWN_LABEL
 #define APPSPAWN_LABEL "APPSPAWN"
 #endif
+#define APPSPAWN_DOMAIN (BASE_DOMAIN + 0x11)
 
-#define APPSPAWN_LOGI(fmt, ...) AppspawnLogPrint(INFO, FILE_NAME, __LINE__, fmt, ##__VA_ARGS__)
-#define APPSPAWN_LOGE(fmt, ...) AppspawnLogPrint(ERROR, FILE_NAME, __LINE__, fmt, ##__VA_ARGS__)
-#define APPSPAWN_LOGV(fmt, ...) AppspawnLogPrint(DEBUG, FILE_NAME, __LINE__, fmt, ##__VA_ARGS__)
-#define APPSPAWN_LOGW(fmt, ...) AppspawnLogPrint(WARN, FILE_NAME, __LINE__, fmt, ##__VA_ARGS__)
+#define APPSPAWN_LOGI(fmt, ...) STARTUP_LOGI(APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+#define APPSPAWN_LOGE(fmt, ...) STARTUP_LOGE(APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+#define APPSPAWN_LOGV(fmt, ...) STARTUP_LOGV(APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+#define APPSPAWN_LOGW(fmt, ...) STARTUP_LOGW(APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
 
 #define APPSPAWN_CHECK(retCode, exper, ...) \
     if (!(retCode)) {                    \
