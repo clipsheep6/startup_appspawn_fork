@@ -81,7 +81,10 @@ ohos_static_library("appspawn_server") {
     "${appspawn_path}/standard/appspawn_process.c",
     "${appspawn_path}/standard/appspawn_service.c",
   ]
-  defines = [ "GRAPHIC_PERMISSION_CHECK" ]
+  defines = [
+    "GRAPHIC_PERMISSION_CHECK",
+    "INIT_AGENT",
+  ]
   configs = [ ":appspawn_config" ]
   ldflags = [ "-Wl,--dynamic-linker,/system/bin/linker64z" ]
   deps = [
