@@ -140,7 +140,7 @@ static void InitDebugParams(struct AppSpawnContent_ *content, AppSpawnClient *cl
 {
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
 #ifdef __aarch64__
-    const char *debugSoPath = "/libhidebug.so";
+    const char *debugSoPath = "/system/lib64/libhidebug.so";
 #else
     const char *debugSoPath = "/system/lib/libhidebug.so";
 #endif
