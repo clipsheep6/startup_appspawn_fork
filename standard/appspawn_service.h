@@ -27,6 +27,9 @@ extern "C" {
 
 #define APP_HASH_BUTT 32
 #define FLAGS_ON_DEMAND 0x1
+#define FLAGS_MODE_COLD 0x2
+#define FLAGS_SANDBOX_PRIVATE 0x10
+#define FLAGS_SANDBOX_APP 0x20
 
 #define START_INDEX 1
 #define FD_INDEX 2
@@ -49,7 +52,7 @@ typedef struct {
 typedef struct {
     AppSpawnContent content;
     uint32_t flags;
-    TaskHandle servcer;
+    TaskHandle server;
     SignalHandle sigHandler;
     TimerHandle timer;
     HashMapHandle appMap;  // save app pid and name

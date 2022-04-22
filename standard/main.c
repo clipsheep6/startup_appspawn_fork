@@ -22,31 +22,31 @@ int main(int argc, char *const argv[])
     if (argc <= 0) {
         return 0;
     }
-    // calculate child process long name size
-    uintptr_t start = (uintptr_t)argv[0];
-    uintptr_t end = (uintptr_t)strchr(argv[argc - 1], 0);
-    if (end <= 0) {
-        return -1;
+    uint32_t argvSize = 0;
+    char *buffer = (char *)argv[0];
+    int mode = 0;
+    if ((argc > PARAM_INDEX) && (strcmp(argv[START_INDEX], "cold-start") == 0)) {
+        buffer = argv[0];
+        argvSize = APP_LEN_PROC_NAME;
+        mode = 1;
+    } else {
+        // calculate child process long name size
+        uintptr_t start = (uintptr_t)argv[0];
+        uintptr_t end = (uintptr_t)strchr(argv[argc - 1], 0);
+        if (end <= 0) {
+            return -1;
+        }
+        argvSize = end - start;
     }
-    int64_t argvSize = end - start;
-    int cold = (argc > PARAM_INDEX) && (strcmp(argv[START_INDEX], "cold-start") == 0);
-
-    AppSpawnContent *content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, argv[0], argvSize, cold);
+    APPSPAWN_LOGI("AppSpawnCreateContent argc %d mode %d %u", argc, mode, argvSize);
+    AppSpawnContent *content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, argv[0], argvSize, mode);
     APPSPAWN_CHECK(content != NULL, return -1, "Invalid content for appspawn");
     APPSPAWN_CHECK(content->initAppSpawn != NULL, return -1, "Invalid content for appspawn");
-
+    APPSPAWN_CHECK(content->runAppSpawn != NULL, return -1, "Invalid content for appspawn");
     // set common operation
     content->loadExtendLib = LoadExtendLib;
     content->runChildProcessor = RunChildProcessor;
-
-    if (cold) {
-        content->initAppSpawn(content);
-        AppSpawnColdRun(content, argc, argv);
-    } else {
-        APPSPAWN_CHECK(content->runAppSpawn != NULL, return -1, "Invalid content for appspawn");
-        content->initAppSpawn(content);
-        // run, to start loop and wait message
-        content->runAppSpawn(content);
-    }
+    content->initAppSpawn(content);
+    content->runAppSpawn(content, argc, argv);
     return 0;
 }

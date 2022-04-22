@@ -81,7 +81,7 @@ static int SetCapability(unsigned int capsCnt, const unsigned int *caps)
 }
 
 static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *client,
-    char *longProcName, int64_t longProcNameLen)
+    char *longProcName, uint32_t longProcNameLen)
 {
     AppSpawnClientLite *appProperty = (AppSpawnClientLite *)client;
     return prctl(PR_SET_NAME, appProperty->message.bundleName);

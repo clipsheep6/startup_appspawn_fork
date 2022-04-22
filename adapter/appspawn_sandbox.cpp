@@ -39,12 +39,13 @@ constexpr static int UID_BASE = 200000;
 constexpr static mode_t FILE_MODE = 0711;
 constexpr static mode_t NWEB_FILE_MODE = 0511;
 
-static void RegisterSandbox(const char *sandbox)
+static void RegisterSandbox(AppSpawnContentExt *appSpawnContent, const char *sandbox)
 {
     if (sandbox == nullptr) {
         APPSPAWN_LOGE("AppSpawnServer::invalid parameters");
         return;
     }
+    APPSPAWN_LOGE("RegisterSandbox %s", sandbox);
     InitDefaultNamespace();
     if (!InitSandboxWithName(sandbox)) {
         CloseDefaultNamespace();
@@ -67,24 +68,26 @@ static void RegisterSandbox(const char *sandbox)
     }
     CloseDefaultNamespace();
     if (strcmp(sandbox, "app") == 0) {
-        g_isAppSandboxCreated = true;
+        appSpawnContent->flags |= FLAGS_SANDBOX_APP;
     } else if (strcmp(sandbox, "priv-app") == 0) {
-        g_isPrivAppSandboxCreated = true;
+        appSpawnContent->flags |= FLAGS_SANDBOX_PRIVATE;
     }
 }
 
 void RegisterAppSandbox(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
-    APPSPAWN_LOGE("AppSpawnServer::RegisterAppSandbox");
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
-    if (!g_isPrivAppSandboxCreated) {
+    AppSpawnContentExt *appSpawnContent = (AppSpawnContentExt *)content;
+    APPSPAWN_CHECK(appSpawnContent != NULL, return, "Invalid appspawn content");
+
+    if ((appSpawnContent->flags & FLAGS_SANDBOX_PRIVATE) != FLAGS_SANDBOX_PRIVATE) {
         if (strcmp("system_basic", appProperty->property.apl) == 0) {
-            RegisterSandbox("priv-app");
+            RegisterSandbox(appSpawnContent, "priv-app");
         }
     }
-    if (!g_isAppSandboxCreated) {
+    if ((appSpawnContent->flags & FLAGS_SANDBOX_APP) != FLAGS_SANDBOX_APP) {
         if (strcmp("normal", appProperty->property.apl) == 0) {
-            RegisterSandbox("app");
+            RegisterSandbox(appSpawnContent, "app");
         }
     }
 }
@@ -149,7 +152,7 @@ static int32_t DoAppSandboxMount(const AppParameter &appProperty, std::string ro
     mkdirInfo.push_back("/data/storage/el1/bundle/nweb");
     mkdirInfo.push_back("/data/storage/el1/bundle/ohos.global.systemres");
 
-    for (int i = 0; i < mkdirInfo.size(); i++) {
+    for (size_t i = 0; i < mkdirInfo.size(); i++) {
         dirPath = rootPath + mkdirInfo[i];
         mkdir(dirPath.c_str(), FILE_MODE);
     }
@@ -241,7 +244,7 @@ static void DoAppSandboxMkdir(const std::string &sandboxPackagePath, const AppPa
     mkdirInfo.push_back("/data/accounts/account_0/applications/");
     mkdirInfo.push_back("/data/bundles/");
 
-    for (int i = 0; i < mkdirInfo.size(); i++) {
+    for (size_t i = 0; i < mkdirInfo.size(); i++) {
         dirPath = sandboxPackagePath + mkdirInfo[i];
         mkdir(dirPath.c_str(), FILE_MODE);
     }
@@ -288,7 +291,7 @@ static int32_t DoSandboxRootFolderCreate(const std::string &sandboxPackagePath)
     vecInfo.push_back("/sys_prod");
     vecInfo.push_back("/system");
 
-    for (int i = 0; i < vecInfo.size(); i++) {
+    for (size_t i = 0; i < vecInfo.size(); i++) {
         tmpDir = sandboxPackagePath + vecInfo[i];
         mkdir(tmpDir.c_str(), FILE_MODE);
         mountMap[vecInfo[i]] = tmpDir;
@@ -330,7 +333,17 @@ static int32_t DoSandboxRootFolderCreate(const std::string &sandboxPackagePath)
 int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     int rc = 0;
+    APPSPAWN_CHECK(client != NULL, return -1, "Invalid appspwn client");
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
+    if (strcmp("system_basic", appProperty->property.apl) == 0) {
+        EnterSandbox("priv-app");
+    } else if (strcmp("normal", appProperty->property.apl) == 0) {
+        EnterSandbox("app");
+    } else {
+        APPSPAWN_LOGE("AppSpawnServer::Failed to match appspawn sandbox %s", appProperty->property.apl);
+        EnterSandbox("app");
+    }
+
     // create /mnt/sandbox/<packagename> pathï¿?later put it to rootfs module
     std::string sandboxPackagePath = "/";
     sandboxPackagePath += appProperty->property.bundleName;

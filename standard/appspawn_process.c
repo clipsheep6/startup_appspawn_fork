@@ -33,10 +33,9 @@
 #include "securec.h"
 
 #define DEVICE_NULL_STR "/dev/null"
-#define PROCESS_NAME_LENGTH 4
 
 static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *client,
-    char *longProcName, int64_t longProcNameLen)
+    char *longProcName, uint32_t longProcNameLen)
 {
     AppSpawnClientExt *appPropertyExt = (AppSpawnClientExt *)client;
     AppParameter *appProperty = &appPropertyExt->property;
@@ -48,7 +47,7 @@ static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *clie
 
     char shortName[MAX_LEN_SHORT_NAME] = {0};
     // process short name max length 16 bytes.
-    if (len >= PROCESS_NAME_LENGTH) {
+    if (len >= MAX_LEN_SHORT_NAME) {
         if (strncpy_s(shortName, MAX_LEN_SHORT_NAME, appProperty->processName, MAX_LEN_SHORT_NAME - 1) != EOK) {
             APPSPAWN_LOGE("strncpy_s short name error: %d", errno);
             return -EINVAL;
@@ -74,7 +73,7 @@ static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *clie
 
     // set long process name
     if (strncpy_s(longProcName, sizeof(appProperty->processName) - 1, appProperty->processName, len) != EOK) {
-        APPSPAWN_LOGE("strncpy_s long name error: %d longProcNameLen %d", errno, longProcNameLen);
+        APPSPAWN_LOGE("strncpy_s long name error: %d longProcNameLen %u", errno, longProcNameLen);
         return -EINVAL;
     }
     return 0;
@@ -163,7 +162,7 @@ static void InitDebugParams(struct AppSpawnContent_ *content, AppSpawnClient *cl
     }
     bool ret = (*initParam)(appProperty->property.processName);
     if (!ret) {
-        APPSPAWN_LOGE("init parameters failed.");
+         APPSPAWN_LOGV("init parameters failed.");
     }
     dlclose(handle);
 }
@@ -172,14 +171,6 @@ static void ClearEnvironment(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("ClearEnvironment id %d", client->id);
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
-    if (strcmp("system_basic", appProperty->property.apl) == 0) {
-        EnterSandbox("priv-app");
-    } else if (strcmp("normal", appProperty->property.apl) == 0) {
-        EnterSandbox("app");
-    } else {
-        APPSPAWN_LOGE("AppSpawnServer::Failed to match appspawn sandbox");
-    }
-
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGCHLD);
@@ -254,6 +245,7 @@ static int32_t SetFileDescriptors(struct AppSpawnContent_ *content, AppSpawnClie
 static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     AppParameter *appProperty = &((AppSpawnClientExt *)client)->property;
+    APPSPAWN_LOGI("ColdStartApp::appName %s", appProperty->processName);
     char buffer[32] = {0};  // 32 buffer for fd
     int len = sprintf_s(buffer, sizeof(buffer), "%d", ((AppSpawnClientExt *)client)->fd[1]);
     APPSPAWN_CHECK(len > 0, return -1, "Invalid to format fd");
@@ -263,15 +255,16 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
     int32_t startLen = 0;
     const int32_t originLen = sizeof(AppParameter) + PARAM_BUFFER_LEN;
     // param
-    char *param = malloc(originLen);
+    char *param = malloc(originLen + APP_LEN_PROC_NAME);
     APPSPAWN_CHECK(param != NULL, free(argv);
         return -1, "Failed to malloc for param");
 
     int ret = -1;
     do {
         argv[PARAM_INDEX] = param;
-        argv[0] = strdup("/system/bin/appspawn");
-        APPSPAWN_CHECK(argv[0] != NULL, break, "Invalid strdup");
+        argv[0] = param + originLen;
+        ret = strcpy_s(argv[0], APP_LEN_PROC_NAME, "/system/bin/appspawn");
+        APPSPAWN_CHECK(ret >= 0, break, "Invalid strdup");
         argv[START_INDEX] = strdup("cold-start");
         APPSPAWN_CHECK(argv[START_INDEX] != NULL, break, "Invalid strdup");
         argv[FD_INDEX] = strdup(buffer);
@@ -305,6 +298,7 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
             APPSPAWN_LOGE("Failed to execv, errno = %d", errno);
         }
     }
+	argv[0] = NULL;
     for (int i = 0; i < NULL_INDEX; i++) {
         if (argv[i] != NULL) {
             free(argv[i]);
@@ -320,6 +314,7 @@ int GetAppSpawnClientFromArg(int argc, char *const argv[], AppSpawnClientExt *cl
     APPSPAWN_CHECK(argc > PARAM_INDEX, return -1, "Invalid argc %d", argc);
 
     client->fd[1] = atoi(argv[FD_INDEX]);
+    APPSPAWN_LOGV("GetAppSpawnClientFromArg %s ", argv[PARAM_INDEX]);
     char *end = NULL;
     char *start = strtok_r(argv[PARAM_INDEX], ":", &end);
     // clientid

@@ -46,7 +46,7 @@ static int AppInfoHashNodeCompare(const HashNode *node1, const HashNode *node2)
 static int TestHashKeyCompare(const HashNode *node1, const void *key)
 {
     AppInfo *testNode1 = HASHMAP_ENTRY(node1, AppInfo, node);
-    return testNode1->pid - (pid_t)key;
+    return testNode1->pid - *(pid_t *)key;
 }
 
 static int AppInfoHashNodeFunction(const HashNode *node)
@@ -60,7 +60,7 @@ static int AppInfoHashNodeFunction(const HashNode *node)
 
 static int AppInfoHashKeyFunction(const void *key)
 {
-    pid_t code = (pid_t)key;
+    pid_t code = *(pid_t *)key;
     return code % APP_HASH_BUTT;
 }
 
@@ -138,7 +138,7 @@ static void SignalHandler(const struct signalfd_siginfo *siginfo)
             pid_t pid;
             int status;
             while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-                APPSPAWN_LOGI("SignalHandler pid %d", pid);
+                APPSPAWN_LOGI("SignalHandler pid %d status %d", pid, status);
                 RemoveAppInfo(pid);
             }
             break;
@@ -225,6 +225,7 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
     if (appProperty->property.flags & 0x01) {
         char cold[10] = {0};  // 10 cold
         ret = GetParameter("appspawn.cold.boot", "false", cold, sizeof(cold));
+        APPSPAWN_LOGV("appspawn.cold.boot %s %d ", cold, ret);
         if (ret > 0 && (strcmp(cold, "true") == 0 || strcmp(cold, "1") == 0 || strcmp(cold, "enable") == 0)) {
             appProperty->client.flags |= APP_COLD_START;
         }
@@ -292,17 +293,18 @@ static int OnConnection(const LoopHandle loopHandle, const TaskHandle server)
 static int NotifyResToParent(struct AppSpawnContent_ *content, AppSpawnClient *client, int result)
 {
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
-    APPSPAWN_LOGI("NotifyResToParent %s result %d", appProperty->property.processName, result);
+    int fd = appProperty->fd[1];
+    APPSPAWN_LOGI("NotifyResToParent %s fd %d result %d", appProperty->property.processName, fd, result);
     write(appProperty->fd[1], &result, sizeof(result));
     // close write
-    close(appProperty->fd[1]);
+    close(fd);
     return 0;
 }
 
 static void AppSpawnInit(AppSpawnContent *content)
 {
     AppSpawnContentExt *appSpawnContent = (AppSpawnContentExt *)content;
-    APPSPAWN_CHECK(appSpawnContent != NULL, return, "Failed to alloc memory for appspawn");
+    APPSPAWN_CHECK(appSpawnContent != NULL, return, "Invalid appspawn content");
 
     APPSPAWN_LOGI("AppSpawnInit");
     if (content->loadExtendLib) {
@@ -316,31 +318,34 @@ static void AppSpawnInit(AppSpawnContent *content)
 void AppSpawnColdRun(AppSpawnContent *content, int argc, char *const argv[])
 {
     AppSpawnContentExt *appSpawnContent = (AppSpawnContentExt *)content;
-    APPSPAWN_CHECK(appSpawnContent != NULL, return, "Failed to alloc memory for appspawn");
+    APPSPAWN_CHECK(appSpawnContent != NULL, return, "Invalid appspawn content");
 
     AppSpawnClientExt *client = (AppSpawnClientExt *)malloc(sizeof(AppSpawnClientExt));
     APPSPAWN_CHECK(client != NULL, return, "Failed to alloc memory for client");
     int ret = GetAppSpawnClientFromArg(argc, argv, client);
     APPSPAWN_CHECK(ret == 0, free(client);
         return, "Failed to get client from arg");
-    APPSPAWN_LOGI("Cold running %d processName %s", getpid(), client->property.processName);
+    APPSPAWN_LOGI("Cold running %d processName %s %u ", getpid(), client->property.processName, content->longProcNameLen);
 
-    DoStartApp(content, &client->client, content->longProcName, content->longProcNameLen);
-    if (content->runChildProcessor) {
+    ret = DoStartApp(content, &client->client, content->longProcName, content->longProcNameLen);
+    if (ret == 0 && content->runChildProcessor != NULL) {
         content->runChildProcessor(content, &client->client);
     }
     APPSPAWN_LOGI("App exit %d.", getpid());
     free(client);
-    _exit(0x7f);
+    free(appSpawnContent);
+    g_appSpawnContent = NULL;
 }
 
-static void AppSpawnRun(AppSpawnContent *content)
+static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
 {
     APPSPAWN_LOGI("AppSpawnRun");
-    LE_STATUS status = LE_CreateSignalTask(LE_GetDefaultLoop(), &g_appSpawnContent->sigHandler, SignalHandler);
+    AppSpawnContentExt *appSpawnContent = (AppSpawnContentExt *)content;
+    APPSPAWN_CHECK(appSpawnContent != NULL, return, "Invalid appspawn content");
+    LE_STATUS status = LE_CreateSignalTask(LE_GetDefaultLoop(), &appSpawnContent->sigHandler, SignalHandler);
     if (status == 0) {
-        status = LE_AddSignal(LE_GetDefaultLoop(), g_appSpawnContent->sigHandler, SIGCHLD);
-        status = LE_AddSignal(LE_GetDefaultLoop(), g_appSpawnContent->sigHandler, SIGTERM);
+        status = LE_AddSignal(LE_GetDefaultLoop(), appSpawnContent->sigHandler, SIGCHLD);
+        status = LE_AddSignal(LE_GetDefaultLoop(), appSpawnContent->sigHandler, SIGTERM);
     }
     if (status != 0) {
         APPSPAWN_LOGE("Failed to add signal %d", status);
@@ -348,18 +353,18 @@ static void AppSpawnRun(AppSpawnContent *content)
 
     LE_RunLoop(LE_GetDefaultLoop());
     APPSPAWN_LOGI("AppSpawnRun exit ");
-    LE_CloseSignalTask(LE_GetDefaultLoop(), g_appSpawnContent->sigHandler);
+    LE_CloseSignalTask(LE_GetDefaultLoop(), appSpawnContent->sigHandler);
     // release resource
-    HashMapDestory(g_appSpawnContent->appMap);
+    HashMapDestory(appSpawnContent->appMap);
     free(content);
     g_appSpawnContent = NULL;
 }
 
-AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, int64_t longProcNameLen, int cold)
+AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int mode)
 {
     APPSPAWN_CHECK(LE_GetDefaultLoop() != NULL, return NULL, "Invalid default loop");
     APPSPAWN_CHECK(socketName != NULL && longProcName != NULL, return NULL, "Invalid name");
-    APPSPAWN_LOGI("AppSpawnCreateContent %s", socketName);
+    APPSPAWN_LOGI("AppSpawnCreateContent %s %u mode %d", socketName, longProcNameLen, mode);
 
     AppSpawnContentExt *appSpawnContent = (AppSpawnContentExt *)malloc(sizeof(AppSpawnContentExt));
     APPSPAWN_CHECK(appSpawnContent != NULL, return NULL, "Failed to alloc memory for appspawn");
@@ -367,51 +372,55 @@ AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcNam
     appSpawnContent->content.longProcName = longProcName;
     appSpawnContent->content.longProcNameLen = longProcNameLen;
     appSpawnContent->timer = NULL;
-    appSpawnContent->content.runAppSpawn = AppSpawnRun;
+    appSpawnContent->flags = 0;
+    appSpawnContent->server = NULL;
+    appSpawnContent->sigHandler = NULL;    
     appSpawnContent->content.initAppSpawn = AppSpawnInit;
 
-    if (cold) {
-        g_appSpawnContent = appSpawnContent;
-        return &g_appSpawnContent->content;
+    if (mode) {
+        appSpawnContent->flags |= FLAGS_MODE_COLD;
+        appSpawnContent->content.runAppSpawn = AppSpawnColdRun;
+    } else {
+        appSpawnContent->content.runAppSpawn = AppSpawnRun;
+
+        // create hash for app
+        HashInfo hashInfo = {
+            AppInfoHashNodeCompare,
+            TestHashKeyCompare,
+            AppInfoHashNodeFunction,
+            AppInfoHashKeyFunction,
+            AppInfoHashNodeFree,
+            APP_HASH_BUTT
+        };
+        int ret = HashMapCreate(&appSpawnContent->appMap, &hashInfo);
+        APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
+            return NULL, "Failed to create hash for app");
+
+        char path[128] = {0};  // 128 max path
+        ret = snprintf_s(path, sizeof(path), sizeof(path) - 1, "%s%s", SOCKET_DIR, socketName);
+        APPSPAWN_CHECK(ret >= 0, free(appSpawnContent);
+            return NULL, "Failed to snprintf_s %d", ret);
+        int socketId = GetControlSocket(socketName);
+        APPSPAWN_LOGI("get socket form env %s socketId %d", socketName, socketId);
+        if (socketId > 0) {
+            appSpawnContent->flags |= FLAGS_ON_DEMAND;
+        }
+
+        LE_StreamServerInfo info = {};
+        info.baseInfo.flags = TASK_STREAM | TASK_PIPE | TASK_SERVER;
+        info.socketId = socketId;
+        info.server = path;
+        info.baseInfo.close = NULL;
+        info.incommingConntect = OnConnection;
+        ret = LE_CreateStreamServer(LE_GetDefaultLoop(), &appSpawnContent->server, &info);
+        APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
+            return NULL, "Failed to create socket for %s", path);
+        // create socket
+        ret = chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+        APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
+            return NULL, "Failed to chmod %s, err %d. ", path, errno);
+        APPSPAWN_LOGI("AppSpawnCreateContent path %s fd %d", path, LE_GetSocketFd(appSpawnContent->server));
     }
-
-    // create hash for app
-    HashInfo hashInfo = {
-        AppInfoHashNodeCompare,
-        TestHashKeyCompare,
-        AppInfoHashNodeFunction,
-        AppInfoHashKeyFunction,
-        AppInfoHashNodeFree,
-        APP_HASH_BUTT
-    };
-    int ret = HashMapCreate(&appSpawnContent->appMap, &hashInfo);
-    APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
-        return NULL, "Failed to create hash for app");
-
-    char path[128] = {0};  // 128 max path
-    ret = snprintf_s(path, sizeof(path), sizeof(path) - 1, "%s%s", SOCKET_DIR, socketName);
-    APPSPAWN_CHECK(ret >= 0, free(appSpawnContent);
-        return NULL, "Failed to snprintf_s %d", ret);
-    int socketId = GetControlSocket(socketName);
-    APPSPAWN_LOGI("get socket form env %s socketId %d", socketName, socketId);
-    if (socketId > 0) {
-        appSpawnContent->flags = FLAGS_ON_DEMAND;
-    }
-
-    LE_StreamServerInfo info = {};
-    info.baseInfo.flags = TASK_STREAM | TASK_PIPE | TASK_SERVER;
-    info.socketId = socketId;
-    info.server = path;
-    info.baseInfo.close = NULL;
-    info.incommingConntect = OnConnection;
-    ret = LE_CreateStreamServer(LE_GetDefaultLoop(), &appSpawnContent->servcer, &info);
-    APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
-        return NULL, "Failed to create socket for %s", path);
-    // create socket
-    ret = chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-    APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
-        return NULL, "Failed to chmod %s, err %d. ", path, errno);
-    APPSPAWN_LOGI("AppSpawnCreateContent path %s fd %d", path, LE_GetSocketFd(appSpawnContent->servcer));
     g_appSpawnContent = appSpawnContent;
     return &g_appSpawnContent->content;
 }

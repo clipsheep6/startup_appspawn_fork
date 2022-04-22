@@ -44,12 +44,12 @@ typedef struct AppSpawnClient_ {
 #define MAX_SOCKEYT_NAME_LEN 128
 typedef struct AppSpawnContent_ {
     char *longProcName;
-    int64_t longProcNameLen;
+    uint32_t longProcNameLen;
 
     // system
     void (*loadExtendLib)(struct AppSpawnContent_ *content);
     void (*initAppSpawn)(struct AppSpawnContent_ *content);
-    void (*runAppSpawn)(struct AppSpawnContent_ *content);
+    void (*runAppSpawn)(struct AppSpawnContent_ *content, int argc, char *const argv[]);
 
     // for child
     void (*clearEnvironment)(struct AppSpawnContent_ *content, AppSpawnClient *client);
@@ -58,7 +58,7 @@ typedef struct AppSpawnContent_ {
     int (*setKeepCapabilities)(struct AppSpawnContent_ *content, AppSpawnClient *client);
     int (*setFileDescriptors)(struct AppSpawnContent_ *content, AppSpawnClient *client);
     int (*setProcessName)(struct AppSpawnContent_ *content, AppSpawnClient *client,
-        char *longProcName, int64_t longProcNameLen);
+        char *longProcName, uint32_t longProcNameLen);
     int (*setUidGid)(struct AppSpawnContent_ *content, AppSpawnClient *client);
     int (*setCapabilities)(struct AppSpawnContent_ *content, AppSpawnClient *client);
 
@@ -70,9 +70,9 @@ typedef struct AppSpawnContent_ {
     void (*registerAppSandbox)(struct AppSpawnContent_ *content, AppSpawnClient *client);
 } AppSpawnContent;
 
-AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, int64_t longProcNameLen, int cold);
+AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int cold);
 int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid);
-void DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, int64_t longProcNameLen);
+int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen);
 
 #ifdef OHOS_DEBUG
 void GetCurTime(struct timespec* tmCur);

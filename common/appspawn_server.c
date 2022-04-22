@@ -30,43 +30,44 @@ static int NotifyResToParent(struct AppSpawnContent_ *content, AppSpawnClient *c
     return 0;
 }
 
-void DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, int64_t longProcNameLen)
+int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
 {
-    APPSPAWN_LOGI("DoStartApp id %d ", client->id);
+    APPSPAWN_LOGI("DoStartApp id %d longProcNameLen %u", client->id, longProcNameLen);
     int32_t ret = 0;
     if (content->setAppSandbox) {
         ret = content->setAppSandbox(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return, "Failed to set app sandbox");
+            return ret, "Failed to set app sandbox");
     }
     if (content->setKeepCapabilities) {
         ret = content->setKeepCapabilities(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return, "Failed to set KeepCapabilities");
+            return ret, "Failed to set KeepCapabilities");
     }
     if (content->setProcessName) {
         ret = content->setProcessName(content, client, longProcName, longProcNameLen);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return, "Failed to set setProcessName");
+            return ret, "Failed to set setProcessName");
     }
 
     if (content->setUidGid) {
         ret = content->setUidGid(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return, "Failed to setUidGid");
+            return ret, "Failed to setUidGid");
     }
     if (content->setFileDescriptors) {
         ret = content->setFileDescriptors(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return, "Failed to setFileDescriptors");
+            return ret, "Failed to setFileDescriptors");
     }
     if (content->setCapabilities) {
         ret = content->setCapabilities(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return, "Failed to setCapabilities");
+            return ret, "Failed to setCapabilities");
     }
     // notify success to father process and start app process
     NotifyResToParent(content, client, 0);
+    return 0;
 }
 
 int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid)
@@ -95,16 +96,16 @@ int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client,
         if (content->setAppAccessToken != NULL) {
             content->setAppAccessToken(content, client);
         }
+        int ret = -1;
         if (client->flags & APP_COLD_START) {
             if (content->coldStartApp != NULL && content->coldStartApp(content, client) == 0) {
-                NotifyResToParent(content, client, 0);
-                _exit(0x7f);
+                _exit(0x7f); // 0x7f user exit
                 return -1;
             } else {
-                DoStartApp(content, client, content->longProcName, content->longProcNameLen);
+                ret = DoStartApp(content, client, content->longProcName, content->longProcNameLen);
             }
         } else {
-            DoStartApp(content, client, content->longProcName, content->longProcNameLen);
+            ret = DoStartApp(content, client, content->longProcName, content->longProcNameLen);
         }
 #ifdef OHOS_DEBUG
         struct timespec tmEnd = {0};
@@ -113,11 +114,11 @@ int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client,
         long timeUsed = (tmEnd.tv_sec - tmStart.tv_sec) * 1000000000L + (tmEnd.tv_nsec - tmStart.tv_nsec);
         APPSPAWN_LOGI("App timeused %d %ld ns.", getpid(), timeUsed);
 #endif  // OHOS_DEBUG
-        if (content->runChildProcessor) {
+        if (ret == 0 && content->runChildProcessor != NULL) {
             content->runChildProcessor(content, client);
         }
         APPSPAWN_LOGI("App exit %d.", getpid());
-        _exit(0x7f);
+        _exit(0x7f); // 0x7f user exit
     }
     *childPid = pid;
     return 0;
