@@ -339,6 +339,8 @@ int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *
         EnterSandbox("priv-app");
     } else if (strcmp("normal", appProperty->property.apl) == 0) {
         EnterSandbox("app");
+    } else if (strcmp("system_core ", appProperty->property.apl) == 0) {
+        EnterSandbox("app");
     } else {
         APPSPAWN_LOGE("AppSpawnServer::Failed to match appspawn sandbox %s", appProperty->property.apl);
         EnterSandbox("app");
