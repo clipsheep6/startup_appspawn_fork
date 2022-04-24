@@ -162,7 +162,7 @@ static void InitDebugParams(struct AppSpawnContent_ *content, AppSpawnClient *cl
     }
     bool ret = (*initParam)(appProperty->property.processName);
     if (!ret) {
-         APPSPAWN_LOGV("init parameters failed.");
+        APPSPAWN_LOGV("init parameters failed.");
     }
     dlclose(handle);
 }
@@ -242,6 +242,18 @@ static int32_t SetFileDescriptors(struct AppSpawnContent_ *content, AppSpawnClie
     return 0;
 }
 
+static void Free(char **argv)
+{
+    argv[0] = NULL;
+    for (int i = 0; i < NULL_INDEX; i++) {
+        if (argv[i] != NULL) {
+            free(argv[i]);
+            argv[i] = NULL;
+        }
+    }
+    free(argv);
+}
+
 static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     AppParameter *appProperty = &((AppSpawnClientExt *)client)->property;
@@ -298,13 +310,7 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
             APPSPAWN_LOGE("Failed to execv, errno = %d", errno);
         }
     }
-	argv[0] = NULL;
-    for (int i = 0; i < NULL_INDEX; i++) {
-        if (argv[i] != NULL) {
-            free(argv[i]);
-        }
-    }
-    free(argv);
+
     return ret;
 }
 

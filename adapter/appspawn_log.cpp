@@ -65,7 +65,7 @@ void AppspawnLogPrint(AppspawnLogLevel logLevel, const char *file, int line, con
             break;
     }
 
-    time_t second = time(0);
+    time_t second = nullptr;
     if (second <= 0) {
         return;
     }

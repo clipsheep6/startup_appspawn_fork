@@ -330,11 +330,11 @@ static int32_t DoSandboxRootFolderCreate(const std::string &sandboxPackagePath)
     return 0;
 }
 
-int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *client)
+static void MatchSandbox(AppSpawnClientExt *appProperty)
 {
-    int rc = 0;
-    APPSPAWN_CHECK(client != NULL, return -1, "Invalid appspwn client");
-    AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
+    if (appProperty == nullptr) {
+        return;
+    }
     if (strcmp("system_basic", appProperty->property.apl) == 0) {
         EnterSandbox("priv-app");
     } else if (strcmp("normal", appProperty->property.apl) == 0) {
@@ -345,8 +345,15 @@ int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *
         APPSPAWN_LOGE("AppSpawnServer::Failed to match appspawn sandbox %s", appProperty->property.apl);
         EnterSandbox("app");
     }
+}
 
-    // create /mnt/sandbox/<packagename> pathï¿?later put it to rootfs module
+int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+    int rc = 0;
+    APPSPAWN_CHECK(client != NULL, return -1, "Invalid appspwn client");
+    AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
+    MatchSandbox(appProperty);
+    // create /mnt/sandbox/<packagename> pathï¿½?later put it to rootfs module
     std::string sandboxPackagePath = "/";
     sandboxPackagePath += appProperty->property.bundleName;
     mkdir(sandboxPackagePath.c_str(), FILE_MODE);
