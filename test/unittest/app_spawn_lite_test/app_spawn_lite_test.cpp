@@ -46,6 +46,25 @@ public:
         g_badStrings.push_back(std::string("\"\"\"\"\"\"\"\"\"\"\"\"\"\"\""));
         g_badStrings.push_back(std::string("............................................."));
         g_badStrings.push_back(std::string("....%%%....^..***@##.../*--++......$$&&....."));
+        StructuralFormatErrJson();
+        StructuralFieldMisJson();
+        StructuralFieldInvalidJson();
+
+
+        printf("[----------] AppSpawnLiteTest, message func test setup.\n");
+    }
+
+    static void TearDownTestCase()
+    {
+        g_badStrings.clear();
+        g_goodStrings.clear();
+        printf("[----------] AppSpawnLiteTest, message func test teardown.\n");
+    }
+    void SetUp() {}
+    void TearDown() {}
+
+    void StructuralFormatErrJson(void)
+    {
         // looks like json but format error
         g_badStrings.push_back(std::string(
             "{bundleName\":\"nameV\",\"identityID\":\"1\",\"uID\":10,\"gID\":10,\"capability\":[0]}"));
@@ -109,6 +128,10 @@ public:
             "{\"bundleName\":\"nameV\",\"identityID\":\"1\",\"uID\":10,\"gID\":10,\"capability\":[0],}"));
         g_badStrings.push_back(std::string(
             "{\"bundleName\":\"nameV\",\"identityID\":\"1\",\"uID\":10,\"gID\":10,\"capability\":[0,]}"));
+    }
+
+    void StructuralFieldMisJson(void)
+    {
         // json format correct but fields missing
         g_badStrings.push_back(std::string(
             "{\"bundleName\":\"nameV\",\"identityID\":\"1234\",\"uID\":1000,\"gID\":1000,\"capability\":[0]}"));
@@ -132,6 +155,10 @@ public:
             "{\"bundleName\":\"nameV\",\"identityID\":\"1234\",\"uID\":1000,\"gID\":1000,\"\":[0]}"));
         g_badStrings.push_back(std::string(
             "{\"bundleName\":\"nameV\",\"identityID\":\"1234\",\"uID\":1000,\"gID\":1000}"));
+    }
+
+    void StructuralFieldInvalidJson(void)
+    {
         // field value invalid
         g_badStrings.push_back(std::string(
             "{\"bundleName\":\"\",\"identityID\":\"1234\",\"uID\":1000,\"gID\":1000,\"capability\":[0]}"));
@@ -167,17 +194,7 @@ public:
             "{\"bundleName\":\"testvalid3\",\"identityID\":\"999\",\"uID\":1002,\"gID\":1002,\"capability\":[]}"));
         g_goodStrings.push_back(std::string(
             "{\"bundleName\":\"testvalid3\",\"identityID\":\"3\",\"uID\":1002,\"gID\":1002,\"capability\":[1,2]}"));
-        printf("[----------] AppSpawnLiteTest, message func test setup.\n");
     }
-
-    static void TearDownTestCase()
-    {
-        g_badStrings.clear();
-        g_goodStrings.clear();
-        printf("[----------] AppSpawnLiteTest, message func test teardown.\n");
-    }
-    void SetUp() {}
-    void TearDown() {}
 };
 
 /*

@@ -381,7 +381,6 @@ static void CreateHashForApp(AppSpawnContentExt *appSpawnContent)
     };
     int ret = HashMapCreate(&appSpawnContent->appMap, &hashInfo); APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
         return NULL, "Failed to create hash for app");
-
 }
 
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int mode)
