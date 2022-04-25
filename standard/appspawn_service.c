@@ -142,7 +142,7 @@ static void SignalHandler(const struct signalfd_siginfo *siginfo)
                 APPSPAWN_LOGI("SignalHandler pid %d status %d", pid, status);
                 RemoveAppInfo(pid);
 #ifdef NWEB_SPAWN
-                RecordRenderProcessExitedStatus(pid, status);
+                //RecordRenderProcessExitedStatus(pid, status);
 #endif
             }
             break;
@@ -221,7 +221,7 @@ static void StartColdApp(AppSpawnClientExt *appProperty)
     }
 }
 
-static int GetProcessTerminationStatus(AppSpawnClientExt *appProperty)
+int GetProcessTerminationStatus(AppSpawnClientExt *appProperty)
 {
 #ifdef NWEB_SPAWN
     if (appProperty == NULL) {
@@ -280,7 +280,7 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
     fcntl(appProperty->fd[0], F_SETFL, O_NONBLOCK);
 
     // get render process termination status
-    APPSPAWN_CHECK(GetProcessTerminationStatus(appProperty) != 0, return, "Invalid appspawn content");
+//    APPSPAWN_CHECK(GetProcessTerminationStatus(appProperty) != 0, return, "Invalid appspawn content");
 
     pid_t pid = 0;
     int result = AppSpawnProcessMsg(&g_appSpawnContent->content, &appProperty->client, &pid);
