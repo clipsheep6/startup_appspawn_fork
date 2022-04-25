@@ -310,7 +310,7 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
             APPSPAWN_LOGE("Failed to execv, errno = %d", errno);
         }
     }
-
+    Free(argv);
     return ret;
 }
 
