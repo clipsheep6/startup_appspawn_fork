@@ -44,6 +44,8 @@ unittest("AppSpawnLiteTest") {
     "app_spawn_lite_test.cpp",
   ]
 
+  defines = [ "APPSPAWN_TEST" ]
+
   deps = [
     "${aafwk_lite_path}/frameworks/ability_lite:aafwk_abilitykit_lite",
     "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",

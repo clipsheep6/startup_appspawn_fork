@@ -71,12 +71,6 @@ public:
         g_badStrings.push_back(std::string(
             "{\"bundleName:\"nameV\",\"identityID\":\"1\",\"uID\":10,\"gID\":10,\"capability\":[0]}"));
         g_badStrings.push_back(std::string(
-            "{\"bundleName\":nameV\",\"identityID\":\"1\",\"uID\":10,\"gID\":10,\"capability\":[0]}"));
-        g_badStrings.push_back(std::string(
-            "{\"bundleName\":\"nameV,\"identityID\":\"1\",\"uID\":10,\"gID\":10,\"capability\":[0]}"));
-        g_badStrings.push_back(std::string(
-            "{\"bundleName\":\"nameV\",identityID\":\"1\",\"uID\":10,\"gID\":10,\"capability\":[0]}"));
-        g_badStrings.push_back(std::string(
             "{\"bundleName\":\"nameV\",\"identityID:\"1\",\"uID\":10,\"gID\":10,\"capability\":[0]}"));
         g_badStrings.push_back(std::string(
             "{\"bundleName\":\"nameV\",\"identityID\":1\",\"uID\":10,\"gID\":10,\"capability\":[0]}"));
@@ -86,10 +80,6 @@ public:
             "{\"bundleName\":\"nameV\",\"identityID\":\"1\",uID\":10,\"gID\":10,\"capability\":[0]}"));
         g_badStrings.push_back(std::string(
             "{\"bundleName\":\"nameV\",\"identityID\":\"1\",\"uID:10,\"gID\":10,\"capability\":[0]}"));
-        g_badStrings.push_back(std::string(
-            "{\"bundleName\":\"nameV\",\"identityID\":\"1\",\"uID\":10,gID\":10,\"capability\":[0]}"));
-        g_badStrings.push_back(std::string(
-            "{\"bundleName\":\"nameV\",\"identityID\":\"1\",\"uID\":10,\"gID:10,\"capability\":[0]}"));
         g_badStrings.push_back(std::string(
             "{\"bundleName\":\"nameV\",\"identityID\":\"1\",\"uID\":10,\"gID\":10,capability\":[0]}"));
         g_badStrings.push_back(std::string(
@@ -108,10 +98,6 @@ public:
             "{\"bundleName\"\"nameV\",\"identityID\":\"1\",\"uID\":10,\"gID\":10,\"capability\":[0]}"));
         g_badStrings.push_back(std::string(
             "{\"bundleName\":\"nameV\"\"identityID\":\"1\",\"uID\":10,\"gID\":10,\"capability\":[0]}"));
-        g_badStrings.push_back(std::string(
-            "{\"bundleName\":\"nameV\",\"identityID\"\"1\",\"uID\":10,\"gID\":10,\"capability\":[0]}"));
-        g_badStrings.push_back(std::string(
-            "{\"bundleName\":\"nameV\",\"identityID\":\"1\"\"uID\":10,\"gID\":10,\"capability\":[0]}"));
         g_badStrings.push_back(std::string(
             "{\"bundleName\":\"nameV\",\"identityID\":\"1\",\"uID\"10,\"gID\":10,\"capability\":[0]}"));
         g_badStrings.push_back(std::string(
@@ -385,24 +371,24 @@ HWTEST_F(AppSpawnLiteTest, SetContentFunctionTest_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "SetContentFunctionTest_001 start";
     AppSpawnContent *content = AppSpawnCreateContent("AppSpawn", NULL, 0, 0);
     SetContentFunction(content);
+
     string longProcName = "SetContentFunctionTest_001";
     int64_t longProcNameLen = longProcName.length();
-
     AppSpawnClientLite *liteClient = (AppSpawnClientLite *)malloc(sizeof(AppSpawnClientLite));
+    EXPECT_TRUE(liteClient);
     liteClient->client.id = 1;
     liteClient->client.flags = 0;
 
-    liteClient->message.bundleName = "com.ohos.settingsdata";
-    liteClient->message.identityID = "123456789";
-    liteClient->message.uID = 10003;
-    liteClient->message.gID = 1000;
-    liteClient->message.capsCnt = 0;
+    std::string validStr =
+        "{\"bundleName\":\"validName\",\"identityID\":\"135\",\"uID\":999,\"gID\":888,\"capability\":[0, 1, 5]}";
+    int ret = SplitMessage(validStr.c_str(), validStr.length(), &liteClient->message);
+    EXPECT_EQ(ret, 0);
 
-    EXPECT_NE(content->setProcessName(content, &liteClient->client, (char*)longProcName.c_str(), 
+    EXPECT_EQ(content->setProcessName(content, &liteClient->client, (char*)longProcName.c_str(),
         longProcNameLen), 0);
     EXPECT_EQ(content->setKeepCapabilities(content, &liteClient->client), 0);
-    EXPECT_EQ(content->setUidGid(content, &liteClient->client), -1);
-    EXPECT_EQ(content->setCapabilities(content, &liteClient->client), -1);
+    EXPECT_EQ(content->setUidGid(content, &liteClient->client), 0);
+    EXPECT_EQ(content->setCapabilities(content, &liteClient->client), 0);
     content->runChildProcessor(content, &liteClient->client);
     free(liteClient);
 
