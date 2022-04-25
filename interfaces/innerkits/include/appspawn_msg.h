@@ -43,7 +43,7 @@ typedef enum {
 typedef enum {
     DEFAULT = 0,
     GET_RENDER_TERMINATION_STATUS,
-} AppOperateType;
+} AppOperateCode;
 
 #define APP_MSG_MAX_SIZE 4096  // appspawn message max size
 #define APP_LEN_PROC_NAME 256         // process name length
@@ -70,7 +70,7 @@ typedef struct AppParameter_ {
     char renderCmd[APP_RENDER_CMD_MAX_LEN];
     uint32_t flags;
     int32_t pid;                     // query render process exited status by render process pid
-    AppOperateType code;
+    AppOperateCode code;
 } AppParameter;
 
 #ifdef __cplusplus
