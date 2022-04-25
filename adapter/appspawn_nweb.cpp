@@ -17,6 +17,7 @@
 
 #include <dlfcn.h>
 #include <string>
+#include <cerrno>
 
 #ifdef NWEB_SPAWN
 #define RENDER_PROCESS_MAX_NUM 16

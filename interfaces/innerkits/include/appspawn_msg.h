@@ -35,15 +35,15 @@ extern "C" {
 #define APPSPAWN_SOCKET_NAME "AppSpawn"
 #endif
 
-enum AppType {
+typedef enum {
     APP_TYPE_DEFAULT = 0,  // JavaScript app
     APP_TYPE_NATIVE        // Native C++ app
-};
+} AppType;
 
-enum AppOperateCode {
+typedef enum {
     DEFAULT = 0,
     GET_RENDER_TERMINATION_STATUS,
-};
+} AppOperateCode;
 
 #define APP_MSG_MAX_SIZE 4096  // appspawn message max size
 #define APP_LEN_PROC_NAME 256         // process name length

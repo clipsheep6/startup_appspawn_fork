@@ -35,6 +35,7 @@
 static AppSpawnContentExt *g_appSpawnContent = NULL;
 
 static const int TV_SEC = 60;
+static const int SPECIAL_BUNDLE_NUMBER = 2;
 
 static int AppInfoHashNodeCompare(const HashNode *node1, const HashNode *node2)
 {
@@ -142,7 +143,7 @@ static void SignalHandler(const struct signalfd_siginfo *siginfo)
                 RemoveAppInfo(pid);
 #ifdef NWEB_SPAWN
                 RecordRenderProcessExitedStatus(pid, status);
-#endif        
+#endif
             }
             break;
         }
@@ -170,7 +171,7 @@ static void HandleSpecial(AppSpawnClientExt *appProperty)
         "com.ohos.medialibrary.MediaLibraryDataA",
         "com.ohos.medialibrary.MediaScannerAbilityA"
     };
-    for (size_t i = 0; i < sizeof(specialBundleNames) / sizeof(specialBundleNames[0]); i++) {
+    for (size_t i = 0; i < SPECIAL_BUNDLE_NUMBER; i++) {
         if (strcmp(appProperty->property.processName, specialBundleNames[i]) == 0) {
             if (appProperty->property.gidCount < APP_MAX_GIDS) {
                 appProperty->property.gidTable[appProperty->property.gidCount] = GID_USER_DATA_RW;
