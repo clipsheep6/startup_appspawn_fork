@@ -931,6 +931,7 @@ int32_t AppSpawnServer::DoSandboxRootFolderCreate(std::string sandboxPackagePath
     vecInfo.push_back("/sys");
     vecInfo.push_back("/sys_prod");
     vecInfo.push_back("/system");
+    vecInfo.push_back("/vendor");
 
     for (int i = 0; i < vecInfo.size(); i++) {
         tmpDir = sandboxPackagePath + vecInfo[i];
@@ -963,6 +964,7 @@ int32_t AppSpawnServer::DoSandboxRootFolderCreate(std::string sandboxPackagePath
     symlinkMap["/system/lib64"] = sandboxPackagePath + "/lib64";
 #else
     symlinkMap["/system/lib"] = sandboxPackagePath + "/lib";
+    symlinkMap["/vendor/lib"] = sandboxPackagePath + "/vendor/lib";
 #endif
 
     for (iter = symlinkMap.begin(); iter != symlinkMap.end(); ++iter) {
