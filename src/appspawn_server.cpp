@@ -92,29 +92,11 @@ static constexpr HiLogLabel LABEL = {LOG_CORE, 0, "AppSpawnServer"};
 extern "C" {
 #endif
 
-static void SignalHandler([[maybe_unused]] int sig)
-{
-    pid_t pid;
-    int status;
-
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        APPSPAWN_LOGE("SignalHandler HandleSignal: %d, status: %d", pid, status);
-    }
-}
-
 static void InstallSigHandler()
 {
-    struct sigaction sa = {};
-    sa.sa_handler = SignalHandler;
-    int err = sigaction(SIGCHLD, &sa, nullptr);
-    if (err < 0) {
-        HiLog::Error(LABEL, "Error installing SIGCHLD handler: %{public}d", errno);
-        return;
-    }
-
     struct sigaction sah = {};
     sah.sa_handler = SIG_IGN;
-    err = sigaction(SIGHUP, &sah, nullptr);
+    int err = sigaction(SIGHUP, &sah, nullptr);
     if (err < 0) {
         HiLog::Error(LABEL, "Error installing SIGHUP handler: %{public}d", errno);
     }
