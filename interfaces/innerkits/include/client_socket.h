@@ -84,11 +84,6 @@ public:
         APP_TYPE_NATIVE        // Native C++ app
     };
 
-    enum AppOperateCode {
-        DEFAULT = 0,
-        GET_RENDER_TERMINATION_STATUS,
-    };
-
     static constexpr int APPSPAWN_MSG_MAX_SIZE = APP_MSG_MAX_SIZE;  // appspawn message max size
     static constexpr int LEN_PROC_NAME = APP_LEN_PROC_NAME;         // process name length
     static constexpr int LEN_BUNDLE_NAME = APP_LEN_BUNDLE_NAME;     // bundle name length
@@ -99,6 +94,7 @@ public:
     static constexpr int APPSPAWN_COLD_BOOT = APP_COLD_BOOT;
 
     using AppProperty = AppParameter;
+    using AppOperateCode = AppOperateType;
 private:
     /**
      * Connects a client socket.
