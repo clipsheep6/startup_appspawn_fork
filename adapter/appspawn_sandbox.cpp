@@ -330,7 +330,7 @@ static int32_t DoSandboxRootFolderCreate(const std::string &sandboxPackagePath)
     return 0;
 }
 
-static void MatchSandbox(AppSpawnClientExt *appProperty)
+void MatchSandbox(AppSpawnClientExt *appProperty)
 {
     if (appProperty == nullptr) {
         return;
