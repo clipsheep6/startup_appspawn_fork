@@ -40,6 +40,11 @@ enum AppType {
     APP_TYPE_NATIVE        // Native C++ app
 };
 
+enum AppOperateType {
+    DEFAULT = 0,
+    GET_RENDER_TERMINATION_STATUS,
+};
+
 #define APP_MSG_MAX_SIZE 4096  // appspawn message max size
 #define APP_LEN_PROC_NAME 256         // process name length
 #define APP_LEN_BUNDLE_NAME 256       // bundle name length
@@ -64,6 +69,8 @@ typedef struct AppParameter_ {
     char apl[APP_APL_MAX_LEN];
     char renderCmd[APP_RENDER_CMD_MAX_LEN];
     uint32_t flags;
+    int32_t pid;                     // query render process exited status by render process pid
+    AppOperateType code;
 } AppParameter;
 
 #ifdef __cplusplus
