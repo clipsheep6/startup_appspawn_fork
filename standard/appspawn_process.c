@@ -242,7 +242,7 @@ static int32_t SetFileDescriptors(struct AppSpawnContent_ *content, AppSpawnClie
     return 0;
 }
 
-void Free(char **argv)
+static void Free(char **argv)
 {
     argv[0] = NULL;
     for (int i = 0; i < NULL_INDEX; i++) {
@@ -310,13 +310,7 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
             APPSPAWN_LOGE("Failed to execv, errno = %d", errno);
         }
     }
-    argv[0] = NULL;
-    for (int i = 0; i < NULL_INDEX; i++) {
-        if (argv[i] != NULL) {
-            free(argv[i]);
-        }
-    }
-    free(argv);
+    Free(argv);
     return ret;
 }
 

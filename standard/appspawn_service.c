@@ -35,7 +35,6 @@
 static AppSpawnContentExt *g_appSpawnContent = NULL;
 
 static const int TV_SEC = 60;
-static const int SPECIAL_BUNDLE_NUMBER = 2;
 
 static int AppInfoHashNodeCompare(const HashNode *node1, const HashNode *node2)
 {
@@ -141,9 +140,6 @@ static void SignalHandler(const struct signalfd_siginfo *siginfo)
             while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
                 APPSPAWN_LOGI("SignalHandler pid %d status %d", pid, status);
                 RemoveAppInfo(pid);
-#ifdef NWEB_SPAWN
-               // RecordRenderProcessExitedStatus(pid, status);
-#endif
             }
             break;
         }
@@ -171,7 +167,7 @@ static void HandleSpecial(AppSpawnClientExt *appProperty)
         "com.ohos.medialibrary.MediaLibraryDataA",
         "com.ohos.medialibrary.MediaScannerAbilityA"
     };
-    for (size_t i = 0; i < SPECIAL_BUNDLE_NUMBER; i++) {
+    for (size_t i = 0; i < sizeof(specialBundleNames) / sizeof(specialBundleNames[0]); i++) {
         if (strcmp(appProperty->property.processName, specialBundleNames[i]) == 0) {
             if (appProperty->property.gidCount < APP_MAX_GIDS) {
                 appProperty->property.gidTable[appProperty->property.gidCount] = GID_USER_DATA_RW;
@@ -206,7 +202,7 @@ static int WaitChild(int fd, int pid, const AppSpawnClientExt *appProperty)
     return result;
 }
 
-void StartColdApp(AppSpawnClientExt *appProperty)
+static void StartColdApp(AppSpawnClientExt *appProperty)
 {
     if (appProperty == NULL) {
         return;
@@ -219,29 +215,6 @@ void StartColdApp(AppSpawnClientExt *appProperty)
             appProperty->client.flags |= APP_COLD_START;
         }
     }
-}
-
-int GetProcessTerminationStatus(AppSpawnClientExt *appProperty)
-{
-#ifdef NWEB_SPAWN
-    if (appProperty == NULL) {
-        return -1;
-    }
-    if (appProperty->property.code == AppOperateType::GET_RENDER_TERMINATION_STATUS) {
-        int exitStatus = 0;
-        int ret = GetRenderProcessTerminationStatus(appProperty->property.pid, &exitStatus);
-        if (ret) {
-            SendResponse(appProperty, (char *)&ret, sizeof(ret));
-        } else {
-            SendResponse(appProperty, (char *)&exitStatus, sizeof(exitStatus));
-        }
-        APPSPAWN_LOGI("AppSpawnServer::get render process termination status, status = %d pid = %d uid %d %s %s",
-            exitStatus, appProperty->property.pid, appProperty->property.uid,
-            appProperty->property.processName, appProperty->property.bundleName);
-        return 0;
-    }
-#endif
-    return -1;
 }
 
 static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen)
@@ -263,18 +236,8 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
         LE_StopTimer(LE_GetDefaultLoop(), g_appSpawnContent->timer);
         g_appSpawnContent->timer = NULL;
     }
-
     // cold start app
-    //StartColdApp(appProperty);
-    
-    if (appProperty->property.flags & 0x01) {
-        char cold[10] = {0};  // 10 cold
-        ret = GetParameter("appspawn.cold.boot", "false", cold, sizeof(cold));
-        APPSPAWN_LOGV("appspawn.cold.boot %s %d ", cold, ret);
-        if (ret > 0 && (strcmp(cold, "true") == 0 || strcmp(cold, "1") == 0 || strcmp(cold, "enable") == 0)) {
-            appProperty->client.flags |= APP_COLD_START;
-        }
-    }
+    StartColdApp(appProperty);
 
     // create pipe for commication from child
     if (pipe(appProperty->fd) == -1) {
@@ -287,10 +250,6 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
         buffLen, appProperty->property.flags);
 
     fcntl(appProperty->fd[0], F_SETFL, O_NONBLOCK);
-
-    // get render process termination status
-    // APPSPAWN_CHECK(GetProcessTerminationStatus(appProperty) != 0, return, "Invalid appspawn content");
-
     pid_t pid = 0;
     int result = AppSpawnProcessMsg(&g_appSpawnContent->content, &appProperty->client, &pid);
     if (result == 0) {  // wait child process resutl
@@ -410,7 +369,7 @@ static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
     g_appSpawnContent = NULL;
 }
 
-int CreateHashForApp(AppSpawnContentExt *appSpawnContent)
+static void CreateHashForApp(AppSpawnContentExt *appSpawnContent)
 {
     HashInfo hashInfo = {
         AppInfoHashNodeCompare,
@@ -420,10 +379,8 @@ int CreateHashForApp(AppSpawnContentExt *appSpawnContent)
         AppInfoHashNodeFree,
         APP_HASH_BUTT
     };
-    int ret = HashMapCreate(&appSpawnContent->appMap, &hashInfo);
-    APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
-        return -1, "Failed to create hash for app");
-    return 0;
+    int ret = HashMapCreate(&appSpawnContent->appMap, &hashInfo); APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
+        return NULL, "Failed to create hash for app");
 }
 
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int mode)
@@ -450,22 +407,10 @@ AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcNam
         appSpawnContent->content.runAppSpawn = AppSpawnRun;
 
         // create hash for app
-        // APPSPAWN_CHECK(CreateHashForApp(appSpawnContent) == 0, return NULL, "Failed to create hash for app");
-
-        HashInfo hashInfo = {
-            AppInfoHashNodeCompare,
-            TestHashKeyCompare,
-            AppInfoHashNodeFunction,
-            AppInfoHashKeyFunction,
-            AppInfoHashNodeFree,
-            APP_HASH_BUTT
-        };
-        int ret = HashMapCreate(&appSpawnContent->appMap, &hashInfo);
-        APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
-            return NULL, "Failed to create hash for app");
+        CreateHashForApp(appSpawnContent);
 
         char path[128] = {0};  // 128 max path
-        ret = snprintf_s(path, sizeof(path), sizeof(path) - 1, "%s%s", SOCKET_DIR, socketName);
+        int ret = snprintf_s(path, sizeof(path), sizeof(path) - 1, "%s%s", SOCKET_DIR, socketName);
         APPSPAWN_CHECK(ret >= 0, free(appSpawnContent);
             return NULL, "Failed to snprintf_s %d", ret);
         int socketId = GetControlSocket(socketName);
