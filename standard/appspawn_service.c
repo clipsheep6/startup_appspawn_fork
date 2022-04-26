@@ -142,7 +142,7 @@ static void SignalHandler(const struct signalfd_siginfo *siginfo)
                 APPSPAWN_LOGI("SignalHandler pid %d status %d", pid, status);
                 RemoveAppInfo(pid);
 #ifdef NWEB_SPAWN
-                RecordRenderProcessExitedStatus(pid, status);
+               // RecordRenderProcessExitedStatus(pid, status);
 #endif
             }
             break;
