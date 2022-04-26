@@ -40,7 +40,7 @@ enum AppType {
     APP_TYPE_NATIVE        // Native C++ app
 };
 
-enum AppOperateType {
+enum AppOperateTypeValue {
     DEFAULT = 0,
     GET_RENDER_TERMINATION_STATUS,
 };
@@ -70,7 +70,7 @@ typedef struct AppParameter_ {
     char renderCmd[APP_RENDER_CMD_MAX_LEN];
     uint32_t flags;
     int32_t pid;                     // query render process exited status by render process pid
-    AppOperateType code;
+    AppOperateTypeValue code;
 } AppParameter;
 
 #ifdef __cplusplus

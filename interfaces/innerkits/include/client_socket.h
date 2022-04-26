@@ -94,7 +94,7 @@ public:
     static constexpr int APPSPAWN_COLD_BOOT = APP_COLD_BOOT;
 
     using AppProperty = AppParameter;
-    using AppOperateCode = AppOperateType;
+    using AppOperateCode = AppOperateTypeValue;
 private:
     /**
      * Connects a client socket.
