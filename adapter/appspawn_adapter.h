@@ -13,26 +13,24 @@
  * limitations under the License.
  */
 
-#include <cstring>
+#ifndef APPSPAWN_ADPATER_CPP
+#define APPSPAWN_ADPATER_CPP
 
-#include "appspawn_server.h"
-#include "hilog/log.h"
+#include "appspawn_service.h"
 
-int main(int argc, char *const argv[])
-{
-    if (argc > 0) {
-        // calculate child process long name size
-        uintptr_t start = reinterpret_cast<uintptr_t>(argv[0]);
-        uintptr_t end = reinterpret_cast<uintptr_t>(strchr(argv[argc - 1], 0));
-        uintptr_t argvSize = end - start;
+#include <dlfcn.h>
 
-#ifdef NWEB_SPAWN
-        OHOS::AppSpawn::AppSpawnServer appspawnServer("/dev/unix/socket/NWebSpawn");
-#else
-        OHOS::AppSpawn::AppSpawnServer appspawnServer("AppSpawn");
+#ifdef __cplusplus
+extern "C" {
 #endif
-        appspawnServer.ServerMain(argv[0], argvSize);
-    }
 
-    return 0;
+int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *client);
+void SetAppAccessToken(struct AppSpawnContent_ *content, AppSpawnClient *client);
+void LoadExtendLib(AppSpawnContent *content);
+void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client);
+
+void RegisterAppSandbox(struct AppSpawnContent_ *content, AppSpawnClient *client);
+#ifdef __cplusplus
 }
+#endif
+#endif
