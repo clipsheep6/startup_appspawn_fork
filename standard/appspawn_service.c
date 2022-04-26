@@ -369,7 +369,7 @@ static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
     g_appSpawnContent = NULL;
 }
 
-static void CreateHashForApp(AppSpawnContentExt *appSpawnContent)
+static int CreateHashForApp(AppSpawnContentExt *appSpawnContent)
 {
     HashInfo hashInfo = {
         AppInfoHashNodeCompare,
@@ -381,6 +381,7 @@ static void CreateHashForApp(AppSpawnContentExt *appSpawnContent)
     };
     int ret = HashMapCreate(&appSpawnContent->appMap, &hashInfo); APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
         return NULL, "Failed to create hash for app");
+    return 0;
 }
 
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int mode)
