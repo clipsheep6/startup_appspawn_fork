@@ -221,7 +221,7 @@ void StartColdApp(AppSpawnClientExt *appProperty)
     }
 }
 
-static int GetProcessTerminationStatus(AppSpawnClientExt *appProperty)
+int GetProcessTerminationStatus(AppSpawnClientExt *appProperty)
 {
 #ifdef NWEB_SPAWN
     if (appProperty == NULL) {
