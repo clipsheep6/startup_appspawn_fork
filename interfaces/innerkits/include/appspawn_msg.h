@@ -70,7 +70,7 @@ typedef struct AppParameter_ {
     char renderCmd[APP_RENDER_CMD_MAX_LEN];
     uint32_t flags;
     int32_t pid;                     // query render process exited status by render process pid
-    AppOperateTypeValue code;
+    enum AppOperateTypeValue code;
 } AppParameter;
 
 #ifdef __cplusplus
