@@ -66,6 +66,7 @@ typedef struct {
 } RenderProcessNode;
 
 static RenderProcessNode g_renderProcessArray[RENDER_PROCESS_MAX_NUM];
+static pthread_mutex_t g_renderProcessArrayLock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 namespace OHOS {
@@ -92,12 +93,66 @@ static constexpr HiLogLabel LABEL = {LOG_CORE, 0, "AppSpawnServer"};
 extern "C" {
 #endif
 
+#ifdef NWEB_SPAWN
+static void DumpRenderProcessExitedArray()
+{
+    APPSPAWN_LOGI("dump render process exited array:");
+    for (int i = 0; i < RENDER_PROCESS_MAX_NUM; i++) {
+        APPSPAWN_LOGI("[pid, exitedStatus] = [%d, %d]",
+            g_renderProcessArray[i].pid, g_renderProcessArray[i].exitStatus);
+    }
+}
+
+static void RecordRenderProcessExitedStatus(pid_t pid, int status)
+{
+    (void)pthread_mutex_lock(&g_renderProcessArrayLock);
+    int i = 0;
+    for (; i < RENDER_PROCESS_MAX_NUM; i++) {
+        if (g_renderProcessArray[i].pid == RENDER_PROCESS_ARRAY_IDLE) {
+            g_renderProcessArray[i].exitStatus = status;
+            g_renderProcessArray[i].pid = pid;
+            break;
+        }
+    }
+    if (i == RENDER_PROCESS_MAX_NUM) {
+        APPSPAWN_LOGE("no empty space in render process exited array");
+        DumpRenderProcessExitedArray();
+    }
+    (void)pthread_mutex_unlock(&g_renderProcessArrayLock);
+}
+
+static int GetRenderProcessTerminationStatus(int32_t pid, int *status)
+{
+    if (status == nullptr) {
+        return -EINVAL;
+    }
+
+    (void)pthread_mutex_lock(&g_renderProcessArrayLock);
+    for (int i = 0; i < RENDER_PROCESS_MAX_NUM; i++) {
+        if (g_renderProcessArray[i].pid == pid) {
+            *status = g_renderProcessArray[i].exitStatus;
+            g_renderProcessArray[i].pid = RENDER_PROCESS_ARRAY_IDLE;
+            (void)pthread_mutex_unlock(&g_renderProcessArrayLock);
+            return 0;
+        }
+    }
+    APPSPAWN_LOGE("not find pid[%d] in render process exited arrary", pid);
+    DumpRenderProcessExitedArray();
+    (void)pthread_mutex_unlock(&g_renderProcessArrayLock);
+
+    return -EINVAL;
+}
+#endif
+
 static void SignalHandler([[maybe_unused]] int sig)
 {
     pid_t pid;
     int status;
 
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+#ifdef NWEB_SPAWN
+            RecordRenderProcessExitedStatus(pid, status);
+#endif
         APPSPAWN_LOGE("SignalHandler HandleSignal: %d, status: %d", pid, status);
     }
 }
@@ -201,52 +256,6 @@ void AppSpawnServer::WaitRebootEvent()
         }
     }
 }
-
-#ifdef NWEB_SPAWN
-static void DumpRenderProcessExitedArray()
-{
-    APPSPAWN_LOGI("dump render process exited array:");
-    for (int i = 0; i < RENDER_PROCESS_MAX_NUM; i++) {
-        APPSPAWN_LOGI("[pid, exitedStatus] = [%d, %d]",
-            g_renderProcessArray[i].pid, g_renderProcessArray[i].exitStatus);
-    }
-}
-
-static void RecordRenderProcessExitedStatus(pid_t pid, int status)
-{
-    int i = 0;
-    for (; i < RENDER_PROCESS_MAX_NUM; i++) {
-        if (g_renderProcessArray[i].pid == RENDER_PROCESS_ARRAY_IDLE) {
-            g_renderProcessArray[i].exitStatus = status;
-            g_renderProcessArray[i].pid = pid;
-            break;
-        }
-    }
-    if (i == RENDER_PROCESS_MAX_NUM) {
-        APPSPAWN_LOGE("no empty space in render process exited array");
-        DumpRenderProcessExitedArray();
-    }
-}
-
-static int GetRenderProcessTerminationStatus(int32_t pid, int *status)
-{
-    if (status == nullptr) {
-        return -EINVAL;
-    }
-
-    for (int i = 0; i < RENDER_PROCESS_MAX_NUM; i++) {
-        if (g_renderProcessArray[i].pid == pid) {
-            *status = g_renderProcessArray[i].exitStatus;
-            g_renderProcessArray[i].pid = RENDER_PROCESS_ARRAY_IDLE;
-            return 0;
-        }
-    }
-    APPSPAWN_LOGE("not find pid[%d] in render process exited arrary", pid);
-    DumpRenderProcessExitedArray();
-
-    return -EINVAL;
-}
-#endif
 
 void AppSpawnServer::HandleSignal()
 {
