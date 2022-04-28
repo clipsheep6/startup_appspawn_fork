@@ -290,6 +290,7 @@ static int32_t DoSandboxRootFolderCreate(const std::string &sandboxPackagePath)
     vecInfo.push_back("/sys");
     vecInfo.push_back("/sys_prod");
     vecInfo.push_back("/system");
+    vecInfo.push_back("/vendor");
 
     for (size_t i = 0; i < vecInfo.size(); i++) {
         tmpDir = sandboxPackagePath + vecInfo[i];
@@ -320,8 +321,10 @@ static int32_t DoSandboxRootFolderCreate(const std::string &sandboxPackagePath)
     symlinkMap["/system/bin/init"] = sandboxPackagePath + "/init";
 #ifdef __aarch64__
     symlinkMap["/system/lib64"] = sandboxPackagePath + "/lib64";
+    symlinkMap["/vendor/lib64"] = sandboxPackagePath + "/vendor/lib64";
 #else
     symlinkMap["/system/lib"] = sandboxPackagePath + "/lib";
+    symlinkMap["/vendor/lib"] = sandboxPackagePath + "/vendor/lib";
 #endif
 
     for (iter = symlinkMap.begin(); iter != symlinkMap.end(); ++iter) {
