@@ -49,6 +49,8 @@ namespace {
     const std::string SANDBOX_DIR = "/mnt/sandbox/";
     const std::string STATUS_CHECK = "true";
     const std::string SBX_SWITCH_CHECK = "ON";
+    const std::string SYSTEM_LIB = "/lib";
+    const std::string SYSTEM_LIB_64 = "/lib64";
     const char *COMMON_PREFIX = "common";
     const char *PRIVATE_PREFIX = "individual";
     const char *SRC_PATH = "src-path";
@@ -66,8 +68,9 @@ namespace {
     const char *WARGNAR_DEVICE_PATH = "/3rdmodem";
     const char *APP_BASE = "app-base";
     const char *APP_RESOURCES = "app-resources";
+    const char *KIND_NAME = "kind-name";
+    const char *MOUNT_KIND_PREFIX = "mount-kind-paths";
 }
-
 
 nlohmann::json SandboxUtils::appSandboxConfig_;
 
@@ -242,6 +245,77 @@ bool SandboxUtils::GetSbxSwitchStatusByConfig(nlohmann::json &config)
     return true;
 }
 
+static bool Replace_OS64(nlohmann::json &mntPoint,const std::string JSON_TYPE, const std::string OLD_STRING, const std::string NEW_STRING)
+{
+    std::string LIB_OS = mntPoint[JSON_TYPE].get<std::string>();
+    std::string::size_type pos(0);
+    pos = LIB_OS.find(OLD_STRING);
+    if (pos != std::string::npos) {
+        LIB_OS.replace(pos, OLD_STRING.length(), NEW_STRING);
+        mntPoint[JSON_TYPE] = LIB_OS;
+        return true;
+    }
+    return false;
+}
+
+int SandboxUtils::DoAllMntKindMount(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig)
+{
+    if (appConfig.find(MOUNT_KIND_PREFIX) == appConfig.end()) {
+        HiLog::Debug(LABEL, "mount config is not found, maybe reuslt sandbox launch failed"
+            "app name is %{public}s", appProperty->bundleName);
+        return 0;
+    }
+    
+    nlohmann::json mountPoints = appConfig[MOUNT_KIND_PREFIX];
+    std::string sandboxRoot = GetSbxPathByConfig(appProperty, appConfig);
+    int mountPointSize = mountPoints.size();
+    
+    for (int i = 0; i < mountPointSize; i++) {
+        nlohmann::json mntPoint = mountPoints[i];
+        std::string  APP_KIND = mntPoint[KIND_NAME];
+        const char * p_app_kind = APP_KIND.c_str();
+
+        // if not defined, 
+        if (!strcmp(p_app_kind, appProperty->apl)) {
+            if (strcmp(p_app_kind, "normal") || strcmp(p_app_kind, "system_basic")) {
+                continue;
+            }
+        }
+
+        // Check the validity of the mount configuration
+        if (mntPoint.find(SRC_PATH) == mntPoint.end() || mntPoint.find(SANDBOX_PATH) == mntPoint.end()
+            || mntPoint.find(SANDBOX_FLAGS) == mntPoint.end()) {
+            HiLog::Error(LABEL, "read mount config failed, app name is %{public}s", appProperty->bundleName);
+            continue;
+        }
+
+#ifdef __aarch64__
+        if (!Replace_OS64(mntPoint, SRC_PATH, SYSTEM_LIB, SYSTEM_LIB_64)) {
+            HiLog::Error(LABEL, "replace os 64 error, app name is %{public}s", appProperty->bundleName);
+        }
+#endif
+        std::string srcPath = ConvertToRealPath(appProperty, mntPoint[SRC_PATH].get<std::string>());
+        std::string sandboxPath = sandboxRoot + ConvertToRealPath(appProperty,
+                                                                  mntPoint[SANDBOX_PATH].get<std::string>());
+        unsigned long mountFlags = GetMountFlagsFromConfig(mntPoint[SANDBOX_FLAGS].get<std::vector<std::string>>());
+
+        int ret = DoAppSandboxMountOnce(srcPath.c_str(), sandboxPath.c_str(), mountFlags);
+        if (ret) {
+            HiLog::Error(LABEL, "DoAppSandboxMountOnce failed, %{public}s", sandboxPath.c_str());
+
+            std::string actionStatus = STATUS_CHECK;
+            (void)JsonUtils::GetStringFromJson(mntPoint, ACTION_STATUS, actionStatus);
+            if (actionStatus == STATUS_CHECK) {
+                return ret;
+            }
+        }
+
+        DoSandboxChmod(mntPoint, sandboxRoot);
+    }
+
+    return 0;
+}
+
 int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig)
 {
     if (appConfig.find(MOUNT_PREFIX) == appConfig.end()) {
@@ -307,6 +381,15 @@ int SandboxUtils::DoAllSymlinkPointslink(const ClientSocket::AppProperty *appPro
             continue;
         }
 
+#ifdef __aarch64__
+        if (!Replace_OS64(symPoint, TARGET_NAME, "lib", "lib64")) {
+            HiLog::Error(LABEL, "replace os 64 error, app name is %{public}s", appProperty->bundleName);
+        }
+        if (!Replace_OS64(symPoint, LINK_NAME, "lib", "lib64")) {
+            HiLog::Error(LABEL, "replace os 64 error, app name is %{public}s", appProperty->bundleName);
+        }        
+#endif
+
         std::string targetName = ConvertToRealPath(appProperty, symPoint[TARGET_NAME].get<std::string>());
         std::string linkName = sandboxRoot + ConvertToRealPath(appProperty, symPoint[LINK_NAME].get<std::string>());
         HiLog::Debug(LABEL, "symlink, from %{public}s to %{public}s", targetName.c_str(), linkName.c_str());
@@ -354,9 +437,10 @@ int32_t SandboxUtils::DoSandboxFileCommonBind(const ClientSocket::AppProperty *a
 {
     nlohmann::json commonConfig = wholeConfig[COMMON_PREFIX][0];
     int ret = 0;
-
+    int test = 0;
     if (commonConfig.find(APP_BASE) != commonConfig.end()) {
         ret = DoAllMntPointsMount(appProperty, commonConfig[APP_BASE][0]);
+        test = DoAllMntKindMount(appProperty, commonConfig[APP_BASE][0]);
         if (ret) {
             return ret;
         }
