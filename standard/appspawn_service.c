@@ -459,6 +459,11 @@ static int CreateHashForApp(AppSpawnContentExt *appSpawnContent)
     return 0;
 }
 
+static void CloseStreamTask(AppSpawnContentExt *appSpawnContent)
+{
+    LE_CloseStreamTask(LE_GetDefaultLoop(), appSpawnContent->server);
+}
+
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int mode)
 {
     APPSPAWN_CHECK(LE_GetDefaultLoop() != NULL, return NULL, "Invalid default loop");
@@ -503,7 +508,9 @@ AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcNam
             return NULL, "Failed to create socket for %s", path);
         // create socket
         ret = chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-        APPSPAWN_CHECK(ret == 0, free(appSpawnContent);
+        APPSPAWN_CHECK(ret == 0,
+            CloseStreamTask(appSpawnContent);
+            free(appSpawnContent);
             return NULL, "Failed to chmod %s, err %d. ", path, errno);
         APPSPAWN_LOGI("AppSpawnCreateContent path %s fd %d", path, LE_GetSocketFd(appSpawnContent->server));
     }
