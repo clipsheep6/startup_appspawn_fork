@@ -269,7 +269,8 @@ int SandboxUtils::DoAllMntAplMount(const ClientSocket::AppProperty *appProperty,
     for (int i = 0; i < mountPointSize; i++) {
         nlohmann::json mntPoint = mountPoints[i];
         std::string  APP_KIND = mntPoint[KIND_NAME];
-        const char * p_app_kind = APP_KIND.c_str();
+        const char * p_app_kind = nullptr;
+        p_app_kind = APP_KIND.c_str();
 
         // if not defined
         if (!strcmp(p_app_kind, appProperty->apl)) {
