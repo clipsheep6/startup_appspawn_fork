@@ -66,6 +66,8 @@ namespace {
     const char *WARGNAR_DEVICE_PATH = "/3rdmodem";
     const char *APP_BASE = "app-base";
     const char *APP_RESOURCES = "app-resources";
+    const char *KIND_NAME = "apl-name";
+    const char *MOUNT_APL_PREFIX = "mount-apl-paths";
 }
 
 
@@ -253,6 +255,59 @@ bool SandboxUtils::GetSbxSwitchStatusByConfig(nlohmann::json &config)
     return true;
 }
 
+int SandboxUtils::DoAllMntAplMount(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig)
+{
+    if (appConfig.find(MOUNT_APL_PREFIX) == appConfig.end()) {
+        HiLog::Debug(LABEL, "mount config is not found, maybe reuslt sandbox launch failed"
+            "app name is %{public}s", appProperty->bundleName);
+        return 0;
+    }
+    
+    nlohmann::json mountPoints = appConfig[MOUNT_APL_PREFIX];
+    std::string sandboxRoot = GetSbxPathByConfig(appProperty, appConfig);
+    int mountPointSize = mountPoints.size();
+    
+    for (int i = 0; i < mountPointSize; i++) {
+        nlohmann::json mntPoint = mountPoints[i];
+        std::string  APP_KIND = mntPoint[KIND_NAME];
+        const char * p_app_kind = APP_KIND.c_str();
+
+        // if not defined
+        if (!strcmp(p_app_kind, appProperty->apl)) {
+            if (strcmp(p_app_kind, "normal") || strcmp(p_app_kind, "system_basic")) {
+                continue;
+            }
+        }
+
+        // Check the validity of the mount configuration
+        if (mntPoint.find(SRC_PATH) == mntPoint.end() || mntPoint.find(SANDBOX_PATH) == mntPoint.end()
+            || mntPoint.find(SANDBOX_FLAGS) == mntPoint.end()) {
+            HiLog::Error(LABEL, "read mount config failed, app name is %{public}s", appProperty->bundleName);
+            continue;
+        }
+
+        std::string srcPath = ConvertToRealPath(appProperty, mntPoint[SRC_PATH].get<std::string>());
+        std::string sandboxPath = sandboxRoot + ConvertToRealPath(appProperty,
+                                                                  mntPoint[SANDBOX_PATH].get<std::string>());
+        unsigned long mountFlags = GetMountFlagsFromConfig(mntPoint[SANDBOX_FLAGS].get<std::vector<std::string>>());
+
+        int ret = DoAppSandboxMountOnce(srcPath.c_str(), sandboxPath.c_str(), mountFlags);
+        if (ret) {
+            HiLog::Error(LABEL, "DoAppSandboxMountOnce failed, %{public}s", sandboxPath.c_str());
+
+            std::string actionStatus = STATUS_CHECK;
+            (void)JsonUtils::GetStringFromJson(mntPoint, ACTION_STATUS, actionStatus);
+            if (actionStatus == STATUS_CHECK) {
+                return ret;
+            }
+        }
+
+        DoSandboxChmod(mntPoint, sandboxRoot);
+    }
+
+    return 0;
+}
+
 int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig)
 {
     if (appConfig.find(MOUNT_PREFIX) == appConfig.end()) {
@@ -365,10 +420,11 @@ int32_t SandboxUtils::DoSandboxFileCommonBind(const ClientSocket::AppProperty *a
 {
     nlohmann::json commonConfig = wholeConfig[COMMON_PREFIX][0];
     int ret = 0;
-
+    int test = 0;
     if (commonConfig.find(APP_BASE) != commonConfig.end()) {
         ret = DoAllMntPointsMount(appProperty, commonConfig[APP_BASE][0]);
-        if (ret) {
+        test = DoAllMntAplMount(appProperty, commonConfig[APP_BASE][0]);
+        if (ret && test) {
             return ret;
         }
     }

@@ -49,6 +49,7 @@ private:
     static int32_t DoSandboxRootFolderCreate(const ClientSocket::AppProperty *appProperty,
                                              std::string &sandboxPackagePath);
     static void DoSandboxChmod(nlohmann::json jsonConfig, std::string &sandboxRoot);
+    static int DoAllMntAplMount(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig);
     static int DoAllMntPointsMount(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig);
     static int DoAllSymlinkPointslink(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig);
     static std::string ConvertToRealPath(const ClientSocket::AppProperty *appProperty, std::string sandboxRoot);
