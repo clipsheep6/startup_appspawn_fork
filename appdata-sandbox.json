@@ -3,19 +3,6 @@
         "top-sandbox-switch": "ON",
         "app-base" : [{
             "sandbox-root" : "/mnt/sandbox/<PackageName>",
-            "mount-apl-paths": [{
-                "src-path" : "/system/lib/media/",
-                "sandbox-path" : "/testapp/app",
-                "sandbox-flags" : [ "bind", "rec" ],
-                "check-action-status": "true",
-                "apl-name": "normal"
-            }, {
-                "src-path" : "/system/lib/module/",
-                "sandbox-path" : "/testapp/private",
-                "sandbox-flags" : [ "bind", "rec" ],
-                "check-action-status": "true",
-                "apl-name": "system_basic"
-            }],
             "mount-bind-paths" : [{
                     "src-path" : "/config",
                     "sandbox-path" : "/config",

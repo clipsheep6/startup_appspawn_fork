@@ -70,7 +70,6 @@ namespace {
     const char *MOUNT_APL_PREFIX = "mount-apl-paths";
 }
 
-
 nlohmann::json SandboxUtils::appSandboxConfig_;
 nlohmann::json SandboxUtils::productSandboxConfig_;
 
@@ -424,7 +423,7 @@ int32_t SandboxUtils::DoSandboxFileCommonBind(const ClientSocket::AppProperty *a
     if (commonConfig.find(APP_BASE) != commonConfig.end()) {
         ret = DoAllMntPointsMount(appProperty, commonConfig[APP_BASE][0]);
         test = DoAllMntAplMount(appProperty, commonConfig[APP_BASE][0]);
-        if (ret && test) {
+        if (ret) {
             return ret;
         }
     }
