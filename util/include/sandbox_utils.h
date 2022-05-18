@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include "nlohmann/json.hpp"
 #include "client_socket.h"
+#include "appspawn_adapter.h"
 
 namespace OHOS {
 namespace AppSpawn {
@@ -48,6 +49,7 @@ private:
                                              std::string &sandboxPackagePath);
     static void DoSandboxChmod(nlohmann::json jsonConfig, std::string &sandboxRoot);
     static int DoAllMntPointsMount(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig);
+    static int DoAllMntAplMount(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig);
     static int DoAllSymlinkPointslink(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig);
     static std::string ConvertToRealPath(const ClientSocket::AppProperty *appProperty, std::string sandboxRoot);
     static std::string GetSbxPathByConfig(const ClientSocket::AppProperty *appProperty, nlohmann::json &config);
@@ -55,7 +57,6 @@ private:
     static bool CheckAppSandboxSwitchStatus(const ClientSocket::AppProperty *appProperty);
     static bool GetSbxSwitchStatusByConfig(nlohmann::json &config);
     static unsigned long GetMountFlagsFromConfig(const std::vector<std::string> &vec);
-
 private:
     static nlohmann::json appSandboxConfig_;
 };
