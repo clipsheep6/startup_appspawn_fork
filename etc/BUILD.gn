@@ -21,7 +21,6 @@ ohos_prebuilt_etc("appdata-sandbox.json") {
     source = "//base/startup/appspawn_standard/appdata-sandbox.json"
   }
   
-  relative_install_dir = "init"
   subsystem_name = "${subsystem_name}"
   part_name = "${part_name}"
   module_install_dir = "etc/sandbox"
