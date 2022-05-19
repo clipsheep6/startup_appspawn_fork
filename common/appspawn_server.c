@@ -119,8 +119,12 @@ int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client,
             content->runChildProcessor(content, client);
         }
         APPSPAWN_LOGI("App exit %d.", getpid());
+#ifdef OHOS_LITE
+        _exit(0x7f); // 0x7f user exit
+#else
 #ifndef APPSPAWN_TEST
         quick_exit(0);
+#endif
 #endif
     }
     *childPid = pid;
