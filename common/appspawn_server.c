@@ -31,6 +31,18 @@ static int NotifyResToParent(struct AppSpawnContent_ *content, AppSpawnClient *c
     return 0;
 }
 
+static void ProcessExit(void)
+{
+    APPSPAWN_LOGI("App exit %d.", getpid());
+#ifdef OHOS_LITE
+    _exit(0x7f); // 0x7f user exit
+#else
+#ifndef APPSPAWN_TEST
+    quick_exit(0);
+#endif
+#endif
+}
+
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
 {
     APPSPAWN_LOGI("DoStartApp id %d longProcNameLen %u", client->id, longProcNameLen);
@@ -118,14 +130,7 @@ int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client,
         if (ret == 0 && content->runChildProcessor != NULL) {
             content->runChildProcessor(content, client);
         }
-        APPSPAWN_LOGI("App exit %d.", getpid());
-#ifdef OHOS_LITE
-        _exit(0x7f); // 0x7f user exit
-#else
-#ifndef APPSPAWN_TEST
-        quick_exit(0);
-#endif
-#endif
+        ProcessExit(void);
     }
     *childPid = pid;
     return 0;
