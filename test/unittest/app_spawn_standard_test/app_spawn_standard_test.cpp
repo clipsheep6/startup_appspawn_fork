@@ -85,9 +85,8 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_002, TestSize.Level0)
     pid_t pid = 100;
     AppSpawnContentExt* appSpawnContent = (AppSpawnContentExt*)malloc(sizeof(AppSpawnContentExt));
     EXPECT_TRUE(appSpawnContent);
-    if (strcpy_s(appSpawnContent->content.longProcName, longProcNameLen, longProcName.c_str()) != 0) {
-        GTEST_LOG_(INFO) << "strcpy_s failed";
-    };
+
+    appSpawnContent->content.longProcName = reinterpret_cast<char*>(longProcName.c_str());
     appSpawnContent->content.longProcNameLen = longProcNameLen;
     appSpawnContent->timer = NULL;
     appSpawnContent->content.runAppSpawn = NULL;
