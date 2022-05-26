@@ -219,7 +219,7 @@
                     "check-action-status": "true"
                 },
                 {
-                    "src-path" : "/mnt/external/vol",
+                    "src-path" : "/mnt/external",
                     "sandbox-path" : "/mnt/external",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "true"
