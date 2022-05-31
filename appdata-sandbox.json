@@ -213,8 +213,8 @@
             "sandbox-switch": "ON",
             "sandbox-root" : "/mnt/sandbox/<PackageName>",
             "mount-bind-paths" : [{
-                    "src-path" : "/data/service/el1/public/user_file_service/share/public",
-                    "sandbox-path" : "/data/storage/el1/bundle/user_file_share",
+                    "src-path" : "/data/service/el1/public/storage_daemon/share/public",
+                    "sandbox-path" : "/data/storage/el1/bundle/storage_daemon",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "true"
                 },
