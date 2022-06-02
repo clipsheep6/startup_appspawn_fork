@@ -87,7 +87,7 @@ static int GetMessageSt(MessageSt *msgSt, IpcIo *req)
     }
 
     size_t len = 0;
-    char* str = ReadString(req, &len);
+    uint8_t* str = ReadString(req, &len);
     if (str == NULL || len == 0) {
         APPSPAWN_LOGE("[appspawn] invoke, get data failed.");
         return EC_FAILURE;
@@ -98,7 +98,8 @@ static int GetMessageSt(MessageSt *msgSt, IpcIo *req)
 }
 
 static AppSpawnContentLite *g_appSpawnContentLite = NULL;
-AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int cold)
+AppSpawnContentLite *AppSpawnCreateContent
+(const char *socketName, char *longProcName,uint32_t longProcNameLen, int cold)
 {
     UNUSED(longProcName);
     UNUSED(longProcNameLen);
