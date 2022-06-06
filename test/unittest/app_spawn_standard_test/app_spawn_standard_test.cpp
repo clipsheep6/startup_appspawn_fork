@@ -40,22 +40,14 @@ using namespace testing::ext;
     }
 #endif
 
-static void runChildProcessor(struct AppSpawnContent_ *content, AppSpawnClient *client)
+namespace OHOS {
+static void RunChildProcessor(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {}
 
 static void initAppSpawn(struct AppSpawnContent_ *content)
 {}
 
-static void loadExtendLib(struct AppSpawnContent_ *content)
-{}
-
 static void runAppSpawn(struct AppSpawnContent_ *content, int argc, char *const argv[])
-{}
-
-static void clearEnvironment(struct AppSpawnContent_ *content, AppSpawnClient *client)
-{}
-
-static void setAppAccessToken(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {}
 
 static int setAppSandbox(struct AppSpawnContent_ *content, AppSpawnClient *client)
@@ -89,19 +81,13 @@ static int setCapabilities(struct AppSpawnContent_ *content, AppSpawnClient *cli
     return 0;
 }
 
-static int notifyResToParent(struct AppSpawnContent_ *content, AppSpawnClient *client, int result)
-{
-    return 0;
-}
-
-namespace OHOS {
 class AppSpawnStandardTest : public testing::Test {
 public:
     static void SetUpTestCase();
     static void TearDownTestCase();
     void SetUp();
     void TearDown();
-};
+}
 
 void AppSpawnStandardTest::SetUpTestCase()
 {}
@@ -147,10 +133,10 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_002, TestSize.Level0)
     EXPECT_TRUE(appSpawnContent);
     if (strcpy_s(appSpawnContent->content.longProcName, longProcNameLen, longProcName.c_str()) != 0) {
         GTEST_LOG_(INFO) << "strcpy_s failed";
-    };
+    }
     appSpawnContent->content.longProcNameLen = longProcNameLen;
     appSpawnContent->timer = NULL;
-    appSpawnContent->content.runAppSpawn = runAppSpawn;
+    appSpawnContent->content.runAppSpawn = NULL;
     appSpawnContent->content.initAppSpawn = NULL;
     AppSpawnProcessMsg(&appSpawnContent->content, &client->client, &pid);
     free(appSpawnContent);
@@ -265,11 +251,11 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_005, TestSize.Level0)
     EXPECT_TRUE(appSpawnContent);
     if (strcpy_s(appSpawnContent->content.longProcName, longProcNameLen, longProcName.c_str()) != 0) {
         GTEST_LOG_(INFO) << "strcpy_s failed";
-    };
+    }
     appSpawnContent->content.longProcNameLen = longProcNameLen;
     appSpawnContent->timer = NULL;
-    appSpawnContent->content.runAppSpawn = NULL;
-    appSpawnContent->content.initAppSpawn = NULL;
+    appSpawnContent->content.runAppSpawn = runAppSpawn;
+    appSpawnContent->content.initAppSpawn = initAppSpawn;
     AppSpawnProcessMsg(&appSpawnContent->content, &client->client, &pid);
     free(appSpawnContent);
     free(client);
