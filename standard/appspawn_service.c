@@ -166,10 +166,10 @@ static void ProcessTimer(const TimerHandle taskHandle, void *context)
 
 static void HandleSpecial(AppSpawnClientExt *appProperty)
 {
-    const char *fileExtensionHapBundleName = "com.ohos.FileExtension.FileExtensionData";
+    const char *fileExtensionHapBundleName = "com.ohos.UserFile.ExternalFileManager";
     if (strcmp(appProperty->property.bundleName, fileExtensionHapBundleName) == 0) {
         if (appProperty->property.gidCount < APP_MAX_GIDS) {
-            appProperty->property.gidTable[appProperty->property.gidCount] = GID_FILE_EXTENSION_HAP;
+            appProperty->property.gidTable[appProperty->property.gidCount] = GID_USER_EXTERNAL_FILE_MANAGER;
             appProperty->property.gidCount++;
         }
     }
