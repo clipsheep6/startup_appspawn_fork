@@ -35,7 +35,7 @@ extern "C" {
 #define MAX_LEN_SHORT_NAME 16
 #define WAIT_DELAY_US (100 * 1000)  // 100ms
 
-#define GID_FILE_ACCESS 1006  // only used for ExternalFileManager.hap
+#define GID_USER_EXTERNAL_FILE_MANAGER 1006  // only used for ExternalFileManager.hap
 
 #define GID_USER_DATA_RW 1008
 
