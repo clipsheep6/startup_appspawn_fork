@@ -31,8 +31,8 @@ ohos_static_library("appspawn_socket_client") {
 
   public_configs = [ ":exported_header_files" ]
   deps = [
-    "//utils/native/base:utils",
     "//base/startup/init_lite/interfaces/innerkits:libbegetutil",
+    "//utils/native/base:utils",
   ]
   external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
 

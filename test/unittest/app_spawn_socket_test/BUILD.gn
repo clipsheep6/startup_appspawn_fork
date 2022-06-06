@@ -24,7 +24,10 @@ ohos_unittest("AppSpawnSocketTest") {
 
   configs = [ "${appspawn_path}:appspawn_config" ]
 
-  deps = [ "${appspawn_path}/test:appspawn_test_source" ]
+  deps = [
+    "${appspawn_path}/test:appspawn_test_source",
+    "//base/startup/init_lite/interfaces/innerkits:libbegetutil",
+  ]
 
   external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
 }
