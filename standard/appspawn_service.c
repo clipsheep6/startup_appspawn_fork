@@ -355,7 +355,7 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
     }
 }
 
-static int OnConnection(const LoopHandle loopHandle, const TaskHandle server)
+APPSPAWN_STATIC int OnConnection(const LoopHandle loopHandle, const TaskHandle server)
 {
     static uint32_t clientId = 0;
     APPSPAWN_LOGI("OnConnection ");
@@ -431,7 +431,7 @@ void AppSpawnColdRun(AppSpawnContent *content, int argc, char *const argv[])
     g_appSpawnContent = NULL;
 }
 
-static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
+APPSPAWN_STATIC void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
 {
     APPSPAWN_LOGI("AppSpawnRun");
     AppSpawnContentExt *appSpawnContent = (AppSpawnContentExt *)content;
@@ -444,8 +444,9 @@ static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
     if (status != 0) {
         APPSPAWN_LOGE("Failed to add signal %d", status);
     }
-
+#ifndef APPSPAWN_TEST
     LE_RunLoop(LE_GetDefaultLoop());
+#endif
     APPSPAWN_LOGI("AppSpawnRun exit ");
     LE_CloseSignalTask(LE_GetDefaultLoop(), appSpawnContent->sigHandler);
     // release resource

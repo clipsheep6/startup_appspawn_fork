@@ -35,7 +35,6 @@ using namespace std;
 using namespace OHOS;
 using namespace OHOS::HiviewDFX;
 using namespace OHOS::AppSpawn;
-static constexpr HiLogLabel LABEL = {LOG_CORE, 0, "AppSpawn_SandboxUtil"};
 
 bool g_isPrivAppSandboxCreated = false;
 bool g_isAppSandboxCreated = false;
@@ -55,13 +54,13 @@ void LoadAppSandboxConfig(void)
     nlohmann::json appSandboxConfig;
     bool rc = JsonUtils::GetJsonObjFromJson(appSandboxConfig, APP_JSON_CONFIG);
     if (!rc) {
-        HiLog::Error(LABEL, "AppSpawnServer::Failed to load app private sandbox config");
+        APPSPAWN_LOGE("AppSpawnServer::Failed to load app private sandbox config");
     }
     SandboxUtils::StoreJsonConfig(appSandboxConfig);
 
     rc = JsonUtils::GetJsonObjFromJson(appSandboxConfig, PRODUCT_JSON_CONFIG);
     if (!rc) {
-        HiLog::Error(LABEL, "AppSpawnServer::Failed to load app product sandbox config");
+        APPSPAWN_LOGE("AppSpawnServer::Failed to load app product sandbox config");
     }
     SandboxUtils::StoreProductJsonConfig(appSandboxConfig);
 }

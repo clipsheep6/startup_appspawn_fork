@@ -72,6 +72,7 @@ typedef struct AppSpawnContent_ {
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int cold);
 int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid);
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen);
+int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t pid);
 
 #ifdef OHOS_DEBUG
 void GetCurTime(struct timespec* tmCur);
