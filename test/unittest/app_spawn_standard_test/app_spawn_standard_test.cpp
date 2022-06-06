@@ -87,7 +87,7 @@ public:
     static void TearDownTestCase();
     void SetUp();
     void TearDown();
-}
+};
 
 void AppSpawnStandardTest::SetUpTestCase()
 {}
