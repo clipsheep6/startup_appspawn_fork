@@ -122,6 +122,7 @@ static int SetCapabilities(struct AppSpawnContent_ *content, AppSpawnClient *cli
 
 static void InitDebugParams(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
+#ifndef APPSPAWN_TEST
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
 #ifdef __aarch64__
     const char *debugSoPath = "/system/lib64/libhidebug.so";
@@ -139,19 +140,22 @@ static void InitDebugParams(struct AppSpawnContent_ *content, AppSpawnClient *cl
     APPSPAWN_CHECK(initParam != NULL, dlclose(handle); return, "Failed to dlsym InitEnvironmentParam, %s", dlerror());
     (*initParam)(appProperty->property.processName);
     dlclose(handle);
+#endif
 }
 
 static void ClearEnvironment(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("ClearEnvironment id %d", client->id);
-    AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGCHLD);
     sigaddset(&mask, SIGTERM);
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
     // close child fd
+#ifndef APPSPAWN_TEST
+    AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
     close(appProperty->fd[0]);
+#endif
     InitDebugParams(content, client);
     return;
 }

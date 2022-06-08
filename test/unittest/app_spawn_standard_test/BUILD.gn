@@ -33,6 +33,7 @@ ohos_unittest("AppSpawnStandardTest") {
     "${appspawn_path}/adapter/appspawn_ace.cpp",
     "${appspawn_path}/standard/appspawn_process.c",
     "${appspawn_path}/standard/appspawn_service.c",
+    "${appspawn_path}/util/src/sandbox_utils.cpp",
     "app_spawn_standard_test.cpp",
   ]
 
