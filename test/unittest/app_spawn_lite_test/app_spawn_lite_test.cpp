@@ -21,7 +21,6 @@
 #include <vector>
 #include "gtest/gtest.h"
 #include "appspawn_message.h"
-#include "appspawn_service.h"
 #include "appspawn_msg.h"
 
 using namespace testing::ext;

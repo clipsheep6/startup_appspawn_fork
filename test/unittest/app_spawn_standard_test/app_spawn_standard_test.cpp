@@ -17,33 +17,41 @@
 #include <string>
 #include <cerrno>
 
-// redefine private and protected since testcase need to invoke and test private function
-#define private public
-#define protected public
-#include "appspawn_service.h"
-#undef private
-#undef protected
-
 #include "securec.h"
 #include "appspawn_adapter.h"
 #include "appspawn_server.h"
+#include "appspawn_service.h"
+#include "json_utils.h"
+#include "init_hashmap.h"
+#include "loop_event.h"
 
 using namespace testing;
 using namespace testing::ext;
+using namespace OHOS::AppSpawn;
+using nlohmann::json;
 
 #ifdef __cplusplus
     extern "C" {
 #endif
-    int OnConnection(const LoopHandle loopHandle, const TaskHandle server);
-    void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[]);
+int OnConnection(const LoopHandle loopHandle, const TaskHandle server);
+int AppInfoHashNodeCompare(const HashNode *node1, const HashNode *node2);
+int AppInfoHashNodeFunction(const HashNode *node);
+int AppInfoHashKeyFunction(const void *key);
+void AppInfoHashNodeFree(const HashNode *node);
+int TestHashKeyCompare(const HashNode *node1, const void *key);
+void AddAppInfo(pid_t pid, const char *processName);
+void RemoveAppInfo(pid_t pid);
+void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen);
+extern TaskHandle g_testClientHandle;
 #ifdef __cplusplus
     }
 #endif
 
 namespace OHOS {
+/*
 static void RunChildProcessor(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {}
-
+*/
 static void runAppSpawn(struct AppSpawnContent_ *content, int argc, char *const argv[])
 {}
 
@@ -78,6 +86,21 @@ static int setCapabilities(struct AppSpawnContent_ *content, AppSpawnClient *cli
     return 0;
 }
 
+static AppInfo *TestCreateHashNode(const char *value, int pid)
+{
+    AppInfo *node = (AppInfo *)malloc(sizeof(AppInfo) + strlen(value) + 1);
+    if (node == nullptr) {
+        return nullptr;
+    }
+    node->pid = pid;
+    int ret = strcpy_s(node->name, strlen(value) + 1, value);
+    if (ret != 0) {
+        free(node);
+        return nullptr;
+    }
+    return node;
+}
+
 class AppSpawnStandardTest : public testing::Test {
 public:
     static void SetUpTestCase();
@@ -108,7 +131,8 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_001, TestSize.Level0)
     EXPECT_TRUE(content);
     content->loadExtendLib = LoadExtendLib;
     content->runChildProcessor = RunChildProcessor;
-    AppSpawnRun(content, 0, nullptr);
+    content->initAppSpawn(content);
+    content->runAppSpawn(content, 0, nullptr);
     GTEST_LOG_(INFO) << "App_Spawn_Standard_001 end";
 }
 
@@ -131,7 +155,9 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_002, TestSize.Level0)
     appSpawnContent->content.longProcNameLen = longProcNameLen;
     appSpawnContent->timer = NULL;
     appSpawnContent->content.runAppSpawn = NULL;
+
     AppSpawnProcessMsg(&appSpawnContent->content, &client->client, &pid);
+
     free(appSpawnContent);
     free(client);
     GTEST_LOG_(INFO) << "App_Spawn_Standard_002 end";
@@ -150,6 +176,9 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003, TestSize.Level0)
     client->property.uid = 10000;
     client->property.gid = 1000;
     client->property.gidCount = 1;
+    if (strcpy_s(client->property.processName, APP_LEN_PROC_NAME, "xxx.xxx.xxx") != 0) {
+        GTEST_LOG_(INFO) << "strcpy_s failed";
+    }
     if (strcpy_s(client->property.bundleName, APP_LEN_BUNDLE_NAME, "xxx.xxx.xxx") != 0) {
         GTEST_LOG_(INFO) << "strcpy_s failed";
     }
@@ -167,8 +196,9 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003, TestSize.Level0)
     AppSpawnContent *content = AppSpawnCreateContent("AppSpawn", longProcName, longProcNameLen, 1);
     content->loadExtendLib = LoadExtendLib;
     content->runChildProcessor = RunChildProcessor;
-
     SetContentFunction(content);
+    EXPECT_EQ(ForkChildProc(content, &client->client, 0), 0);
+    EXPECT_NE(ForkChildProc(content, &client->client, -1), 0);
 
     content->clearEnvironment(content, &client->client);
     EXPECT_EQ(content->setProcessName(content, &client->client, (char *)longProcName, longProcNameLen), 0);
@@ -257,7 +287,10 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_006, TestSize.Level0)
     int cold = 1;
     AppSpawnContent *content = AppSpawnCreateContent("AppSpawn", (char*)longProcName.c_str(), longProcNameLen, cold);
     EXPECT_TRUE(content);
+    content->loadExtendLib = LoadExtendLib;
+    content->runChildProcessor = RunChildProcessor;
 
+    content->runChildProcessor(content, nullptr);
     char tmp0[] = "/system/bin/appspawn";
     char tmp1[] = "cold-start";
     char tmp2[] = "1";
@@ -268,13 +301,14 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_006, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Standard_006 end";
 }
 
+/*
 HWTEST(AppSpawnStandardTest, App_Spawn_Standard_007, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "App_Spawn_Standard_007 start";
     RunChildProcessor(nullptr, nullptr);
     GTEST_LOG_(INFO) << "App_Spawn_Standard_007 end";
 }
-
+*/
 HWTEST(AppSpawnStandardTest, App_Spawn_Standard_008, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "App_Spawn_Standard_008 start";
@@ -282,12 +316,15 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_008, TestSize.Level0)
     int64_t longProcNameLen = longProcName.length();
     std::unique_ptr<AppSpawnClientExt> clientExt = std::make_unique<AppSpawnClientExt>();
     AppSpawnContent *content = AppSpawnCreateContent("AppSpawn", (char*)longProcName.c_str(), longProcNameLen, 1);
+    content->loadExtendLib = LoadExtendLib;
+    content->runChildProcessor = RunChildProcessor;
     content->setAppSandbox = setAppSandbox;
     content->setKeepCapabilities = setKeepCapabilities;
     content->setProcessName = setProcessName;
     content->setUidGid = setUidGid;
     content->setFileDescriptors = setFileDescriptors;
     content->setCapabilities = setCapabilities;
+
     int ret = DoStartApp((AppSpawnContent_*)content, &clientExt->client, (char*)"", 0);
     EXPECT_EQ(ret, 0);
 
@@ -295,18 +332,65 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_008, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Standard_008 end";
 }
 
+static int TestClient(int cold, AppOperateType code)
+{
+    char buffer[64] = {0}; // 64 buffer size
+    AppSpawnContentExt *content = (AppSpawnContentExt *)AppSpawnCreateContent("AppSpawn", buffer, sizeof(buffer), cold);
+    if (content == NULL) {
+        return -1;
+    }
+    // create connection
+    OnConnection(LE_GetDefaultLoop(), content->server);
+
+    // process recv message
+    if (g_testClientHandle == nullptr) {
+        free(content);
+        return -1;
+    }
+
+    AppParameter property = {};
+    property.uid = 100;
+    property.gid = 100;
+    property.gidCount = 1;
+    property.gidTable[0] = 101;
+    const std::string name = "wwwwwwwwwwwww";
+    (void)strcpy_s(property.processName, sizeof(property.processName), name.c_str());
+    (void)strcpy_s(property.bundleName, sizeof(property.bundleName), name.c_str());
+    (void)strcpy_s(property.renderCmd, sizeof(property.renderCmd), name.c_str());
+    (void)strcpy_s(property.soPath, sizeof(property.soPath), name.c_str());
+    (void)strcpy_s(property.apl, sizeof(property.apl), "system_core");
+    property.flags = 0;
+    property.code = code;
+    property.accessTokenId = 0;
+    OnReceiveRequest(g_testClientHandle, (const uint8_t *)&property, sizeof(property));
+    LE_CloseTask(LE_GetDefaultLoop(), g_testClientHandle);
+    free(content);
+    return 0;
+}
+
 HWTEST(AppSpawnStandardTest, App_Spawn_Standard_009, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "App_Spawn_Standard_009 start";
-    TaskHandle server = (TaskHandle)malloc(sizeof(TaskHandle));
-    EXPECT_TRUE(server);
-    int ret = OnConnection(nullptr, server);
-    EXPECT_EQ(ret, -1);
-    server->flags = 0;
-    OnConnection(nullptr, server);
-    server->flags = 1;
-    OnConnection(nullptr, server);
-    free(server);
+    //int ret = TestClient(0, DEFAULT);
+    //EXPECT_EQ(ret, 0);
     GTEST_LOG_(INFO) << "App_Spawn_Standard_009 end";
+}
+
+HWTEST(AppSpawnStandardTest, App_Spawn_Standard_010, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "App_Spawn_Standard_010 start";
+    const char *str1 = "Test hash map node 1";
+    const char *str2 = "Test hash map node 2";
+    AppInfo *node1 = TestCreateHashNode(str1, 11);
+    AppInfo *node2 = TestCreateHashNode(str2, 12);
+
+    AppInfoHashNodeCompare((const HashNode *)node1, (const HashNode *)node2);
+    int value = 13;
+    TestHashKeyCompare((const HashNode *)node1, &value);
+    AppInfoHashNodeFunction((const HashNode *)node1);
+    AppInfoHashKeyFunction(&value);
+    AppInfoHashNodeFree((const HashNode *)node1);
+    AppInfoHashNodeFree((const HashNode *)node2);
+    GTEST_LOG_(INFO) << "App_Spawn_Standard_010 end";
 }
 } // namespace OHOS

@@ -41,20 +41,20 @@ static AppSpawnContentExt *g_appSpawnContent = NULL;
 
 static const int TV_SEC = 60;
 
-static int AppInfoHashNodeCompare(const HashNode *node1, const HashNode *node2)
+APPSPAWN_STATIC int AppInfoHashNodeCompare(const HashNode *node1, const HashNode *node2)
 {
     AppInfo *testNode1 = HASHMAP_ENTRY(node1, AppInfo, node);
     AppInfo *testNode2 = HASHMAP_ENTRY(node2, AppInfo, node);
     return testNode1->pid - testNode2->pid;
 }
 
-static int TestHashKeyCompare(const HashNode *node1, const void *key)
+APPSPAWN_STATIC int TestHashKeyCompare(const HashNode *node1, const void *key)
 {
     AppInfo *testNode1 = HASHMAP_ENTRY(node1, AppInfo, node);
     return testNode1->pid - *(pid_t *)key;
 }
 
-static int AppInfoHashNodeFunction(const HashNode *node)
+APPSPAWN_STATIC int AppInfoHashNodeFunction(const HashNode *node)
 {
     AppInfo *testNode = HASHMAP_ENTRY(node, AppInfo, node);
     if (testNode == NULL) {
@@ -63,20 +63,20 @@ static int AppInfoHashNodeFunction(const HashNode *node)
     return testNode->pid % APP_HASH_BUTT;
 }
 
-static int AppInfoHashKeyFunction(const void *key)
+APPSPAWN_STATIC int AppInfoHashKeyFunction(const void *key)
 {
     pid_t code = *(pid_t *)key;
     return code % APP_HASH_BUTT;
 }
 
-static void AppInfoHashNodeFree(const HashNode *node)
+APPSPAWN_STATIC void AppInfoHashNodeFree(const HashNode *node)
 {
     AppInfo *testNode = HASHMAP_ENTRY(node, AppInfo, node);
     APPSPAWN_LOGI("AppInfoHashNodeFree %s\n", testNode->name);
     free(testNode);
 }
 
-static void AddAppInfo(pid_t pid, const char *processName)
+APPSPAWN_STATIC void AddAppInfo(pid_t pid, const char *processName)
 {
     size_t len = strlen(processName) + 1;
     AppInfo *node = (AppInfo *)malloc(sizeof(AppInfo) + len + 1);
@@ -99,7 +99,7 @@ static void ProcessTimer(const TimerHandle taskHandle, void *context)
     LE_StopLoop(LE_GetDefaultLoop());
 }
 
-static void RemoveAppInfo(pid_t pid)
+APPSPAWN_STATIC void RemoveAppInfo(pid_t pid)
 {
     HashNode *node = HashMapGet(g_appSpawnContent->appMap, (const void *)&pid);
     APPSPAWN_CHECK(node != NULL, return, "Invalid node %d", pid);
@@ -169,7 +169,7 @@ static void PrintProcessExitInfo(pid_t pid, uid_t uid, int status)
 }
 #endif
 
-static void SignalHandler(const struct signalfd_siginfo *siginfo)
+APPSPAWN_STATIC void SignalHandler(const struct signalfd_siginfo *siginfo)
 {
     APPSPAWN_LOGI("SignalHandler signum %d", siginfo->ssi_signo);
     switch (siginfo->ssi_signo) {
@@ -244,7 +244,7 @@ static int WaitChild(int fd, int pid, const AppSpawnClientExt *appProperty)
     return result;
 }
 
-static void StartColdApp(AppSpawnClientExt *appProperty)
+static void CheckColdAppEnabled(AppSpawnClientExt *appProperty)
 {
     if (appProperty == NULL) {
         return;
@@ -299,7 +299,7 @@ static void GetProcessTerminationStatus(AppSpawnClientExt *appProperty)
 }
 #endif
 
-static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen)
+APPSPAWN_STATIC void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen)
 {
     APPSPAWN_CHECK(buffer != NULL && buffLen >= sizeof(AppParameter), LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "Invalid buffer buffLen %u", buffLen);
@@ -326,7 +326,7 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
         g_appSpawnContent->timer = NULL;
     }
 
-    StartColdApp(appProperty);
+    CheckColdAppEnabled(appProperty);
     // create pipe for commication from child
     if (pipe(appProperty->fd) == -1) {
         APPSPAWN_LOGE("create pipe fail, errno = %d", errno);
@@ -355,6 +355,9 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
     }
 }
 
+#ifdef APPSPAWN_TEST
+TaskHandle g_testClientHandle = NULL;
+#endif
 APPSPAWN_STATIC int OnConnection(const LoopHandle loopHandle, const TaskHandle server)
 {
     static uint32_t clientId = 0;
@@ -364,6 +367,9 @@ APPSPAWN_STATIC int OnConnection(const LoopHandle loopHandle, const TaskHandle s
     TaskHandle stream;
     LE_StreamInfo info = {};
     info.baseInfo.flags = TASK_STREAM | TASK_PIPE | TASK_CONNECT;
+#ifdef APPSPAWN_TEST
+    info.baseInfo.flags |= TASK_TEST;
+#endif
     info.baseInfo.close = OnClose;
     info.baseInfo.userDataSize = sizeof(AppSpawnClientExt);
     info.disConntectComplete = NULL;
@@ -377,6 +383,9 @@ APPSPAWN_STATIC int OnConnection(const LoopHandle loopHandle, const TaskHandle s
     client->client.id = ++clientId;
     client->client.flags = 0;
     APPSPAWN_LOGI("OnConnection client fd %d Id %d", LE_GetSocketFd(stream), client->client.id);
+#ifdef APPSPAWN_TEST
+    g_testClientHandle = stream;
+#endif
     return 0;
 }
 
@@ -400,6 +409,7 @@ static void AppSpawnInit(AppSpawnContent *content)
     if (content->loadExtendLib) {
         content->loadExtendLib(content);
     }
+
     content->notifyResToParent = NotifyResToParent;
     // set private function
     SetContentFunction(content);
@@ -431,7 +441,7 @@ void AppSpawnColdRun(AppSpawnContent *content, int argc, char *const argv[])
     g_appSpawnContent = NULL;
 }
 
-APPSPAWN_STATIC void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
+static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
 {
     APPSPAWN_LOGI("AppSpawnRun");
     AppSpawnContentExt *appSpawnContent = (AppSpawnContentExt *)content;

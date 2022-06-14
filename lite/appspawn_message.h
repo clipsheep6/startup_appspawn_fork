@@ -18,13 +18,19 @@
 #include <stdlib.h>
 
 #include "appspawn_server.h"
-#include "appspawn_service.h"
 
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 #endif /* __cplusplus */
+
+#define APPSPAWN_SERVICE_NAME "appspawn"
+
+enum APPSPAWN_FUNCID {
+    ID_CALL_CREATE_SERVICE = 0,
+    ID_CALL_BUT
+};
 
 typedef struct {
     char *bundleName;
@@ -54,4 +60,4 @@ void FreeMessageSt(MessageSt *targetSt);
 #endif
 #endif
 
-#endif  // BASE_STARTUP_APPSPAWN_SERVICE_H
+#endif  // BASE_STARTUP_APPSPAWN_MESSAGE_H
