@@ -115,7 +115,9 @@ int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_
         int ret = -1;
         if (client->flags & APP_COLD_START) {
             if (content->coldStartApp != NULL && content->coldStartApp(content, client) == 0) {
+#ifndef APPSPAWN_TEST
                 _exit(0x7f); // 0x7f user exit
+#endif
                 return -1;
             } else {
                 ret = DoStartApp(content, client, content->longProcName, content->longProcNameLen);

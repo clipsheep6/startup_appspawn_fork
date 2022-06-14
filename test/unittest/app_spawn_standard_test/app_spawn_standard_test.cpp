@@ -332,7 +332,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_008, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Standard_008 end";
 }
 
-static int TestClient(int cold, AppOperateType code)
+static int TestClient(int cold, AppOperateType code, const std::string &processName)
 {
     char buffer[64] = {0}; // 64 buffer size
     AppSpawnContentExt *content = (AppSpawnContentExt *)AppSpawnCreateContent("AppSpawn", buffer, sizeof(buffer), cold);
@@ -353,11 +353,10 @@ static int TestClient(int cold, AppOperateType code)
     property.gid = 100;
     property.gidCount = 1;
     property.gidTable[0] = 101;
-    const std::string name = "wwwwwwwwwwwww";
-    (void)strcpy_s(property.processName, sizeof(property.processName), name.c_str());
-    (void)strcpy_s(property.bundleName, sizeof(property.bundleName), name.c_str());
-    (void)strcpy_s(property.renderCmd, sizeof(property.renderCmd), name.c_str());
-    (void)strcpy_s(property.soPath, sizeof(property.soPath), name.c_str());
+    (void)strcpy_s(property.processName, sizeof(property.processName), processName.c_str());
+    (void)strcpy_s(property.bundleName, sizeof(property.bundleName), processName.c_str());
+    (void)strcpy_s(property.renderCmd, sizeof(property.renderCmd), processName.c_str());
+    (void)strcpy_s(property.soPath, sizeof(property.soPath), processName.c_str());
     (void)strcpy_s(property.apl, sizeof(property.apl), "system_core");
     property.flags = 0;
     property.code = code;
@@ -371,8 +370,8 @@ static int TestClient(int cold, AppOperateType code)
 HWTEST(AppSpawnStandardTest, App_Spawn_Standard_009, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "App_Spawn_Standard_009 start";
-    //int ret = TestClient(0, DEFAULT);
-    //EXPECT_EQ(ret, 0);
+    int ret = TestClient(0, DEFAULT, "ohos.test.testapp");
+    EXPECT_EQ(ret, 0);
     GTEST_LOG_(INFO) << "App_Spawn_Standard_009 end";
 }
 

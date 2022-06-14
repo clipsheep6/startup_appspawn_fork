@@ -39,7 +39,11 @@
 
 static AppSpawnContentExt *g_appSpawnContent = NULL;
 
+#ifdef APPSPAWN_TEST
+static const int TV_SEC = 1;
+#else
 static const int TV_SEC = 60;
+#endif
 
 APPSPAWN_STATIC int AppInfoHashNodeCompare(const HashNode *node1, const HashNode *node2)
 {
