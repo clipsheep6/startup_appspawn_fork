@@ -73,7 +73,6 @@ namespace {
     const char *SANDBOX_ROOT_PREFIX = "sandbox-root";
     const char *TOP_SANDBOX_SWITCH_PREFIX = "top-sandbox-switch";
     const char *TARGET_NAME = "target-name";
-    const char *WARGNAR_DEVICE_PATH = "/3rdmodem";
 }
 
 nlohmann::json SandboxUtils::appSandboxConfig_;
@@ -681,7 +680,7 @@ int32_t SandboxUtils::SetAppSandboxProperty(const ClientSocket::AppProperty *app
     }
 
     // to make wargnar work and check app sandbox switch
-    if (access(WARGNAR_DEVICE_PATH, F_OK) == 0 || (CheckTotalSandboxSwitchStatus(appProperty) == false) ||
+    if ((CheckTotalSandboxSwitchStatus(appProperty) == false) ||
         (CheckAppSandboxSwitchStatus(appProperty) == false)) {
         rc = DoSandboxRootFolderCreateAdapt(sandboxPackagePath);
     } else {
