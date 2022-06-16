@@ -711,12 +711,14 @@ int32_t SandboxUtils::SetAppSandboxProperty(const ClientSocket::AppProperty *app
         return rc;
     }
 
+#ifndef APPSPAWN_TEST
     rc = syscall(SYS_pivot_root, sandboxPackagePath.c_str(), sandboxPackagePath.c_str());
     if (rc) {
         HiLog::Error(LABEL, "pivot root failed, packagename is %{public}s, errno is %{public}d", \
             bundleName.c_str(), errno);
         return rc;
     }
+#endif
 
     rc = umount2(".", MNT_DETACH);
     if (rc) {

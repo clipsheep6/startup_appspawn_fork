@@ -91,13 +91,8 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
     return 0;
 }
 
-int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid)
+int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t pid)
 {
-    APPSPAWN_CHECK(content != NULL, return -1, "Invalid content for appspawn");
-    APPSPAWN_CHECK(client != NULL && childPid != NULL, return -1, "Invalid client for appspawn");
-    APPSPAWN_LOGI("AppSpawnProcessMsg id %d 0x%x", client->id, client->flags);
-
-    pid_t pid = fork();
     if (pid < 0) {
         return -errno;
     } else if (pid == 0) {
@@ -118,7 +113,9 @@ int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client,
         int ret = -1;
         if (client->flags & APP_COLD_START) {
             if (content->coldStartApp != NULL && content->coldStartApp(content, client) == 0) {
+#ifndef APPSPAWN_TEST
                 _exit(0x7f); // 0x7f user exit
+#endif
                 return -1;
             } else {
                 ret = DoStartApp(content, client, content->longProcName, content->longProcNameLen);
@@ -140,6 +137,18 @@ int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client,
         }
         ProcessExit();
     }
+    return 0;
+}
+
+int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid)
+{
+    APPSPAWN_CHECK(content != NULL, return -1, "Invalid content for appspawn");
+    APPSPAWN_CHECK(client != NULL && childPid != NULL, return -1, "Invalid client for appspawn");
+    APPSPAWN_LOGI("AppSpawnProcessMsg id %d 0x%x", client->id, client->flags);
+
+    pid_t pid = fork();
+    int ret = ForkChildProc(content, client, pid);
+    APPSPAWN_CHECK(ret == 0, return ret, "fork child process error: %d", ret);
     *childPid = pid;
     return 0;
 }

@@ -21,6 +21,7 @@
 using namespace std;
 using namespace OHOS;
 using namespace OHOS::HiviewDFX;
+using nlohmann::json;
 static constexpr HiLogLabel LABEL = {LOG_CORE, 0, "AppSpawn_JsonUtil"};
 
 namespace OHOS {
