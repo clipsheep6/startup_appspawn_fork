@@ -17,6 +17,7 @@
 
 #include <stdlib.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #ifdef OHOS_DEBUG
@@ -52,7 +53,7 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to set app sandbox");
     }
-    umask(0002);
+    (void)umask(0002);
     if (content->setKeepCapabilities) {
         ret = content->setKeepCapabilities(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
