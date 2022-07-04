@@ -361,15 +361,15 @@ int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProper
 {
     std::string bundleName = appProperty->bundleName;
     if (appConfig.find(MOUNT_PREFIX) == appConfig.end()) {
-        APPSPAWN_LOGV("mount config is not found, maybe reuslt sandbox launch failed"
-            "app name is %s", bundleName.c_str());
+        APPSPAWN_LOGV("mount config not found, sandbox launch failed, app name is %s", bundleName.c_str());
         return 0;
     }
 
     bool checkFlag = false;
     if (appConfig.find(FLAGS) != appConfig.end()) {
         std::string flagsStr = appConfig[FLAGS].get<std::string>();
-        if (ConvertFlagStr(flagsStr) == appProperty->flags &&
+        auto flags = ConvertFlagStr(flagsStr);
+        if ((flags != -1) && flags == static_cast<int>(appProperty->flags) &&
             bundleName.find("wps") != std::string::npos) {
             checkFlag = true;
         }
@@ -497,7 +497,7 @@ int32_t SandboxUtils::HandleFlagsPoint(const ClientSocket::AppProperty *appPrope
         if (flagPoint.find(FLAGS) != flagPoint.end()) {
             std::string flagsStr = flagPoint[FLAGS].get<std::string>();
             int flag = ConvertFlagStr(flagsStr);
-            if (appProperty->flags == flag) {
+            if (flag != -1 && flag == static_cast<int>(appProperty->flags)) {
                 return DoAllMntPointsMount(appProperty, flagPoint);
             }
         } else {
