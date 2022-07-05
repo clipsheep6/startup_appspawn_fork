@@ -268,7 +268,7 @@ int32_t AppSpawnServer::SetProcessName(
     }
 
     // set long process name
-    if (strncpy_s(longProcName, len, processName, len) != EOK) {
+    if (strncpy_s(longProcName, longProcNameLen, processName, len) != EOK) {
         HiLog::Error(LABEL, "strncpy_s long name error: %{public}d", strerror_r(errno, err_string, ERR_STRING_SZ));
         return -EINVAL;
     }
