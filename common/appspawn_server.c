@@ -92,7 +92,7 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
     return 0;
 }
 
-int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t pid)
+int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t pid, bool isAllowInternet)
 {
     if (pid < 0) {
         return -errno;
@@ -139,14 +139,14 @@ int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_
 #endif  // OHOS_DEBUG
 
         if (ret == 0 && content->runChildProcessor != NULL) {
-            content->runChildProcessor(content, client);
+            content->runChildProcessor(content, client, true, isAllowInternet);
         }
         ProcessExit();
     }
     return 0;
 }
 
-int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid)
+int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid, bool isAllowInternet)
 {
     APPSPAWN_CHECK(content != NULL, return -1, "Invalid content for appspawn");
     APPSPAWN_CHECK(client != NULL && childPid != NULL, return -1, "Invalid client for appspawn");
@@ -156,7 +156,7 @@ int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client,
 #else
     pid_t pid = 0;
 #endif
-    int ret = ForkChildProc(content, client, pid);
+    int ret = ForkChildProc(content, client, pid, isAllowInternet);
     APPSPAWN_CHECK(ret == 0, return ret, "fork child process error: %d", ret);
     *childPid = pid;
     return 0;

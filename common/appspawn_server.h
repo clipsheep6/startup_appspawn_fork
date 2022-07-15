@@ -17,6 +17,7 @@
 #define APPSPAWN_SERVER_H
 #include "beget_ext.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -64,7 +65,7 @@ typedef struct AppSpawnContent_ {
     int (*setCapabilities)(struct AppSpawnContent_ *content, AppSpawnClient *client);
 
     void (*notifyResToParent)(struct AppSpawnContent_ *content, AppSpawnClient *client, int result);
-    void (*runChildProcessor)(struct AppSpawnContent_ *content, AppSpawnClient *client);
+    void (*runChildProcessor)(struct AppSpawnContent_ *content, AppSpawnClient *client, bool isAllowInternet);
 
     // for cold start
     int (*coldStartApp)(struct AppSpawnContent_ *content, AppSpawnClient *client);
@@ -74,9 +75,10 @@ typedef struct AppSpawnContent_ {
 } AppSpawnContent;
 
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int cold);
-int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid);
+int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid,
+                       bool setAllowInternet, bool isAllowInternet);
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen);
-int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t pid);
+int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t pid, bool isAllowInternet);
 
 #ifdef OHOS_DEBUG
 void GetCurTime(struct timespec* tmCur);
