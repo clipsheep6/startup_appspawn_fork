@@ -389,7 +389,7 @@ HWTEST_F(AppSpawnLiteTest, SetContentFunctionTest_001, TestSize.Level0)
     EXPECT_EQ(content->setKeepCapabilities(content, &liteClient->client), 0);
     EXPECT_EQ(content->setUidGid(content, &liteClient->client), 0);
     EXPECT_EQ(content->setCapabilities(content, &liteClient->client), 0);
-    content->runChildProcessor(content, &liteClient->client, false, false);
+    content->runChildProcessor(content, &liteClient->client);
     free(liteClient);
     GTEST_LOG_(INFO) << "SetContentFunctionTest_001 end";
 }

@@ -37,16 +37,16 @@ void LoadExtendLib(AppSpawnContent *content)
     APPSPAWN_LOGI("MainThread::LoadAbilityLibrary. End calling dlopen");
 }
 
-void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client, bool setAllowInternet, bool isAllowInternet)
+void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("AppExecFwk::MainThread::Start");
 #ifndef APPSPAWN_TEST
-    if (setAllowInternet) {
+    if (nullptr != client) {
         void (*func)(bool);
         void* handler = dlopen(LIBNETSYS_CLIENT_NAME, RTLD_LAZY);
         if (NULL != handler) {
             func = (void (*)(bool))dlsym(handler, ALLOW_SOCKET_FUNCNAME);
-            if (NULL != func) {
+            if (NULL != func && client->setAllowInternet == true) {
                 func(isAllowInternet);
             }
             dlclose(handler);

@@ -161,8 +161,7 @@ static int SetCapabilities(struct AppSpawnContent_ *content, AppSpawnClient *cli
     return 0;
 }
 
-static void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client,
-                              bool setAllowInternet, bool isAllowInternet)
+static void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("AbilityMain");
     AppSpawnClientLite *appProperty = (AppSpawnClientLite *)client;

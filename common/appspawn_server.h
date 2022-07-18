@@ -41,6 +41,8 @@ extern "C" {
 typedef struct AppSpawnClient_ {
     uint32_t id;
     int32_t flags;
+    bool setAllowInternet;
+    bool isAllowInternet;
 } AppSpawnClient;
 
 #define MAX_SOCKEYT_NAME_LEN 128
@@ -65,8 +67,7 @@ typedef struct AppSpawnContent_ {
     int (*setCapabilities)(struct AppSpawnContent_ *content, AppSpawnClient *client);
 
     void (*notifyResToParent)(struct AppSpawnContent_ *content, AppSpawnClient *client, int result);
-    void (*runChildProcessor)(struct AppSpawnContent_ *content, AppSpawnClient *client,
-                              bool setAllowInternet, bool isAllowInternet);
+    void (*runChildProcessor)(struct AppSpawnContent_ *content, AppSpawnClient *client);
 
     // for cold start
     int (*coldStartApp)(struct AppSpawnContent_ *content, AppSpawnClient *client);
@@ -76,10 +77,9 @@ typedef struct AppSpawnContent_ {
 } AppSpawnContent;
 
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int cold);
-int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid,
-                       bool isAllowInternet);
+int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid);
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen);
-int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t pid, bool isAllowInternet);
+int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t pid);
 
 #ifdef OHOS_DEBUG
 void GetCurTime(struct timespec* tmCur);

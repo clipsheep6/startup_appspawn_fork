@@ -208,7 +208,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_004, TestSize.Level0)
     content->loadExtendLib = LoadExtendLib;
     content->runChildProcessor = RunChildProcessor;
 
-    content->runChildProcessor(content, nullptr, false, false);
+    content->runChildProcessor(content, nullptr);
     char tmp0[] = "/system/bin/appspawn";
     char tmp1[] = "cold-start";
     char tmp2[] = "1";

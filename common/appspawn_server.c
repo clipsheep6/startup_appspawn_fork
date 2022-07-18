@@ -92,7 +92,7 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
     return 0;
 }
 
-int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t pid, bool isAllowInternet)
+int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t pid)
 {
     if (pid < 0) {
         return -errno;
@@ -139,7 +139,7 @@ int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_
 #endif  // OHOS_DEBUG
 
         if (ret == 0 && content->runChildProcessor != NULL) {
-            content->runChildProcessor(content, client, true, isAllowInternet);
+            content->runChildProcessor(content, client);
         }
         ProcessExit();
     }
