@@ -70,7 +70,7 @@ void LoadExtendLib(AppSpawnContent *content)
     }
 }
 
-void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
+void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client, bool setAllowInternet, bool isAllowInternet)
 {
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
     using FuncType = void (*)(const char *cmd);

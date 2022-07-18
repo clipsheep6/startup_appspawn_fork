@@ -13,10 +13,13 @@
  * limitations under the License.
  */
 
+#include <dlfcn.h>
 #include "appspawn_adapter.h"
 
 #include "foundation/ability/ability_runtime/interfaces/kits/native/appkit/app/main_thread.h"
 
+static const char *LIBNETSYS_CLIENT_NAME = "libnetsys_client.z.so";
+static const char *ALLOW_SOCKET_FUNCNAME = "setAllowCreateSocket";
 void LoadExtendLib(AppSpawnContent *content)
 {
 #ifdef __aarch64__
@@ -38,6 +41,17 @@ void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("AppExecFwk::MainThread::Start");
 #ifndef APPSPAWN_TEST
+    if (client != NULL) {
+        void (*func)(bool);
+        void* handler = dlopen(LIBNETSYS_CLIENT_NAME, RTLD_LAZY);
+        if (handler != NULL) {
+            func = (void (*)(bool))dlsym(handler, ALLOW_SOCKET_FUNCNAME);
+            if (func != NULL && client->setAllowInternet == true) {
+                func(isAllowInternet);
+            }
+            dlclose(handler);
+        }
+    }
     OHOS::AppExecFwk::MainThread::Start();
 #endif
 }
