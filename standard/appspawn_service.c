@@ -370,8 +370,7 @@ APPSPAWN_STATIC void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t
     fcntl(appProperty->fd[0], F_SETFL, O_NONBLOCK);
 
     pid_t pid = 0;
-    int result = AppSpawnProcessMsg(&g_appSpawnContent->content, &appProperty->client, &pid,
-                                    appProperty->property.isAllowInternet);
+    int result = AppSpawnProcessMsg(&g_appSpawnContent->content, &appProperty->client, &pid);
     if (result == 0) {  // wait child process result
         result = WaitChild(appProperty->fd[0], pid, appProperty);
     }
@@ -470,7 +469,7 @@ void AppSpawnColdRun(AppSpawnContent *content, int argc, char *const argv[])
 
     ret = DoStartApp(content, &client->client, content->longProcName, content->longProcNameLen);
     if (ret == 0 && content->runChildProcessor != NULL) {
-        content->runChildProcessor(content, &client->client, false, false);
+        content->runChildProcessor(content, &client->client);
     }
 
     APPSPAWN_LOGI("App exit %d.", getpid());
