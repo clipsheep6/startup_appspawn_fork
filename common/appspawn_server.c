@@ -146,7 +146,7 @@ int ForkChildProc(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_
     return 0;
 }
 
-int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid, bool isAllowInternet)
+int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client, pid_t *childPid)
 {
     APPSPAWN_CHECK(content != NULL, return -1, "Invalid content for appspawn");
     APPSPAWN_CHECK(client != NULL && childPid != NULL, return -1, "Invalid client for appspawn");
@@ -156,7 +156,7 @@ int AppSpawnProcessMsg(struct AppSpawnContent_ *content, AppSpawnClient *client,
 #else
     pid_t pid = 0;
 #endif
-    int ret = ForkChildProc(content, client, pid, isAllowInternet);
+    int ret = ForkChildProc(content, client, pid);
     APPSPAWN_CHECK(ret == 0, return ret, "fork child process error: %d", ret);
     *childPid = pid;
     return 0;
