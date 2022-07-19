@@ -12,14 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#ifndef APPSPAWN_TEST
 #include <dlfcn.h>
+#endif
 #include "appspawn_adapter.h"
 
 #include "foundation/ability/ability_runtime/interfaces/kits/native/appkit/app/main_thread.h"
-
+#ifndef APPSPAWN_TEST
 static const char *LIBNETSYS_CLIENT_NAME = "libnetsys_client.z.so";
 static const char *ALLOW_SOCKET_FUNCNAME = "setAllowCreateSocket";
+#endif
 void LoadExtendLib(AppSpawnContent *content)
 {
 #ifdef __aarch64__
