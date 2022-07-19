@@ -16,6 +16,7 @@
 #ifndef APPSPAWN_MSG_H
 #define APPSPAWN_MSG_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -72,6 +73,7 @@ typedef struct AppParameter_ {
     int32_t pid;                     // query render process exited status by render process pid
     int32_t bundleIndex;
     AppOperateType code;
+    bool isAllowInternet; // app sockect allowed
 } AppParameter;
 
 #ifdef __cplusplus

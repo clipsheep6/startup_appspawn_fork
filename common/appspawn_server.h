@@ -17,6 +17,7 @@
 #define APPSPAWN_SERVER_H
 #include "beget_ext.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -40,6 +41,8 @@ extern "C" {
 typedef struct AppSpawnClient_ {
     uint32_t id;
     int32_t flags;
+    bool setAllowInternet;
+    bool isAllowInternet;
 } AppSpawnClient;
 
 #define MAX_SOCKEYT_NAME_LEN 128
