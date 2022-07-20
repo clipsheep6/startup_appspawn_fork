@@ -370,6 +370,10 @@ APPSPAWN_STATIC void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t
     fcntl(appProperty->fd[0], F_SETFL, O_NONBLOCK);
 
     pid_t pid = 0;
+    if (appProperty->property.isAllowInternet == true) {
+        appProperty->client.setAllowInternet = true;
+        appProperty->client.isAllowInternet = true;
+    }
     int result = AppSpawnProcessMsg(&g_appSpawnContent->content, &appProperty->client, &pid);
     if (result == 0) {  // wait child process result
         result = WaitChild(appProperty->fd[0], pid, appProperty);
@@ -419,6 +423,8 @@ APPSPAWN_STATIC int OnConnection(const LoopHandle loopHandle, const TaskHandle s
     client->stream = stream;
     client->client.id = ++clientId;
     client->client.flags = 0;
+    client->client.setAllowInternet = false;
+    client->client.isAllowInternet = false;
     APPSPAWN_LOGI("OnConnection client fd %d Id %d", LE_GetSocketFd(stream), client->client.id);
 #ifdef APPSPAWN_TEST
     g_testClientHandle = stream;
