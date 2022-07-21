@@ -44,8 +44,11 @@ void LoadExtendLib(AppSpawnContent *content)
 
 #ifdef __MUSL__
     Dl_namespace dlns;
+    Dl_namespace current_ns;
     dlns_init(&dlns, "nweb_ns");
+    dlns_get(NULL, &current_ns);
     dlns_create(&dlns, LOAD_LIB_DIR.c_str());
+    dlns_inherit(&dlns, &current_ns, NULL);
     void *handle = dlopen_ns(&dlns, "libweb_engine.so", RTLD_NOW | RTLD_GLOBAL);
 #else
     const std::string ENGINE_LIB_DIR = LOAD_LIB_DIR + "/libweb_engine.so";
