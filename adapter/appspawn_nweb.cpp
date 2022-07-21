@@ -19,6 +19,13 @@
 #include <ctime>
 #include <map>
 #include <string>
+#include "application_info.h"
+#include "bundle_mgr_interface.h"
+#include "bundle_mgr_proxy.h"
+#include "if_system_ability_manager.h"
+#include "iservice_registry.h"
+#include "os_account_manager.h"
+#include "system_ability_definition.h"
 
 #include "appspawn_service.h"
 #include "appspawn_adapter.h"
@@ -32,16 +39,59 @@ namespace {
     constexpr int32_t RENDER_PROCESS_MAX_NUM = 16;
     std::map<int32_t, RenderProcessNode> g_renderProcessMap;
     void *g_nwebHandle = nullptr;
+    std::string LOAD_LIB_DIR;
+}
+
+OHOS::sptr<OHOS::AppExecFwk::IBundleMgr> GetBundleMgr()
+{
+    auto samgr = OHOS::SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (samgr == nullptr) {
+        APPSPAWN_LOGE("GetBundleMgr GetSystemAbilityManager is null");
+        return nullptr;
+    }
+    auto bundleMgrSa = samgr->GetSystemAbility(OHOS::BUNDLE_MGR_SERVICE_SYS_ABILITY_ID);
+    if (bundleMgrSa == nullptr) {
+        APPSPAWN_LOGE("GetBundleMgr GetSystemAbility is null");
+        return nullptr;
+    }
+    return OHOS::iface_cast<OHOS::AppExecFwk::IBundleMgr>(bundleMgrSa);
+}
+
+bool GetNativeLibraryPath(void)
+{
+    const std::string NWEB_BUNDLE_NAME = "com.ohos.nweb";
+    std::vector<int> userIds;
+    if (OHOS::AccountSA::OsAccountManager::QueryActiveOsAccountIds(userIds) != OHOS::ERR_OK) {
+        APPSPAWN_LOGE("QueryActiveOsAccountIds failed!");
+        return false;
+    }
+    if (userIds.empty()) {
+        APPSPAWN_LOGE("QueryActiveOsAccountIds userIds empty");
+        return false;
+    }
+    auto reqUserId = userIds[0];
+    auto iBundleMgr = GetBundleMgr();
+    if (!iBundleMgr) {
+        APPSPAWN_LOGE("can not get iBundleMgr");
+        return false;
+    }
+    OHOS::AppExecFwk::ApplicationInfo appInfo;
+    bool result = iBundleMgr->
+        GetApplicationInfo(NWEB_BUNDLE_NAME, OHOS::AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, reqUserId, appInfo);
+    if (!result) {
+        APPSPAWN_LOGE("GetApplicationInfo failed");
+        return false;
+    }
+    LOAD_LIB_DIR = appInfo.codePath + "/" + appInfo.nativeLibraryPath;
+    return true;
 }
 
 void LoadExtendLib(AppSpawnContent *content)
 {
-#ifdef webview_arm64
-    const std::string LOAD_LIB_DIR = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm64";
-#else
-    const std::string LOAD_LIB_DIR = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm";
-#endif
-
+    if (!GetNativeLibraryPath()) {
+        APPSPAWN_LOGE("GetNativeLibraryPath failed");
+        return;
+    }
 #ifdef __MUSL__
     Dl_namespace dlns;
     dlns_init(&dlns, "nweb_ns");

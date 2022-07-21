@@ -142,9 +142,6 @@ ohos_static_library("nwebspawn_server") {
 
 ohos_executable("nwebspawn") {
   defines = [ "NWEB_SPAWN" ]
-  if (target_cpu == "arm64") {
-    defines += [ "webview_arm64" ]
-  }
   sources = [
     "${appspawn_path}/adapter/appspawn_nweb.cpp",
     "${appspawn_path}/standard/main.c",
@@ -153,7 +150,15 @@ ohos_executable("nwebspawn") {
   ]
   configs = [ ":appspawn_config" ]
   deps = [ "${appspawn_path}:nwebspawn_server" ]
-  external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
+  external_deps = [
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "hiviewdfx_hilog_native:libhilog",
+    "ipc:ipc_core",
+    "os_account:os_account_innerkits",
+    "samgr_standard:samgr_proxy",
+  ]
 
   install_enable = true
   subsystem_name = "${subsystem_name}"
