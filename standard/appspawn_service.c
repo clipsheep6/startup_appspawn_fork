@@ -331,10 +331,13 @@ APPSPAWN_STATIC void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t
     APPSPAWN_CHECK(buffer != NULL && buffLen >= sizeof(AppParameter), LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "Invalid buffer buffLen %u", buffLen);
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)LE_GetUserData(taskHandle);
-    APPSPAWN_CHECK(appProperty != NULL, LE_CloseTask(LE_GetDefaultLoop(), taskHandle); return, "alloc client Failed");
+    APPSPAWN_CHECK(appProperty != NULL, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
+        return, "alloc client Failed");
+
     int ret = memcpy_s(&appProperty->property, sizeof(appProperty->property), buffer, buffLen);
     APPSPAWN_CHECK(ret == 0, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "Invalid buffer buffLen %u", buffLen);
+
 #ifdef NWEB_SPAWN
     // get render process termination status, only nwebspawn need this logic.
     if (appProperty->property.code == GET_RENDER_TERMINATION_STATUS) {
@@ -342,24 +345,30 @@ APPSPAWN_STATIC void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t
         return;
     }
 #endif
+
     APPSPAWN_CHECK(appProperty->property.gidCount <= APP_MAX_GIDS && strlen(appProperty->property.processName) > 0,
-        LE_CloseTask(LE_GetDefaultLoop(), taskHandle); return, "Invalid property %u", appProperty->property.gidCount);
+        LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
+        return, "Invalid property %u", appProperty->property.gidCount);
     // special handle bundle name medialibrary and scanner
     HandleSpecial(appProperty);
     if (g_appSpawnContent->timer != NULL) {
         LE_StopTimer(LE_GetDefaultLoop(), g_appSpawnContent->timer);
         g_appSpawnContent->timer = NULL;
     }
+
     CheckColdAppEnabled(appProperty);
+    // create pipe for commication from child
     if (pipe(appProperty->fd) == -1) {
         APPSPAWN_LOGE("create pipe fail, errno = %d", errno);
         LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return;
     }
+
     APPSPAWN_LOGI("OnReceiveRequest client.id %d appProperty %d processname %s buffLen %d flags 0x%x",
         appProperty->client.id, appProperty->property.uid, appProperty->property.processName,
         buffLen, appProperty->property.flags);
     fcntl(appProperty->fd[0], F_SETFL, O_NONBLOCK);
+
     pid_t pid = 0;
     if (appProperty->property.setAllowInternet == 1 && appProperty->property.allowInternet == 0) {
         appProperty->client.setAllowInternet = 1;
