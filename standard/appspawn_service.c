@@ -361,7 +361,7 @@ APPSPAWN_STATIC void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t
         buffLen, appProperty->property.flags);
     fcntl(appProperty->fd[0], F_SETFL, O_NONBLOCK);
     pid_t pid = 0;
-    if (appProperty->property.allowInternet == 0) {
+    if (appProperty->property.setAllowInternet == 1 && appProperty->property.allowInternet == 0) {
         appProperty->client.setAllowInternet = 1;
         appProperty->client.allowInternet = 0;
     }
