@@ -19,7 +19,7 @@
 
 #include "foundation/ability/ability_runtime/interfaces/kits/native/appkit/app/main_thread.h"
 #ifndef APPSPAWN_TEST
-typedef void (*AllowFunc)(uint8_t);
+using AllowFunc = void(*)(uint8_t);
 static const char *LIBNETSYS_CLIENT_NAME = "libnetsys_client.z.so";
 static const char *ALLOW_SOCKET_FUNCNAME = "SetAllowCreateSocket";
 #endif
@@ -44,12 +44,12 @@ void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("AppExecFwk::MainThread::Start");
 #ifndef APPSPAWN_TEST
-    if (client != NULL) {
+    if (client != NULL && client->setAllowInternet == 1) {
         void* handler = dlopen(LIBNETSYS_CLIENT_NAME, RTLD_LAZY);
         if (handler != NULL) {
             AllowFunc func = (AllowFunc)dlsym(handler, ALLOW_SOCKET_FUNCNAME);
-            if (func != NULL && client->setAllowInternet == 1) {
-                func(client->isAllowInternet);
+            if (func != NULL) {
+                func(client->allowInternet);
             }
             dlclose(handler);
         }

@@ -333,7 +333,6 @@ APPSPAWN_STATIC void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)LE_GetUserData(taskHandle);
     APPSPAWN_CHECK(appProperty != NULL, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "alloc client Failed");
-
     int ret = memcpy_s(&appProperty->property, sizeof(appProperty->property), buffer, buffLen);
     APPSPAWN_CHECK(ret == 0, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "Invalid buffer buffLen %u", buffLen);
