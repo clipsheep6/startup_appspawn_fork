@@ -44,12 +44,12 @@ void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("AppExecFwk::MainThread::Start");
 #ifndef APPSPAWN_TEST
-    if (client != NULL && client->setAllowInternet == 1) {
+    if (client != NULL && client->setAllowInternet == 1 && client->allowInternet == 0) {
         void* handler = dlopen(LIBNETSYS_CLIENT_NAME, RTLD_LAZY);
         if (handler != NULL) {
             AllowFunc func = (AllowFunc)dlsym(handler, ALLOW_SOCKET_FUNCNAME);
             if (func != NULL) {
-                func(client->allowInternet);
+                func(0);
             }
             dlclose(handler);
         }

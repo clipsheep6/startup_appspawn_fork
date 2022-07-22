@@ -134,8 +134,6 @@ static int Invoke(IServerProxy *iProxy, int funcId, void *origin, IpcIo *req, Ip
     AppSpawnClientLite client = {};
     client.client.id = CLIENT_ID;
     client.client.flags = 0;
-    client.client.setAllowInternet = 0;
-    client.client.allowInternet = 1;
     if (GetMessageSt(&client.message, req) != EC_SUCCESS) {
         APPSPAWN_LOGE("[appspawn] invoke, parse failed! reply %d.", INVALID_PID);
         WriteInt64(reply, INVALID_PID);
