@@ -45,7 +45,7 @@ using nlohmann::json;
 int OnConnection(const LoopHandle loopHandle, const TaskHandle server);
 void AddAppInfo(pid_t pid, const char *processName);
 void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen);
-void ProcessTimer(const TimerHandle taskHandle, void *context);
+void ProcessTimer(const TimerHandle taskHandle);
 void SignalHandler(const struct signalfd_siginfo *siginfo);
 void SendMessageComplete(const TaskHandle taskHandle, BufferHandle handle);
 TaskHandle GetTestClientHandle();
@@ -318,7 +318,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_07, TestSize.Level0)
     SignalHandler(&siginfo);
     content->content.runAppSpawn(&content->content, 0, nullptr);
 
-    ProcessTimer(nullptr, nullptr);
+    ProcessTimer(nullptr);
     GTEST_LOG_(INFO) << "App_Spawn_Standard_07 end";
 }
 
