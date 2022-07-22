@@ -42,6 +42,8 @@ typedef struct AppSpawnClient_ {
     uint32_t flags;
     uint8_t setAllowInternet;
     uint8_t allowInternet;
+    uint8_t reserved1;
+    uint8_t reserved2;
 } AppSpawnClient;
 
 #define MAX_SOCKEYT_NAME_LEN 128
