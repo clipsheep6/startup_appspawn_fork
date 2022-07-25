@@ -10,8 +10,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import("//build/lite/config/component/lite_component.gni")
-import("//build/lite/config/test.gni")
+import("//build/hb/config/component/lite_component.gni")
+import("//build/hb/config/test.gni")
 
 unittest("AppSpawnLiteTest") {
   output_extension = "bin"
@@ -50,7 +50,7 @@ unittest("AppSpawnLiteTest") {
     "${aafwk_lite_path}/frameworks/ability_lite:aafwk_abilitykit_lite",
     "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
     "//base/startup/init_lite/interfaces/innerkits:libbegetutil",
-    "//build/lite/config/component/cJSON:cjson_shared",
+    "//build/hb/config/component/cJSON:cjson_shared",
     "//foundation/communication/ipc/interfaces/innerkits/c/ipc:ipc_single",
     "//foundation/distributeddatamgr/appdatamgr/kv_store/interfaces/inner_api/kv_store:kv_store",
     "//foundation/distributedschedule/samgr_lite/samgr:samgr",
