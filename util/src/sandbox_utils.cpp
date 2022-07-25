@@ -366,7 +366,6 @@ int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProper
 
     bool checkFlag = false;
     if (appConfig.find(FLAGS) != appConfig.end()) {
-        std::string flagsStr = appConfig[FLAGS].get<std::string>();
         if (((ConvertFlagStr(appConfig[FLAGS].get<std::string>()) & appProperty->flags)) != 0) &&
             bundleName.find("wps") != std::string::npos) {
             checkFlag = true;
