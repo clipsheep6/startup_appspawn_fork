@@ -495,7 +495,7 @@ int32_t SandboxUtils::HandleFlagsPoint(const ClientSocket::AppProperty *appPrope
 
         if (flagPoint.find(FLAGS) != flagPoint.end()) {
             std::string flagsStr = flagPoint[FLAGS].get<std::string>();
-            uint32_t  flag = ConvertFlagStr(flagsStr);
+            uint32_t flag = ConvertFlagStr(flagsStr);
             if ((appProperty->flags & flag) != 0) {
                 return DoAllMntPointsMount(appProperty, flagPoint);
             }
