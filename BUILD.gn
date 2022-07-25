@@ -21,7 +21,7 @@ config("appspawn_config") {
     "standard",
     "adapter",
     "interfaces/innerkits/include",
-    "//utils/native/base/include",
+    "//commonlibrary/c_utils/base/include",
     "util/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/app",
     "//base/global/resource_management/interfaces/inner_api/include",
@@ -52,10 +52,10 @@ ohos_executable("appspawn") {
   external_deps = [
     "ability_base:want",
     "ability_runtime:app_manager",
+    "c_utils:utils",
     "eventhandler:libeventhandler",
     "hiviewdfx_hilog_native:libhilog",
     "ipc:ipc_core",
-    "utils_base:utils",
   ]
 
   install_enable = true
@@ -86,9 +86,11 @@ ohos_static_library("appspawn_server") {
   deps = [
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
     "//base/startup/init_lite/interfaces/innerkits:libbegetutil",
-    "//utils/native/base:utils",
   ]
-  external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
+  external_deps = [
+    "c_utils:utils",
+    "hiviewdfx_hilog_native:libhilog",
+  ]
   if (build_selinux) {
     external_deps += [ "selinux:libhap_restorecon" ]
   }
@@ -129,9 +131,11 @@ ohos_static_library("nwebspawn_server") {
   deps = [
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
     "//base/startup/init_lite/interfaces/innerkits:libbegetutil",
-    "//utils/native/base:utils",
   ]
-  external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
+  external_deps = [
+    "c_utils:utils",
+    "hiviewdfx_hilog_native:libhilog",
+  ]
   if (build_selinux) {
     external_deps += [ "selinux:libhap_restorecon" ]
   }
