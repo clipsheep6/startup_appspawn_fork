@@ -45,6 +45,17 @@ static void ProcessExit(void)
 #endif
 }
 
+extern void set_allow_internet(uint8_t allow_internet);
+
+int SetAllowInternet(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+    int32_t ret = 0;
+    if (client != NULL && client->setAllowInternet == 1 && client->allowInternet == 0) {
+        set_allow_internet(0);
+    }
+    return ret;
+}
+
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
 {
     APPSPAWN_LOGI("DoStartApp id %d longProcNameLen %u", client->id, longProcNameLen);
@@ -86,6 +97,8 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to setCapabilities");
     }
+
+    SetAllowInternet(content, client);
 
     // notify success to father process and start app process
     NotifyResToParent(content, client, 0);

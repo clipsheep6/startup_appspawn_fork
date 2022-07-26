@@ -12,17 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef APPSPAWN_TEST
-#include <dlfcn.h>
-#endif
 #include "appspawn_adapter.h"
-
 #include "foundation/ability/ability_runtime/interfaces/kits/native/appkit/app/main_thread.h"
-#ifndef APPSPAWN_TEST
-using AllowFunc = void(*)(uint8_t);
-static const char *LIBNETSYS_CLIENT_NAME = "libnetsys_client.z.so";
-static const char *ALLOW_SOCKET_FUNCNAME = "SetAllowCreateSocket";
-#endif
+
 void LoadExtendLib(AppSpawnContent *content)
 {
 #ifdef __aarch64__
@@ -44,16 +36,6 @@ void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("AppExecFwk::MainThread::Start");
 #ifndef APPSPAWN_TEST
-    if (client != NULL && client->setAllowInternet == 1 && client->allowInternet == 0) {
-        void* handler = dlopen(LIBNETSYS_CLIENT_NAME, RTLD_LAZY);
-        if (handler != NULL) {
-            AllowFunc func = (AllowFunc)dlsym(handler, ALLOW_SOCKET_FUNCNAME);
-            if (func != NULL) {
-                func(0);
-            }
-            dlclose(handler);
-        }
-    }
     OHOS::AppExecFwk::MainThread::Start();
 #endif
 }
