@@ -99,6 +99,7 @@ APPSPAWN_STATIC void AddAppInfo(pid_t pid, const char *processName)
 
 APPSPAWN_STATIC void ProcessTimer(const TimerHandle taskHandle, void *context)
 {
+    UNUSED(context);
     APPSPAWN_LOGI("timeout stop appspawn");
     LE_StopLoop(LE_GetDefaultLoop());
 }
@@ -275,7 +276,7 @@ static void CheckColdAppEnabled(AppSpawnClientExt *appProperty)
         return;
     }
 
-    if (appProperty->property.flags & 0x01) {
+    if ((appProperty->property.flags & 0x01) != 0) {
         char cold[10] = {0};  // 10 cold
         int ret = GetParameter("appspawn.cold.boot", "false", cold, sizeof(cold));
         APPSPAWN_LOGV("appspawn.cold.boot %s %d ", cold, ret);
