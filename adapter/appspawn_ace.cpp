@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "appspawn_adapter.h"
 
 #include "js_runtime.h"
