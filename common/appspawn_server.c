@@ -45,21 +45,35 @@ static void ProcessExit(void)
 #endif
 }
 
-extern void set_allow_internet(uint8_t allow_internet);
+#ifndef APPSPAWN_TEST
+#ifndef OHOS_LITE
+void DisallowInternet(void);
+#endif
+#endif
 
-int SetAllowInternet(struct AppSpawnContent_ *content, AppSpawnClient *client)
+static void SetInternetPermission(AppSpawnClient *client)
 {
-    int32_t ret = 0;
-    if (client != NULL && client->setAllowInternet == 1 && client->allowInternet == 0) {
-        set_allow_internet(0);
+#ifndef APPSPAWN_TEST
+#ifndef OHOS_LITE
+    if (client == NULL) {
+        return;
     }
-    return ret;
+
+    APPSPAWN_LOGI("SetInternetPermission id %d setAllowInternet %hhu allowInternet %hhu", client->id,
+                  client->setAllowInternet, client->allowInternet);
+    if (client->setAllowInternet == 1 && client->allowInternet == 0) {
+        DisallowInternet();
+    }
+#endif
+#endif
 }
 
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
 {
     APPSPAWN_LOGI("DoStartApp id %d longProcNameLen %u", client->id, longProcNameLen);
     int32_t ret = 0;
+
+    SetInternetPermission(client);
 
     if (content->setAppSandbox) {
         ret = content->setAppSandbox(content, client);
@@ -97,8 +111,6 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to setCapabilities");
     }
-
-    SetAllowInternet(content, client);
 
     // notify success to father process and start app process
     NotifyResToParent(content, client, 0);

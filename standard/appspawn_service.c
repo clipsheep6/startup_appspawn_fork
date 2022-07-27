@@ -327,6 +327,16 @@ static void GetProcessTerminationStatus(AppSpawnClientExt *appProperty)
 }
 #endif
 
+APPSPAWN_STATIC void SetInternetPermission(AppSpawnClientExt *appProperty)
+{
+#ifndef APPSPAWN_TEST
+    if (appProperty->property.setAllowInternet == 1 && appProperty->property.allowInternet == 0) {
+        appProperty->client.setAllowInternet = 1;
+        appProperty->client.allowInternet = 0;
+    }
+#endif
+}
+
 APPSPAWN_STATIC void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen)
 {
     APPSPAWN_CHECK(buffer != NULL && buffLen >= sizeof(AppParameter), LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
@@ -352,6 +362,7 @@ APPSPAWN_STATIC void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t
         return, "Invalid property %u", appProperty->property.gidCount);
     // special handle bundle name medialibrary and scanner
     HandleSpecial(appProperty);
+    SetInternetPermission(appProperty);
     if (g_appSpawnContent->timer != NULL) {
         LE_StopTimer(LE_GetDefaultLoop(), g_appSpawnContent->timer);
         g_appSpawnContent->timer = NULL;
@@ -371,10 +382,6 @@ APPSPAWN_STATIC void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t
     fcntl(appProperty->fd[0], F_SETFL, O_NONBLOCK);
 
     pid_t pid = 0;
-    if (appProperty->property.setAllowInternet == 1 && appProperty->property.allowInternet == 0) {
-        appProperty->client.setAllowInternet = 1;
-        appProperty->client.allowInternet = 0;
-    }
     int result = AppSpawnProcessMsg(&g_appSpawnContent->content, &appProperty->client, &pid);
     if (result == 0) {  // wait child process result
         result = WaitChild(appProperty->fd[0], pid, appProperty);
@@ -424,8 +431,10 @@ APPSPAWN_STATIC int OnConnection(const LoopHandle loopHandle, const TaskHandle s
     client->stream = stream;
     client->client.id = ++clientId;
     client->client.flags = 0;
+#ifndef APPSPAWN_TEST
     client->client.setAllowInternet = 0;
     client->client.allowInternet = 1;
+#endif
     APPSPAWN_LOGI("OnConnection client fd %d Id %d", LE_GetSocketFd(stream), client->client.id);
 #ifdef APPSPAWN_TEST
     g_testClientHandle = stream;
