@@ -67,12 +67,37 @@ static void ProcessExit(void)
 #endif
 }
 
+#ifndef APPSPAWN_TEST
+#ifndef OHOS_LITE
+void DisallowInternet(void);
+#endif
+#endif
+
+static void SetInternetPermission(AppSpawnClient *client)
+{
+#ifndef APPSPAWN_TEST
+#ifndef OHOS_LITE
+    if (client == NULL) {
+        return;
+    }
+
+    APPSPAWN_LOGI("SetInternetPermission id %d setAllowInternet %hhu allowInternet %hhu", client->id,
+                  client->setAllowInternet, client->allowInternet);
+    if (client->setAllowInternet == 1 && client->allowInternet == 0) {
+        DisallowInternet();
+    }
+#endif
+#endif
+}
+
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
 {
     SetInternetPermission(client);
 
     APPSPAWN_LOGI("DoStartApp id %d longProcNameLen %u", client->id, longProcNameLen);
     int32_t ret = 0;
+
+    SetInternetPermission(client);
 
     if (content->setAppSandbox) {
         ret = content->setAppSandbox(content, client);
