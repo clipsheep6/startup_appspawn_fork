@@ -79,6 +79,9 @@ typedef struct AppSpawnContent_ {
 #ifdef ASAN_DETECTOR
     int (*getWrapBundleNameValue)(struct AppSpawnContent_ *content, AppSpawnClient *client);
 #endif
+#ifdef WITH_SECCOMP
+    int (*setSeccompFilter)(struct AppSpawnContent_ *content, AppSpawnClient *client);
+#endif
 } AppSpawnContent;
 
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int cold);
