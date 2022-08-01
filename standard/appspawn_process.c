@@ -31,6 +31,9 @@
 
 #include "securec.h"
 #include "parameter.h"
+#ifdef WITH_SECCOMP
+#include "seccomp_policy.h"
+#endif
 
 #define DEVICE_NULL_STR "/dev/null"
 
@@ -376,6 +379,19 @@ int GetAppSpawnClientFromArg(int argc, char *const argv[], AppSpawnClientExt *cl
     return 0;
 }
 
+#ifdef WITH_SECCOMP
+static int SetSeccompFilter(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+#ifdef NWEB_SPAWN
+    if (!SetSeccompPolicy(NWEBSPAWN)) {
+        APPSPAWN_LOGE("init seccomp failed");
+	return -1;
+    }
+#endif
+    return 0;
+}
+#endif
+
 void SetContentFunction(AppSpawnContent *content)
 {
     APPSPAWN_LOGI("SetContentFunction");
@@ -390,5 +406,8 @@ void SetContentFunction(AppSpawnContent *content)
     content->coldStartApp = ColdStartApp;
 #ifdef ASAN_DETECTOR
     content->getWrapBundleNameValue = GetWrapBundleNameValue;
+#endif
+#ifdef WITH_SECCOMP
+    content->setSeccompFilter = SetSeccompFilter;
 #endif
 }
