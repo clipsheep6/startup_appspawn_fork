@@ -22,10 +22,6 @@
 #include "hap_restorecon.h"
 #endif
 #include "token_setproc.h"
-#ifdef WITH_SECCOMP
-#include "seccomp_policy.h"
-#endif
-
 
 void SetAppAccessToken(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
@@ -47,17 +43,6 @@ void SetSelinuxCon(struct AppSpawnContent_ *content, AppSpawnClient *client)
             errno, appProperty->property.apl);
     } else {
         APPSPAWN_LOGI("AppSpawnServer::Success to hap domain set context, ret = %d", ret);
-    }
-#endif
-}
-
-void SetUidGidFilter(struct AppSpawnContent_ *content)
-{
-#ifdef WITH_SECCOMP
-    if (!SetSeccompPolicy(APPSPAWN)) {
-        APPSPAWN_LOGE("AppSpawnServer::Failed to set APPSPAWN seccomp filter");
-    } else {
-        APPSPAWN_LOGI("AppSpawnServer::Success to set APPSPAWN seccomp filter");
     }
 #endif
 }
