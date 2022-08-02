@@ -391,5 +391,4 @@ void SetContentFunction(AppSpawnContent *content)
 #ifdef ASAN_DETECTOR
     content->getWrapBundleNameValue = GetWrapBundleNameValue;
 #endif
-    content->setSeccompFilter = SetSeccompFilter;
 }
