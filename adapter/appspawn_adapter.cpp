@@ -61,19 +61,3 @@ void SetUidGidFilter(struct AppSpawnContent_ *content)
     }
 #endif
 }
-
-int SetSeccompFilter(struct AppSpawnContent_ *content, AppSpawnClient *client)
-{
-#ifdef WITH_SECCOMP
-#ifdef NWEB_SPAWN
-    if (!SetSeccompPolicy(NWEBSPAWN)) {
-        APPSPAWN_LOGE("NwebspawnServer::Failed to set NWEBSPAWN seccomp filter");
-        return -1;
-    } else {
-        APPSPAWN_LOGE("NwebspawnServer::Success to set NWEBSPAWN seccomp filter");
-        return 0;
-    }
-#endif
-#endif
-    return 0;
-}
