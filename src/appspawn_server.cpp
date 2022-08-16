@@ -269,6 +269,7 @@ void AppSpawnServer::ConnectionPeer()
             continue;
         }
 
+        APPSPAWN_LOGE("OnConnection client uid is %d!", cred.uid);
         if (cred.uid != FOUNDATION_UID) {
             APPSPAWN_LOGE("OnConnection client fd %d is nerverallow!", connectFd);
             continue;
