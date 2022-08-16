@@ -264,14 +264,14 @@ void AppSpawnServer::ConnectionPeer()
 
         struct ucred cred = {-1, -1, -1};
         socklen_t credSize  = sizeof(struct ucred);
-        if(getsockopt(LE_GetSocketFd(stream), SOL_SOCKET, SO_PEERCRED, &cred, &credSize) < 0) {
+        if (getsockopt(connectFd, SOL_SOCKET, SO_PEERCRED, &cred, &credSize) < 0) {
             APPSPAWN_LOGE("get cred failed!");
-            return -1;
+            continue;
         }
 
         if (cred.uid != FOUNDATION_UID) {
-            APPSPAWN_LOGE("OnConnection client fd %d is nerverallow!" ,LE_GetSocketFd(stream));
-            return -1;
+            APPSPAWN_LOGE("OnConnection client fd %d is nerverallow!", connectFd);
+            continue;
         }
 
         mut_.lock();  // Ensure that mutex in SaveConnection is unlocked before being forked
