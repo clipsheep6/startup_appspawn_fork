@@ -39,7 +39,12 @@ int ClientSocket::CreateClient()
             return socketFd_;
         }
     }
-
+    int opt = 1;
+    int ret = setsockopt(socketFd_, SOL_SOCKET, SO_PASSCRED, &opt, sizeof(opt));
+    if (ret < 0) {
+        HiLog::Error(LABEL, "Client: setsockopt failed!");
+        return -1;
+    }
     HiLog::Debug(LABEL, "Client: CreateClient socket fd %d", socketFd_);
     return 0;
 }

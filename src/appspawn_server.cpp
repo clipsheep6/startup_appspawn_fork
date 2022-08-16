@@ -27,6 +27,7 @@
 #include <sys/prctl.h>
 #include <sys/capability.h>
 #include <sys/syscall.h>
+#include <sys/socket.h>
 #include <thread>
 #include <string>
 #include <map>
@@ -259,6 +260,18 @@ void AppSpawnServer::ConnectionPeer()
             usleep(WAIT_DELAY_US);
             HiLog::Info(LABEL, "AppSpawnServer::ConnectionPeer connectFd is %{public}d", connectFd);
             continue;
+        }
+
+        struct ucred cred = {-1, -1, -1};
+        socklen_t credSize  = sizeof(struct ucred);
+        if(getsockopt(LE_GetSocketFd(stream), SOL_SOCKET, SO_PEERCRED, &cred, &credSize) < 0) {
+            APPSPAWN_LOGE("get cred failed!");
+            return -1;
+        }
+
+        if (cred.uid != FOUNDATION_UID) {
+            APPSPAWN_LOGE("OnConnection client fd %d is nerverallow!" ,LE_GetSocketFd(stream));
+            return -1;
         }
 
         mut_.lock();  // Ensure that mutex in SaveConnection is unlocked before being forked
@@ -637,7 +650,7 @@ int32_t AppSpawnServer::SetProcessName(
     }
 
     // set long process name
-    if (strncpy_s(longProcName, len, processName, len) != EOK) {
+    if (strncpy_s(longProcName, longProcNameLen, processName, len) != EOK) {
         HiLog::Error(LABEL, "strncpy_s long name error: %{public}d", errno);
         return -EINVAL;
     }
