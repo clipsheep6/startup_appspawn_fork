@@ -35,7 +35,7 @@ int ClientSocket::CreateClient()
     int opt = 1;
     int ret = setsockopt(socketFd_, SOL_SOCKET, SO_PASSCRED, &opt, sizeof(opt));
     if (ret < 0) {
-        APPSPAWN_CHECK("Client: setsockopt failed!");
+        APPSPAWN_LOGE("Client: setsockopt failed!");
     }
     APPSPAWN_LOGV("Client: CreateClient socket fd %d", socketFd_);
     return 0;

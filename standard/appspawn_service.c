@@ -429,12 +429,12 @@ APPSPAWN_STATIC int OnConnection(const LoopHandle loopHandle, const TaskHandle s
     struct ucred cred = {-1, -1, -1};
     socklen_t credSize  = sizeof(struct ucred);
     if(getsockopt(LE_GetSocketFd(stream), SOL_SOCKET, SO_PEERCRED, &cred, &credSize) < 0) {
-        APPSPAWN_LOGI("get cred failed!");
+        APPSPAWN_LOGE("get cred failed!");
         return -1;
     }
 
     if (cred.uid != DecodeUid("foundation")) {
-        APPSPAWN_LOGI("OnConnection client fd %d is nerverallow!" ,LE_GetSocketFd(stream));
+        APPSPAWN_LOGE("OnConnection client fd %d is nerverallow!" ,LE_GetSocketFd(stream));
         return -1;
     }
 
