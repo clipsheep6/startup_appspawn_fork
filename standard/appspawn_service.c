@@ -19,12 +19,15 @@
 
 #include <fcntl.h>
 #include <sys/signalfd.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
+
 #include "init_hashmap.h"
 #include "init_socket.h"
+#include "init_utils.h"
 #include "parameter.h"
 #include "securec.h"
 
@@ -422,6 +425,18 @@ APPSPAWN_STATIC int OnConnection(const LoopHandle loopHandle, const TaskHandle s
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to alloc stream");
     AppSpawnClientExt *client = (AppSpawnClientExt *)LE_GetUserData(stream);
     APPSPAWN_CHECK(client != NULL, return -1, "Failed to alloc stream");
+
+    struct ucred cred = {-1, -1, -1};
+    socklen_t credSize  = sizeof(struct ucred);
+    if(getsockopt(LE_GetSocketFd(stream), SOL_SOCKET, SO_PEERCRED, &cred, &credSize) < 0) {
+        APPSPAWN_LOGI("get cred failed!");
+        return -1;
+    }
+
+    if (cred.uid != DecodeUid("foundation")) {
+        APPSPAWN_LOGI("OnConnection client fd %d is nerverallow!" ,LE_GetSocketFd(stream));
+        return -1;
+    }
 
     client->stream = stream;
     client->client.id = ++clientId;
