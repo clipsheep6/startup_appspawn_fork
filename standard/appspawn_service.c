@@ -24,7 +24,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-
 #include "init_hashmap.h"
 #include "init_socket.h"
 #include "init_utils.h"
