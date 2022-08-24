@@ -133,10 +133,11 @@ int ServerSocket::BindSocket(int connectFd)
         return (-errno);
     }
 
-    if (chown(socketAddr_.sun_path, APPSPAWN_ID_ROOT, APPSPAWN_ID_SYSTEM)) {
+    if (chown(socketAddr_.sun_path, APPSPAWN_ID_ROOT, APPSPAWN_GROUP_ID)) {
         HiLog::Error(LABEL, "Server: failed to chown socket fd %d, failed: %d", connectFd, errno);
         return (-errno);
     }
+
     if (chmod(socketAddr_.sun_path, SOCKET_PERM)) {
         HiLog::Error(LABEL, "Server: failed to chmod socket fd %d, failed: %d", connectFd, errno);
         return (-errno);
