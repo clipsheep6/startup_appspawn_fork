@@ -24,6 +24,7 @@
 #include "server_socket.h"
 #include "nocopyable.h"
 
+#define FOUNDATION_UID 5523
 namespace OHOS {
 namespace AppSpawn {
 class AppSpawnServer {

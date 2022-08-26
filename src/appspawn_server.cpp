@@ -27,6 +27,7 @@
 #include <sys/prctl.h>
 #include <sys/capability.h>
 #include <sys/syscall.h>
+#include <sys/socket.h>
 #include <thread>
 #include <string>
 #include <map>
@@ -258,6 +259,19 @@ void AppSpawnServer::ConnectionPeer()
         if (connectFd < 0) {
             usleep(WAIT_DELAY_US);
             HiLog::Info(LABEL, "AppSpawnServer::ConnectionPeer connectFd is %{public}d", connectFd);
+            continue;
+        }
+
+        struct ucred cred = {-1, -1, -1};
+        socklen_t credSize  = sizeof(struct ucred);
+        if (getsockopt(connectFd, SOL_SOCKET, SO_PEERCRED, &cred, &credSize) < 0) {
+            APPSPAWN_LOGE("get cred failed!");
+            continue;
+        }
+
+        APPSPAWN_LOGE("OnConnection client uid is %d!", cred.uid);
+        if (cred.uid != FOUNDATION_UID) {
+            APPSPAWN_LOGE("OnConnection client fd %d is nerverallow!", connectFd);
             continue;
         }
 
