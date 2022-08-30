@@ -27,16 +27,19 @@
         ],
         "deps": {
             "components": [
-                "ability_base",
+                "napi",
+                "netmanager_base",
+                "ability_runtime",
+                "eventhandler",
+                "access_token",
+                "common",
                 "c_utils",
                 "ipc",
                 "selinux",
-                "hiviewdfx_hilog_native",
                 "init",
-                "ability_runtime",
-                "access_token",
-                "common",
-                "eventhandler"
+                "hiviewdfx_hilog_native",
+                "hitrace_native",
+                "ability_base"
             ]
         },
         "build": {
