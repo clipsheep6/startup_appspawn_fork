@@ -87,12 +87,14 @@ ohos_unittest("AppSpawn_ut") {
 
   external_deps = [
     "ability_base:want",
+    "ability_runtime:abilitykit_native",
     "ability_runtime:app_manager",
     "ability_runtime:runtime",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "eventhandler:libeventhandler",
+    "faultloggerd:lib_dfx_dump_catcher",
     "hitrace_native:hitrace_meter",
     "hiviewdfx_hilog_native:libhilog",
     "init:libbegetutil",
