@@ -490,17 +490,6 @@ int32_t AppSpawnServer::SetKeepCapabilities(uint32_t uid)
     return ERR_OK;
 }
 
-static int CheckBundleName(const std::string &bundlename)
-{
-    if (bundleName.empty() || bundleName.size() > ClientSocket::LEN_BUNDLE_NAME) {
-        return -1;
-    }
-    if (bundleName.find('\\') != std::string::npos || bundleName.find('/') != std::string::npos) {
-        return -1;
-    }
-    return 0;
-}
-
 bool AppSpawnServer::CheckAppProperty(const ClientSocket::AppProperty *appProperty)
 {
     if (appProperty == nullptr) {
@@ -513,15 +502,11 @@ bool AppSpawnServer::CheckAppProperty(const ClientSocket::AppProperty *appProper
         return false;
     }
 
-    if (CheckBundleName(appProperty->processName) != 0) {
-        HiLog::Error(LABEL, "process name error");
+    if (strlen(appProperty->processName) == 0) {
+        HiLog::Error(LABEL, "process name length is 0");
         return false;
     }
 
-    if (CheckBundleName(appProperty->bundleName) != 0) {
-        HiLog::Error(LABEL, "bundle name error");
-        return false;
-    }
     return true;
 }
 }  // namespace AppSpawn
