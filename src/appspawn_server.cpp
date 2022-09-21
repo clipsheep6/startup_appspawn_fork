@@ -178,9 +178,8 @@ bool AppSpawnServer::ServerMain(char *longProcName, int64_t longProcNameLen)
         return false;
     }
     std::thread(&AppSpawnServer::ConnectionPeer, this).detach();
-#ifndef APPSPAWN_UT
+
     LoadAceLib();
-#endif
 
     while (isRunning_) {
         std::unique_lock<std::mutex> lock(mut_);
@@ -502,8 +501,8 @@ bool AppSpawnServer::CheckAppProperty(const ClientSocket::AppProperty *appProper
         return false;
     }
 
-    if (strlen(appProperty->processName) == 0) {
-        HiLog::Error(LABEL, "process name length is 0");
+    if (strlen(appProperty->processName) != 0) {
+        HiLog::Error(LABEL, "process name error");
         return false;
     }
 
