@@ -21,7 +21,7 @@ config("appspawn_config") {
     "standard",
     "adapter",
     "interfaces/innerkits/include",
-    "//commonlibrary/c_utils/base/include",
+    "//third_party/bounds_checking_function/include",
     "util/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/app",
     "//base/global/resource_management/interfaces/inner_api/include",
