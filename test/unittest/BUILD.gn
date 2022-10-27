@@ -18,17 +18,34 @@ config("utest_config") {
   cflags = [
     "-Wno-implicit-fallthrough",
     "-Wno-unused-function",
+    "-Dprivate=public",
+    "-Dprotected=public",
+    "-Ddlopen=dlopen_stub",
+    "-fprofile-arcs",
+    "-ftest-coverage",
   ]
+  ldflags = [ "--coverage" ]
+
   cflags_cc = [
     "-Wno-implicit-fallthrough",
     "-fexceptions",
   ]
 
+  if (build_selinux) {
+    cflags += [ "-DWITH_SELINUX" ]
+  }
+
+  if (build_seccomp) {
+    cflags += [ "-DWITH_SECCOMP" ]
+  }
+
   include_dirs = [
+    "${appspawn_path}/test/unittest",
     "${appspawn_path}/test/mock/include",
     "${appspawn_path}/common",
     "${appspawn_path}/standard",
     "${appspawn_path}/adapter",
+    "${appspawn_path}/adapter/sysevent",
     "${appspawn_path}/interfaces/innerkits/include",
     "${appspawn_path}/util/include",
     "//commonlibrary/c_utils/base/include",
@@ -39,11 +56,16 @@ config("utest_config") {
     "${ability_runtime_path}/services/abilitymgr/include",
     "//base/global/resource_management/interfaces/inner_api/include",
     "//base/security/access_token/interfaces/innerkits/token_setproc/include",
+    "//base/security/selinux/interfaces/policycoreutils/include",
     "//base/startup/init/services/log",
     "//base/startup/init/services/include",
     "//base/startup/init/services/loopevent/include",
+    "//base/startup/init/services/loopevent/task",
+    "//base/startup/init/services/loopevent/utils",
     "//base/startup/init/interfaces/innerkits/include",
+    "//base/startup/init/interfaces/innerkits/seccomp/include",
     "//third_party/json/include",
+    "//third_party/selinux/libselinux/include"
   ]
 }
 
@@ -51,8 +73,24 @@ ohos_unittest("AppSpawn_ut") {
   module_out_path = "${module_output_path}"
 
   defines = [
-    "usleep(time) = MockSleep(time)",
+    "clone=clone_stub",
+    "bind=bind_stub",
+    "listen=listen_stub",
+    "lchown=lchown_stub",
+    "getsockopt=getsockopt_stub",
+    "setgroups=setgroups_stub",
+    "setresuid=setresuid_stub",
+    "setresgid=setresgid_stub",
+    "capset=capset_stub",
+    "dlopen=dlopen_stub",
+    "dlsym=dlsym_stub",
+    "dlclose=dlclose_stub",
+    "waitpid=waitpid_stub",
+    "StartupLog=StartupLog_stub",
+    "HapContext=HapContext_stub",
     "APPSPAWN_TEST",
+    "OHOS_DEBUG",
+    "GRAPHIC_PERMISSION_CHECK",
   ]
 
   sources = [
@@ -70,8 +108,10 @@ ohos_unittest("AppSpawn_ut") {
 
   sources += [
     "${appspawn_path}/test/unittest/app_spawn_socket_test/app_spawn_socket_test.cpp",
+    "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_sandbox_test.cpp",
     "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_standard_test.cpp",
     "${appspawn_path}/test/unittest/client_socket_test/client_socket_test.cpp",
+    "${appspawn_path}/test/unittest/app_spawn_stub.cpp",
   ]
 
   configs = [ "//base/startup/appspawn/test/unittest:utest_config" ]
@@ -95,6 +135,14 @@ ohos_unittest("AppSpawn_ut") {
     "ipc:ipc_core",
     "napi:ace_napi",
   ]
+
+  if (appspawn_report_event) {
+    defines += [ "REPORT_EVENT" ]
+    external_deps += [ "hisysevent_native:libhisysevent" ]
+    sources += [
+      "${appspawn_path}/adapter/sysevent/event_reporter.cpp",
+    ]
+  }
 }
 
 group("unittest") {
