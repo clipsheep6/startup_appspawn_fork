@@ -74,13 +74,13 @@
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
-                    "src-path" : "/vendor/lib",
-                    "sandbox-path" : "/vendor/lib",
+                    "src-path" : "/chipset/lib",
+                    "sandbox-path" : "/chipset/lib",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
-                    "src-path" : "/vendor/asan/lib",
-                    "sandbox-path" : "/vendor/asan/lib",
+                    "src-path" : "/chipset/asan/lib",
+                    "sandbox-path" : "/chipset/asan/lib",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
