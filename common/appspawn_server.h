@@ -81,9 +81,8 @@ typedef struct {
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int cold);
 int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid);
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen);
-int AppSpawnChild(void *arg);
 long long DiffTime(struct timespec *startTime);
-
+pid_t AppSpawnFork(int (*childFunc)(void *arg), void *args);
 #define UNUSED(x) (void)(x)
 
 #ifndef APPSPAWN_LABEL

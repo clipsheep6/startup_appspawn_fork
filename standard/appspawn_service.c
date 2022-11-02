@@ -424,7 +424,7 @@ APPSPAWN_STATIC TaskHandle AcceptClient(const LoopHandle loopHandle, const TaskH
 
 static int OnConnection(const LoopHandle loopHandle, const TaskHandle server)
 {
-    APPSPAWN_CHECK(server != NULL && loopHandle == NULL, return -1, "Error server");
+    APPSPAWN_CHECK(server != NULL && loopHandle != NULL, return -1, "Error server");
     (void)AcceptClient(loopHandle, server, 0);
     return 0;
 }

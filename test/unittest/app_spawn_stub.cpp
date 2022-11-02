@@ -155,7 +155,7 @@ static void *ThreadFunc(void *arg)
 }
 
 static pid_t g_pid = 1000;
-pid_t TestFork(int (*childFunc)(void *arg), void *args)
+pid_t AppSpawnFork(int (*childFunc)(void *arg), void *args)
 {
     static pthread_t thread = 0;
     struct ForkArgs *forkArg = (ForkArgs *)malloc(sizeof(struct ForkArgs));
@@ -184,7 +184,7 @@ int clone_stub(int (*fn)(void *), void *stack, int flags, void *arg, ...
 {
     static int testResult = 0;
     testResult++;
-    return testResult == 1 ? TestFork(fn, arg) : -1;
+    return testResult == 1 ? AppSpawnFork(fn, arg) : -1;
 }
 
 void StartupLog_stub(InitLogLevel logLevel, uint32_t domain, const char *tag, const char *fmt, ...)

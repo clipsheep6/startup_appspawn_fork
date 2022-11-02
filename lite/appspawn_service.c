@@ -161,7 +161,7 @@ static int Invoke(IServerProxy *iProxy, int funcId, void *origin, IpcIo *req, Ip
 
 #ifdef OHOS_DEBUG
     long long diff = DiffTime(&tmStart);
-    APPSPAWN_LOGI("[appspawn] invoke, reply pid %d, timeused %lld ns.", newPid, timeUsed);
+    APPSPAWN_LOGI("[appspawn] invoke, reply pid %d, timeused %lld ns.", newPid, diff);
 #else
     APPSPAWN_LOGI("[appspawn] invoke, reply pid %d.", newPid);
 #endif  // OHOS_DEBUG

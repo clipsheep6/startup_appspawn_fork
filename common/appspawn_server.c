@@ -51,10 +51,10 @@ static void NotifyResToParent(struct AppSpawnContent_ *content, AppSpawnClient *
 static void ProcessExit(void)
 {
     APPSPAWN_LOGI("App exit %d.", getpid());
-#ifndef APPSPAWN_TEST
 #ifdef OHOS_LITE
     _exit(0x7f); // 0x7f user exit
 #else
+#ifndef APPSPAWN_TEST
     quick_exit(0);
 #endif
 #endif
@@ -114,7 +114,7 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
     return 0;
 }
 
-int AppSpawnChild(void *arg)
+static int AppSpawnChild(void *arg)
 {
     APPSPAWN_CHECK(arg != NULL, return -1, "Invalid arg for appspawn child");
     AppSandboxArg *sandbox = (AppSandboxArg *)arg;
@@ -137,9 +137,9 @@ int AppSpawnChild(void *arg)
     int ret = -1;
     if ((content->getWrapBundleNameValue != NULL && content->getWrapBundleNameValue(content, client) == 0) ||
         ((client->flags & APP_COLD_START) != 0)) {
+        // cold start fail, to start normal
         if (content->coldStartApp != NULL && content->coldStartApp(content, client) == 0) {
-            ProcessExit();
-            return -1;
+            return 0;
         }
     }
     ret = DoStartApp(content, client, content->longProcName, content->longProcNameLen);
@@ -150,9 +150,20 @@ int AppSpawnChild(void *arg)
     if (ret == 0 && content->runChildProcessor != NULL) {
         content->runChildProcessor(content, client);
     }
-    ProcessExit();
     return 0;
 }
+
+#ifndef APPSPAWN_TEST
+pid_t AppSpawnFork(int (*childFunc)(void *arg), void *args)
+{
+    pid_t pid = fork();
+    if (pid == 0) {
+        childFunc((void *)args);
+        ProcessExit();
+    }
+    return pid;
+}
+#endif
 
 int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
 {
@@ -179,19 +190,8 @@ int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
         free(childStack);
     }
 #endif
-
-#ifndef APPSPAWN_TEST
-    pid = fork();
-    if (pid == 0) {
-        AppSpawnChild((void *)sandbox);
-    }
-#else
-    // for test, use thread
-    extern pid_t TestFork(int (*childFunc)(void *arg), void *args);
-    pid = TestFork(AppSpawnChild, (void *)sandbox);
-#endif
-    *childPid = pid;
-    APPSPAWN_CHECK(pid >= 0, return -errno, "fork child process error: %d", -errno);
+    *childPid = AppSpawnFork(AppSpawnChild, (void *)sandbox);
+    APPSPAWN_CHECK(*childPid >= 0, return -errno, "fork child process error: %d", -errno);
     return 0;
 }
 
