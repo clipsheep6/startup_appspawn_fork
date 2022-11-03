@@ -324,7 +324,7 @@ static bool CheckMountConfig(nlohmann::json &mntPoint, const ClientSocket::AppPr
     APPSPAWN_CHECK(!istrue, return false, "read mount config failed, app name is %s", appProperty->bundleName);
 
     if (mntPoint[APP_APL_NAME] != nullptr) {
-        std::string app_apl_name = mntPoint[APP_APL_NAME];
+        std::string app_apl_name = mntPoint[APP_APL_NAME].get<std::string>();
         const char *p_app_apl = nullptr;
         p_app_apl = app_apl_name.c_str();
         if (!strcmp(p_app_apl, appProperty->apl)) {
@@ -845,10 +845,10 @@ int32_t SandboxUtils::SetAppSandboxProperty(const ClientSocket::AppProperty *app
     rc = syscall(SYS_pivot_root, sandboxPackagePath.c_str(), sandboxPackagePath.c_str());
     APPSPAWN_CHECK(rc == 0, return rc, "pivot root failed, packagename is %s, errno is %d",
         bundleName.c_str(), errno);
-#endif
 
     rc = umount2(".", MNT_DETACH);
     APPSPAWN_CHECK(rc == 0, return rc, "MNT_DETACH failed, packagename is %s", bundleName.c_str());
+#endif
     return 0;
 }
 } // namespace AppSpawn
