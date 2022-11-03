@@ -881,4 +881,31 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_27, TestSize.Level0)
     ret = OHOS::AppSpawn::SandboxUtils::DoAllMntPointsMount(m_appProperty, j_config2);
     EXPECT_EQ(ret, 0);
 }
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_28, TestSize.Level0)
+{
+    std::string mJsconfig = "{ \
+        \"test-namespace\" : [{ \
+            \"com.ohos.note\" : [{ \
+                \"clone-flags\": [ \"mnt\", \"pid\" ] \
+            }] \
+        }] \
+    }";
+    nlohmann::json j_config = nlohmann::json::parse(mJsconfig.c_str());
+    OHOS::AppSpawn::SandboxUtils::StoreNamespaceJsonConfig(j_config);
+    int ret = OHOS::AppSpawn::SandboxUtils::GetNamespaceFlagsFromConfig("ohos.test.bundle");
+    EXPECT_EQ(ret, 0);
+
+    ret = OHOS::AppSpawn::SandboxUtils::DoAppSandboxMountOnce(nullptr, "", nullptr, 0, nullptr);
+    EXPECT_EQ(ret, 0);
+
+    std::string mJsconfig1 = "{ \
+        \"dest-mode\" : \"S_IRUSR|S_IWUSR|S_IXUSR\" \
+    }";
+    nlohmann::json j_config1 = nlohmann::json::parse(mJsconfig1.c_str());
+    std::string sandboxRoot;
+    const char *str = "/data/test11122";
+    sandboxRoot = str;
+    OHOS::AppSpawn::SandboxUtils::DoSandboxChmod(j_config1, sandboxRoot);
+}
 } // namespace OHOS
