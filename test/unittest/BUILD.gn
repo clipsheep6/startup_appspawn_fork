@@ -77,6 +77,7 @@ ohos_unittest("AppSpawn_ut") {
     "bind=bind_stub",
     "listen=listen_stub",
     "lchown=lchown_stub",
+    "lchmod=lchmod_stub",
     "getsockopt=getsockopt_stub",
     "setgroups=setgroups_stub",
     "setresuid=setresuid_stub",

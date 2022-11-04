@@ -993,4 +993,41 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_28, TestSize.Level0)
     sandboxRoot = str;
     OHOS::AppSpawn::SandboxUtils::DoSandboxChmod(j_config1, sandboxRoot);
 }
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_29, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_29 start";
+    ClientSocket::AppProperty *m_appProperty = GetAppProperty();
+    m_appProperty->uid = -1;
+    m_appProperty->gid = -1;
+
+    const char *srcPath = "/data/app/el1";
+    std::string path = srcPath;
+    OHOS::AppSpawn::SandboxUtils::CheckAndPrepareSrcPath(m_appProperty, path);
+
+    const char *srcPath1 = "/data/app/el2/100/base/ohos.test.bundle1";
+    std::string path1 = srcPath1;
+    OHOS::AppSpawn::SandboxUtils::CheckAndPrepareSrcPath(m_appProperty, path1);
+
+    const char *srcPath2 = "/data/app/el2/100/database/ohos.test.bundle2";
+    std::string path2 = srcPath2;
+    OHOS::AppSpawn::SandboxUtils::CheckAndPrepareSrcPath(m_appProperty, path2);
+
+    const char *srcPath3 = "/data/app/el2/100/test123/ohos.test.bundle3";
+    std::string path3 = srcPath3;
+    OHOS::AppSpawn::SandboxUtils::CheckAndPrepareSrcPath(m_appProperty, path3);
+
+    const char *srcPath4 = "/data/serivce/el2/100/hmdfs/account/data/ohos.test.bundle4";
+    std::string path4 = srcPath4;
+    OHOS::AppSpawn::SandboxUtils::CheckAndPrepareSrcPath(m_appProperty, path4);
+
+    const char *srcPath5 = "/data/serivce/el2/100/hmdfs/non_account/data/ohos.test.bundle5";
+    std::string path5 = srcPath5;
+    OHOS::AppSpawn::SandboxUtils::CheckAndPrepareSrcPath(m_appProperty, path5);
+
+    const char *srcPath6 = "/data/serivce/el2/100/hmdfs/non_account/test/ohos.test.bundle6";
+    std::string path6 = srcPath6;
+    OHOS::AppSpawn::SandboxUtils::CheckAndPrepareSrcPath(m_appProperty, path6);
+    SUCCEED();
+}
 } // namespace OHOS

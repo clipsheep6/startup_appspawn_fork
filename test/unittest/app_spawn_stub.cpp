@@ -109,6 +109,11 @@ int lchown_stub( const char *pathname, uid_t owner, gid_t group )
     return 0;
 }
 
+int lchmod_stub( const char *pathname, mode_t mode)
+{
+    return 0;
+}
+
 int getsockopt_stub(int sockfd, int level, int optname, void *optval, socklen_t *optlen)
 {
     if (optval == NULL) {
