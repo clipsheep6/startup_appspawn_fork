@@ -12,17 +12,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "app_spawn_stub.h"
 
 #include <fcntl.h>
 #include <pthread.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <errno.h>
+#include <cstdarg>
+#include <cstdbool>
+#include <cstdlib>
+#include <cerrno>
 #include <unistd.h>
-#include <signal.h>
-#include <time.h>
+#include <csignal>
+#include <ctime>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -32,15 +33,15 @@
 #include "beget_ext.h"
 #include "securec.h"
 
-HapContext_stub::HapContext_stub() {}
-HapContext_stub::~HapContext_stub() {}
+HapContextStub::HapContextStub() {}
+HapContextStub::~HapContextStub() {}
 static int g_testHapDomainSetcontext = 0;
-int HapContext_stub::HapDomainSetcontext(const std::string &apl, const std::string &packageName)
+int HapContextStub::HapDomainSetcontext(const std::string &apl, const std::string &packageName)
 {
     if (g_testHapDomainSetcontext == 0) {
         return 0;
     } else if (g_testHapDomainSetcontext == 1) {
-        sleep(2);
+        sleep(2); // 2 is sleep wait time
     }
     return g_testHapDomainSetcontext;
 }
@@ -52,19 +53,23 @@ void SetHapDomainSetcontextResult(int result)
     g_testHapDomainSetcontext = result;
 }
 
-void *dlopen_stub( const char * pathname, int mode)
+void *dlopen_stub(const char *pathname, int mode)
 {
+    UNUSED(pathname);
+    UNUSED(mode);
     static size_t index = 0;
     return &index;
 }
 
 bool InitEnvironmentParam_stub(const char *name)
 {
+    UNUSED(name);
     return true;
 }
 
 void *dlsym_stub(void *handle, const char *symbol)
 {
+    UNUSED(handle);
     if (strcmp(symbol, "InitEnvironmentParam") == 0) {
         return (void *)InitEnvironmentParam_stub;
     }
@@ -73,17 +78,20 @@ void *dlsym_stub(void *handle, const char *symbol)
 
 int dlclose_stub(void *handle)
 {
+    UNUSED(handle);
     return 0;
 }
 
 pid_t waitpid_stub(pid_t *pid, int *status, int opt)
 {
+    UNUSED(pid);
+    UNUSED(opt);
     static int count = 0;
     static int statusCount = 0;
-    *status = (statusCount % 2 == 0) ? 0x0e007f : 0;
+    *status = (statusCount % 2 == 0) ? 0x0e007f : 0; // 2 is to judge whether it is even
     count++;
     printf("waitpid_stub %d\n", GetTestPid());
-    if ((count % 2) == 1) {
+    if ((count % 2) == 1) { // 2 is to judge whether it is odd
         statusCount++;
         return GetTestPid();
     }
@@ -96,64 +104,87 @@ void DisallowInternet(void)
 
 int bind_stub(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
+    UNUSED(sockfd);
+    UNUSED(addr);
+    UNUSED(addrlen);
     return 0;
 }
 
 int listen_stub(int fd, int backlog)
 {
+    UNUSED(fd);
+    UNUSED(backlog);
     return 0;
 }
 
-int lchown_stub( const char *pathname, uid_t owner, gid_t group )
+int lchown_stub(const char *pathname, uid_t owner, gid_t group)
 {
+    UNUSED(pathname);
+    UNUSED(owner);
+    UNUSED(group);
     return 0;
 }
 
-int lchmod_stub( const char *pathname, mode_t mode)
+int lchmod_stub(const char *pathname, mode_t mode)
 {
+    UNUSED(pathname);
+    UNUSED(mode);
     return 0;
 }
 
 int getsockopt_stub(int sockfd, int level, int optname, void *optval, socklen_t *optlen)
 {
-    if (optval == NULL) {
+    UNUSED(sockfd);
+    UNUSED(level);
+    UNUSED(optlen);
+    if (optval == nullptr) {
         return -1;
     }
     if (optname == SO_PEERCRED) {
-        struct ucred *cred = (struct ucred *)optval;
+        struct ucred *cred = reinterpret_cast<struct ucred *>(optval);
         cred->uid = 0;
     }
     return 0;
 }
 
-int setgroups_stub(size_t size,const gid_t * list)
+int setgroups_stub(size_t size, const gid_t *list)
 {
+    UNUSED(size);
+    UNUSED(list);
     return 0;
 }
 
 int setresuid_stub(uid_t ruid, uid_t euid, uid_t suid)
 {
+    UNUSED(ruid);
+    UNUSED(euid);
+    UNUSED(suid);
     return 0;
 }
 
 int setresgid_stub(gid_t rgid, gid_t egid, gid_t sgid)
 {
+    UNUSED(rgid);
+    UNUSED(egid);
+    UNUSED(sgid);
     return 0;
 }
 
 int capset_stub(cap_user_header_t hdrp, const cap_user_data_t datap)
 {
+    UNUSED(hdrp);
+    UNUSED(datap);
     return 0;
 }
 
 struct ForkArgs {
-   int (*childFunc)(void *arg);
-   void *args;
+    int (*childFunc)(void *arg);
+    void *args;
 };
 
 static void *ThreadFunc(void *arg)
 {
-    struct ForkArgs *forkArg = (struct ForkArgs *)arg;
+    struct ForkArgs *forkArg = reinterpret_cast<struct ForkArgs *>(arg);
     forkArg->childFunc(forkArg->args);
     free(forkArg);
     return nullptr;
@@ -163,7 +194,7 @@ static pid_t g_pid = 1000;
 pid_t AppSpawnFork(int (*childFunc)(void *arg), void *args)
 {
     static pthread_t thread = 0;
-    struct ForkArgs *forkArg = (ForkArgs *)malloc(sizeof(struct ForkArgs));
+    struct ForkArgs *forkArg = reinterpret_cast<struct ForkArgs *>(malloc(sizeof(struct ForkArgs)));
     if (forkArg == nullptr) {
         return -1;
     }
@@ -184,8 +215,7 @@ pid_t GetTestPid(void)
     return g_pid;
 }
 
-int clone_stub(int (*fn)(void *), void *stack, int flags, void *arg, ...
-    /* pid_t *parent_tid, void *tls, pid_t *child_tid */ )
+int clone_stub(int (*fn)(void *), void *stack, int flags, void *arg, ...)
 {
     static int testResult = 0;
     testResult++;
@@ -207,7 +237,7 @@ void StartupLog_stub(InitLogLevel logLevel, uint32_t domain, const char *tag, co
     (void)clock_gettime(CLOCK_REALTIME, &curr);
     struct tm t;
     char dateTime[80] = {"00-00-00 00:00:00"}; // 80 data time
-    if (localtime_r(&curr.tv_sec, &t) != NULL) {
+    if (localtime_r(&curr.tv_sec, &t) != nullptr) {
         strftime(dateTime, sizeof(dateTime), "%Y-%m-%d %H:%M:%S", &t);
     }
     (void)fprintf(stdout, "[%s.%ld][pid=%d %d][%s]%s \n", dateTime, curr.tv_nsec, getpid(), gettid(), tag, tmpFmt);
@@ -218,7 +248,7 @@ bool SetSeccompPolicyWithName(const char *filterName)
 {
     static int result = 0;
     result++;
-    return (result % 3) == 0;
+    return (result % 3) == 0; // 3 is test data
 }
 
 #ifdef __cplusplus

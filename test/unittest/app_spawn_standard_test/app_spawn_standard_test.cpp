@@ -208,7 +208,8 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_004, TestSize.Level0)
     char tmp1[] = "cold-start";
     char tmp2[] = "1";
     {
-        char tmp3[] = "1:1:1:1:2:1000:1000:ohos.samples.ecg.default:ohos.samples.ecg:default:671201800:system_core:default";
+        char tmp3[] = "1:1:1:1:2:1000:1000:ohos.samples.ecg.default: \
+            ohos.samples.ecg:default:671201800:system_core:default";
         char * const argv[] = {tmp0, tmp1, tmp2, tmp3};
         AppSpawnColdRun(content, 4, argv);
     }
@@ -335,21 +336,21 @@ static AppSpawnContentExt *TestClient(int cold,
     StreamServerTask *task = reinterpret_cast<StreamServerTask *>(content->server);
     task->incommingConnect(nullptr, nullptr);
     task->incommingConnect(LE_GetDefaultLoop(), nullptr);
-
+    int ret；
     content->content.initAppSpawn(&content->content);
     if (content->timer == nullptr) { // create timer for exit
-        int ret = LE_CreateTimer(LE_GetDefaultLoop(), &content->timer, ProcessTimer, nullptr);
+        ret = LE_CreateTimer(LE_GetDefaultLoop(), &content->timer, ProcessTimer, nullptr);
         EXPECT_EQ(ret, 0);
-        ret = LE_StartTimer(LE_GetDefaultLoop(), content->timer, 500, 1);
+        ret = LE_StartTimer(LE_GetDefaultLoop(), content->timer, 500, 1); // 500 ms is timeout
         EXPECT_EQ(ret, 0);
     }
-    int ret = RunClient(content, cold, code, processName);
+    ret = RunClient(content, cold, code, processName);
     EXPECT_EQ(ret, 0);
 
     if (content->timer == nullptr) { // create timer for exit
-        int ret = LE_CreateTimer(LE_GetDefaultLoop(), &content->timer, ProcessTimer, nullptr);
+        ret = LE_CreateTimer(LE_GetDefaultLoop(), &content->timer, ProcessTimer, nullptr);
         EXPECT_EQ(ret, 0);
-        ret = LE_StartTimer(LE_GetDefaultLoop(), content->timer, 500, 1);
+        ret = LE_StartTimer(LE_GetDefaultLoop(), content->timer, 500, 1); // 500 ms is timeout
         EXPECT_EQ(ret, 0);
     }
     return content;

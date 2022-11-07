@@ -14,7 +14,6 @@
  */
 
 #include <gtest/gtest.h>
-
 #include <string>
 #include <cerrno>
 #include <memory>
@@ -557,7 +556,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_18, TestSize.Level0)
     ret = OHOS::AppSpawn::SandboxUtils::GetSbxSwitchStatusByConfig(j_config2);
     EXPECT_FALSE(ret);
 
-     std::string mJsconfig3 = "{ \
+    std::string mJsconfig3 = "{ \
         \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\" \
     }";
     nlohmann::json j_config3 = nlohmann::json::parse(mJsconfig3.c_str());
@@ -794,7 +793,12 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_25, TestSize.Level0)
 
     ret = OHOS::AppSpawn::SandboxUtils::DoSandboxFileCommonFlagsPointHandle(m_appProperty, j_config1);
     EXPECT_EQ(ret, 0);
+}
 
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_26, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_26 start";
+    ClientSocket::AppProperty *m_appProperty = GetAppProperty();
     std::string mJsconfig2 = "{ \
         \"common\":[{ \
             \"app-base\" : [{ \
@@ -816,13 +820,13 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_25, TestSize.Level0)
     if (strcpy_s(m_appProperty->bundleName, APP_LEN_BUNDLE_NAME, "com.ohos.dlpmanager") != 0) {
         GTEST_LOG_(INFO) << "Failed to strcpy_s err=" << errno << std::endl;
     }
-    ret = OHOS::AppSpawn::SandboxUtils::DoSandboxFileCommonBind(m_appProperty, j_config2);
+    int ret = OHOS::AppSpawn::SandboxUtils::DoSandboxFileCommonBind(m_appProperty, j_config2);
     EXPECT_NE(ret, 0);
 }
 
-HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_26, TestSize.Level0)
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_27, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_26 start";
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_27 start";
     ClientSocket::AppProperty *m_appProperty = GetAppProperty();
     if (strcpy_s(m_appProperty->bundleName, APP_LEN_BUNDLE_NAME, "test.bundle.name") != 0) {
         GTEST_LOG_(INFO) << "Failed to strcpy_s err=" << errno << std::endl;
@@ -884,9 +888,85 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_26, TestSize.Level0)
     EXPECT_EQ(ret, 0);
 }
 
-HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_27, TestSize.Level0)
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_28, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_27 start";
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_28 start";
+    ClientSocket::AppProperty *m_appProperty = GetAppProperty();
+    if (strcpy_s(m_appProperty->bundleName, APP_LEN_BUNDLE_NAME, "test.bundle.name") != 0) {
+        GTEST_LOG_(INFO) << "Failed to strcpy_s err=" << errno << std::endl;
+    }
+    m_appProperty->flags = 4;
+    std::string mJsconfig3 = "{ \
+        \"individual\": [{ \
+            \"test.bundle.name\" : [{ \
+                \"flags-point\" : [{ \
+                    \"flags\": \"DLP_MANAGER\", \
+                    \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                    \"mount-paths\" : [{ \
+                        \"src-path\" : \"/data/app/el2/<currentUserId>/base/<PackageName_index>\", \
+                        \"sandbox-path\" : \"/data/storage/el2/base\", \
+                        \"sandbox-flags\" : [ \"bind\", \"rec\" ], \
+                        \"check-action-status\": \"false\" \
+                    }] \
+                }], \
+                \"sandbox-switch\": \"OFF\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\" \
+            }] \
+        }] \
+    }";
+    nlohmann::json j_config3 = nlohmann::json::parse(mJsconfig3.c_str());
+    int ret = OHOS::AppSpawn::SandboxUtils::DoSandboxFilePrivateFlagsPointHandle(m_appProperty, j_config3);
+    EXPECT_EQ(ret, 0);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_29, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_29 start";
+    ClientSocket::AppProperty *m_appProperty = GetAppProperty();
+
+    if (strcpy_s(m_appProperty->apl, APP_APL_MAX_LEN, "apl123") != 0) {
+        GTEST_LOG_(INFO) << "Failed to strcpy_s err=" << errno << std::endl;
+    }
+
+    std::string mJsconfig3 = "{ \
+        \"flags\": \"DLP_MANAGER\", \
+        \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+        \"mount-paths\" : [{ \
+            \"src-path\" : \"/data/app/el2/<currentUserId>/base/database/<PackageName>\", \
+            \"sandbox-path\" : \"/data/storage/el2/base\", \
+            \"sandbox-flags\" : [ \"bind\", \"rec\" ], \
+            \"check-action-status\": \"false\" \
+        }] \
+    }";
+    nlohmann::json j_config3 = nlohmann::json::parse(mJsconfig3.c_str());
+    m_appProperty->flags = 4;
+    if (memset_s(m_appProperty->bundleName, APP_LEN_BUNDLE_NAME, 0, APP_LEN_BUNDLE_NAME) != 0) {
+        GTEST_LOG_(INFO) << "Failed to memset_s err=" << errno << std::endl;
+    }
+    if (strcpy_s(m_appProperty->bundleName, APP_LEN_BUNDLE_NAME, "com.ohos.wps") != 0) {
+        GTEST_LOG_(INFO) << "Failed to strcpy_s err=" << errno << std::endl;
+    }
+    int ret = OHOS::AppSpawn::SandboxUtils::DoAllMntPointsMount(m_appProperty, j_config3);
+    EXPECT_EQ(ret, 0);
+
+    std::string mJsconfig4 = "{ \
+        \"flags\": \"DLP_MANAGER\", \
+        \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+        \"mount-paths\" : [{ \
+            \"src-path\" : \"/data/app/el2/<currentUserId>/database/<PackageName>\", \
+            \"sandbox-path\" : \"/data/storage/el2/base\", \
+            \"sandbox-flags\" : [ \"bind\", \"rec\" ], \
+            \"check-action-status\": \"false\" \
+        }] \
+    }";
+    nlohmann::json j_config4 = nlohmann::json::parse(mJsconfig4.c_str());
+    ret = OHOS::AppSpawn::SandboxUtils::DoAllMntPointsMount(m_appProperty, j_config4);
+    EXPECT_EQ(ret, 0);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_30, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_30 start";
     ClientSocket::AppProperty *m_appProperty = GetAppProperty();
     if (strcpy_s(m_appProperty->bundleName, APP_LEN_BUNDLE_NAME, "com.ohos.dlpmanager") != 0) {
         GTEST_LOG_(INFO) << "Failed to strcpy_s err=" << errno << std::endl;
@@ -930,45 +1010,11 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_27, TestSize.Level0)
     nlohmann::json j_config2 = nlohmann::json::parse(mJsconfig2.c_str());
     ret = OHOS::AppSpawn::SandboxUtils::DoAllMntPointsMount(m_appProperty, j_config2);
     EXPECT_TRUE(ret != 0);
-
-    std::string mJsconfig3 = "{ \
-        \"flags\": \"DLP_MANAGER\", \
-        \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
-        \"mount-paths\" : [{ \
-            \"src-path\" : \"/data/app/el2/<currentUserId>/base/database/<PackageName>\", \
-            \"sandbox-path\" : \"/data/storage/el2/base\", \
-            \"sandbox-flags\" : [ \"bind\", \"rec\" ], \
-            \"check-action-status\": \"false\" \
-        }] \
-    }";
-    nlohmann::json j_config3 = nlohmann::json::parse(mJsconfig3.c_str());
-    m_appProperty->flags = 4;
-    if (memset_s(m_appProperty->bundleName, APP_LEN_BUNDLE_NAME, 0, APP_LEN_BUNDLE_NAME) != 0) {
-        GTEST_LOG_(INFO) << "Failed to memset_s err=" << errno << std::endl;
-    }
-    if (strcpy_s(m_appProperty->bundleName, APP_LEN_BUNDLE_NAME, "com.ohos.wps") != 0) {
-        GTEST_LOG_(INFO) << "Failed to strcpy_s err=" << errno << std::endl;
-    }
-    ret = OHOS::AppSpawn::SandboxUtils::DoAllMntPointsMount(m_appProperty, j_config3);
-    EXPECT_EQ(ret, 0);
-
-    std::string mJsconfig4 = "{ \
-        \"flags\": \"DLP_MANAGER\", \
-        \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
-        \"mount-paths\" : [{ \
-            \"src-path\" : \"/data/app/el2/<currentUserId>/database/<PackageName>\", \
-            \"sandbox-path\" : \"/data/storage/el2/base\", \
-            \"sandbox-flags\" : [ \"bind\", \"rec\" ], \
-            \"check-action-status\": \"false\" \
-        }] \
-    }";
-    nlohmann::json j_config4 = nlohmann::json::parse(mJsconfig4.c_str());
-    ret = OHOS::AppSpawn::SandboxUtils::DoAllMntPointsMount(m_appProperty, j_config4);
-    EXPECT_EQ(ret, 0);
 }
 
-HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_28, TestSize.Level0)
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_31, TestSize.Level0)
 {
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_31 start";
     std::string mJsconfig = "{ \
         \"test-namespace\" : [{ \
             \"com.ohos.note\" : [{ \
@@ -994,12 +1040,12 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_28, TestSize.Level0)
     OHOS::AppSpawn::SandboxUtils::DoSandboxChmod(j_config1, sandboxRoot);
 }
 
-HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_29, TestSize.Level0)
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_32, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_29 start";
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_32 start";
     ClientSocket::AppProperty *m_appProperty = GetAppProperty();
-    m_appProperty->uid = -1;
-    m_appProperty->gid = -1;
+    m_appProperty->uid = 1000;
+    m_appProperty->gid = 1000;
 
     const char *srcPath = "/data/app/el1";
     std::string path = srcPath;

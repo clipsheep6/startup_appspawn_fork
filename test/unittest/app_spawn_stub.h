@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,10 +17,10 @@
 
 #include <iostream>
 
-class HapContext_stub {
+class HapContextStub {
 public:
-    HapContext_stub();
-    ~HapContext_stub();
+    HapContextStub();
+    ~HapContextStub();
     int HapDomainSetcontext(const std::string &apl, const std::string &packageName);
 };
 #ifdef __cplusplus

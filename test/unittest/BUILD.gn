@@ -87,7 +87,7 @@ ohos_unittest("AppSpawn_ut") {
     "dlsym=dlsym_stub",
     "dlclose=dlclose_stub",
     "waitpid=waitpid_stub",
-    "HapContext=HapContext_stub",
+    "HapContext=HapContextStub",
     "APPSPAWN_TEST",
     "OHOS_DEBUG",
     "GRAPHIC_PERMISSION_CHECK",
