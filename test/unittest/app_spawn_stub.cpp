@@ -30,6 +30,7 @@
 #include <sys/un.h>
 #include <sys/capability.h>
 
+#include "appspawn_server.h"
 #include "beget_ext.h"
 #include "securec.h"
 
