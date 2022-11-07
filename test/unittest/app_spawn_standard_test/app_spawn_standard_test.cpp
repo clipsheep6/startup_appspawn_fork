@@ -336,7 +336,7 @@ static AppSpawnContentExt *TestClient(int cold,
     StreamServerTask *task = reinterpret_cast<StreamServerTask *>(content->server);
     task->incommingConnect(nullptr, nullptr);
     task->incommingConnect(LE_GetDefaultLoop(), nullptr);
-    int ret；
+    int ret;
     content->content.initAppSpawn(&content->content);
     if (content->timer == nullptr) { // create timer for exit
         ret = LE_CreateTimer(LE_GetDefaultLoop(), &content->timer, ProcessTimer, nullptr);
