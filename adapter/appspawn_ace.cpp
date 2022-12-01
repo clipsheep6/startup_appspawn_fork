@@ -25,7 +25,11 @@
 void LoadExtendLib(AppSpawnContent *content)
 {
 #ifdef __aarch64__
+#ifdef ASAN_DETECTOR
+    const char *acelibdir("/system/asan/lib64/libace.z.so");
+#else
     const char *acelibdir("/system/lib64/libace.z.so");
+#endif
 #else
     const char *acelibdir("/system/lib/libace.z.so");
 #endif
