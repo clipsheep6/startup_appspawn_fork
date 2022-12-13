@@ -63,6 +63,12 @@ typedef enum AppOperateType_ {
 #define FDLEN2 2
 #define FD_INIT_VALUE 0
 
+typedef struct HspList_ {
+    uint32_t totalLength;
+    uint32_t savedLength;
+    char* data;
+} HspList;
+
 typedef struct AppParameter_ {
     uint32_t cloneFlags;
     uint32_t uid;                     // the UNIX uid that the child process setuid() to after fork()
@@ -80,6 +86,7 @@ typedef struct AppParameter_ {
     int32_t bundleIndex;
     AppOperateType code;
     uint64_t accessTokenIdEx;
+    HspList hspList;
 #ifndef OHOS_LITE
     uint8_t setAllowInternet;
     uint8_t allowInternet; // hap sockect allowed
