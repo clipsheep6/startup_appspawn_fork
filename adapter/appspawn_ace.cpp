@@ -30,7 +30,7 @@ static const bool DEFAULT_PRELOAD_VALUE = true;
 
 void LoadExtendLib(AppSpawnContent *content)
 {
-#ifdef __aarch64__
+#if defined (__aarch64__) || defined (__x86_64__)
     const char *acelibdir("libace.z.so");
 #else
     const char *acelibdir("lib/libace.z.so");
