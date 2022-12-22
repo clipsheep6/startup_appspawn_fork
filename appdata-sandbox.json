@@ -176,7 +176,12 @@
                     "sandbox-path" : "/data/storage/el1/bundle/ohos.global.systemres.overlay",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
-                }
+                }, {
+                    "src-path" : "/data/app/el1/bundle/public/com.hw.thirdpartysdkdemo",
+                    "sandbox-path" : "/data/storage/el1/bundle/com.hw.thirdpartysdkdemo",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+				}
             ],
 	    "flags-point" : [{
                     "flags": "DLP_MANAGER",
