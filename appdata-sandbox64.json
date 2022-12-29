@@ -190,6 +190,11 @@
                     "sandbox-path" : "/data/storage/el1/bundle/ohos.global.systemres.overlay",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
+                }, {
+                    "src-path" : "/data/service/el1/public/netmanager",
+                    "sandbox-path" : "/data/service/el1/public/netmanager",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
                 }
             ],
             "flags-point" : [{
