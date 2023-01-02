@@ -165,6 +165,11 @@
                     "target-name" : "/sys/kernel/debug",
                     "link-name" : "/d",
                     "check-action-status": "false"
+                }, {
+                    "src-path" : "/data/unix",
+                    "sandbox-path" : "/data/unix",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
                 }
             ]
         }],
