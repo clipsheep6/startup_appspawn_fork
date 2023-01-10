@@ -178,7 +178,10 @@ ohos_executable("nwebspawn") {
     "${appspawn_path}/util/src/sandbox_utils.cpp",
   ]
   configs = [ ":appspawn_config" ]
-  deps = [ "${appspawn_path}:nwebspawn_server" ]
+  deps = [
+    "${appspawn_path}:nwebspawn_server",
+    "${appspawn_path}:webviewchromium_loader",
+  ]
 
   if (build_selinux) {
     external_deps = [ "selinux:libhap_restorecon" ]
@@ -204,4 +207,25 @@ group("nweb") {
       ":nwebspawn.rc",
     ]
   }
+}
+
+ohos_shared_library("webviewchromium_loader") {
+  sources = [ "${appspawn_path}/common/webview_loader.cpp" ]
+  configs = [ ":appspawn_config" ]
+  external_deps = [ "init:libbegetutil" ]
+
+  subsystem_name = "${subsystem_name}"
+  part_name = "${part_name}"
+}
+
+ohos_executable("nweb_shared_relro") {
+  sources = [ "${appspawn_path}/nweb_shared_relro/main.c" ]
+  if (target_cpu == "arm64") {
+    defines = [ "webview_arm64" ]
+  }
+  configs = [ ":appspawn_config" ]
+  deps = [ "${appspawn_path}:webviewchromium_loader" ]
+  install_enable = true
+  subsystem_name = "${subsystem_name}"
+  part_name = "${part_name}"
 }
