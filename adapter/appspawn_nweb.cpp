@@ -19,9 +19,11 @@
 #include <ctime>
 #include <map>
 #include <string>
+#include <dlfcn_ext.h>
 
 #include "appspawn_service.h"
 #include "appspawn_adapter.h"
+#include "webview_loader.h"
 struct RenderProcessNode {
     RenderProcessNode(time_t now, int exit):recordTime_(now), exitStatus_(exit) {}
     time_t recordTime_;
@@ -38,15 +40,27 @@ void LoadExtendLib(AppSpawnContent *content)
 {
 #ifdef webview_arm64
     const std::string loadLibDir = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm64";
+#ifdef nweb_relro_enable
+    const std::string nweb_relro_path = "/data/misc/shared_relro/libwebviewchromium64.relro";
+#endif
 #else
     const std::string loadLibDir = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm";
+#ifdef nweb_relro_enable
+    const std::string nweb_relro_path = "/data/misc/shared_relro/libwebviewchromium32.relro";
+#endif
 #endif
 
 #ifdef __MUSL__
     Dl_namespace dlns;
     dlns_init(&dlns, "nweb_ns");
     dlns_create(&dlns, loadLibDir.c_str());
+#ifdef nweb_relro_enable
+    void *handle =
+        LoadWithRelroFile("libweb_engine.so", nweb_relro_path.c_str(),
+                          "nweb_ns", loadLibDir.c_str());
+#else
     void *handle = dlopen_ns(&dlns, "libweb_engine.so", RTLD_NOW | RTLD_GLOBAL);
+#endif
 #else
     const std::string engineLibDir = loadLibDir + "/libweb_engine.so";
     void *handle = dlopen(engineLibDir.c_str(), RTLD_NOW | RTLD_GLOBAL);
