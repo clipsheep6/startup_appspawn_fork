@@ -102,6 +102,7 @@ ohos_static_library("appspawn_server") {
   ]
   if (build_selinux) {
     external_deps += [ "selinux:libhap_restorecon" ]
+    deps += [ "//third_party/selinux:libselinux" ]
   }
 
   cflags = []
@@ -154,6 +155,7 @@ ohos_static_library("nwebspawn_server") {
   ]
   if (build_selinux) {
     external_deps += [ "selinux:libhap_restorecon" ]
+    deps += [ "//third_party/selinux:libselinux" ]
   }
 
   cflags = []

@@ -20,6 +20,8 @@
 #include "appspawn_service.h"
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
+#include <policycoreutils.h>
+#include <selinux/selinux.h>
 #endif
 #include "token_setproc.h"
 #ifdef WITH_SECCOMP
@@ -40,7 +42,13 @@ void SetSelinuxCon(struct AppSpawnContent_ *content, AppSpawnClient *client)
     UNUSED(content);
     AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
     HapContext hapContext;
-    int32_t ret = hapContext.HapDomainSetcontext(appProperty->property.apl, appProperty->property.processName);
+    int32_t ret;
+    if (appProperty->property.code == SPAWN_NATIVE_PROCESS) {
+        ret = setcon("u:r:native_spawner:s0");
+        APPSPAWN_LOGI("native_spawner domain set context, ret = %d errno %d", ret, errno);
+    } else {
+        ret = hapContext.HapDomainSetcontext(appProperty->property.apl, appProperty->property.processName);
+    }
     if (ret != 0) {
         APPSPAWN_LOGE("AppSpawnServer::Failed to hap domain set context, errno = %d %s",
             errno, appProperty->property.apl);
@@ -75,6 +83,7 @@ void SetSeccompFilter(struct AppSpawnContent_ *content, AppSpawnClient *client)
         APPSPAWN_LOGI("Success to set %s seccomp filter", appName);
     }
 #endif
+
 }
 
 void HandleInternetPermission(const AppSpawnClient *client)
