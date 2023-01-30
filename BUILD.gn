@@ -61,6 +61,7 @@ ohos_executable("appspawn") {
     "ability_runtime:app_manager",
     "ability_runtime:runtime",
     "c_utils:utils",
+    "hilog_native:libhilog",
     "hitrace_native:hitrace_meter",
     "init:libbegetutil",
   ]
@@ -98,6 +99,7 @@ ohos_static_library("appspawn_server") {
   ]
   external_deps = [
     "c_utils:utils",
+    "hilog_native:libhilog",
     "init:libbegetutil",
   ]
   if (build_selinux) {
@@ -150,6 +152,7 @@ ohos_static_library("nwebspawn_server") {
   ]
   external_deps = [
     "c_utils:utils",
+    "hilog_native:libhilog",
     "init:libbegetutil",
   ]
   if (build_selinux) {
@@ -182,9 +185,9 @@ ohos_executable("nwebspawn") {
   ]
   configs = [ ":appspawn_config" ]
   deps = [ "${appspawn_path}:nwebspawn_server" ]
-
+  external_deps = [ "hilog_native:libhilog" ]
   if (build_selinux) {
-    external_deps = [ "selinux:libhap_restorecon" ]
+    external_deps += [ "selinux:libhap_restorecon" ]
   }
 
   install_enable = true

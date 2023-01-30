@@ -15,14 +15,15 @@
 
 #ifndef APPSPAWN_SERVER_H
 #define APPSPAWN_SERVER_H
-#include "beget_ext.h"
-
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
 
+#include "beget_ext.h"
+#include "hilog/log.h"
+#include "securec.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -85,19 +86,37 @@ long long DiffTime(struct timespec *startTime);
 pid_t AppSpawnFork(int (*childFunc)(void *arg), void *args);
 #define UNUSED(x) (void)(x)
 
+static void AppSpawnLog(int logLevel, unsigned int domain, const char *tag, const char *fmt, ...)
+{
+    char tmpFmt[128] = {0}; // 128 max len
+    va_list vargs;
+    va_start(vargs, fmt);
+    if (vsnprintf_s(tmpFmt, sizeof(tmpFmt), sizeof(tmpFmt) - 1, fmt, vargs) == -1) {
+        tmpFmt[sizeof(tmpFmt) - 2] = '\n'; // 2 add \n to tail
+        tmpFmt[sizeof(tmpFmt) - 1] = '\0';
+    }
+    va_end(vargs);
+    static const LogLevel LOG_LEVEL[] = { LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
+    HiLogPrint(LOG_CORE, LOG_LEVEL[logLevel], domain, tag, "%{public}s", tmpFmt);
+}
+
 #ifndef APPSPAWN_LABEL
 #define APPSPAWN_LABEL "APPSPAWN"
 #endif
 #define APPSPAWN_DOMAIN (BASE_DOMAIN + 0x11)
 
-#define APPSPAWN_LOGI(fmt, ...) STARTUP_LOGI(APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
-#define APPSPAWN_LOGE(fmt, ...) STARTUP_LOGE(APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
-#define APPSPAWN_LOGV(fmt, ...) STARTUP_LOGV(APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
-#define APPSPAWN_LOGW(fmt, ...) STARTUP_LOGW(APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+#define APPSPAWN_LOGI(fmt, ...) \
+    AppSpawnLog(INIT_INFO, APPSPAWN_DOMAIN, APPSPAWN_LABEL, "[%s:%d]" fmt,  (FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_LOGE(fmt, ...) \
+    AppSpawnLog(INIT_ERROR, APPSPAWN_DOMAIN, APPSPAWN_LABEL, "[%s:%d]" fmt,  (FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_LOGV(fmt, ...) \
+    AppSpawnLog(INIT_DEBUG, APPSPAWN_DOMAIN, APPSPAWN_LABEL, "[%s:%d]" fmt,  (FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_LOGW(fmt, ...) \
+    AppSpawnLog(INIT_WARN, APPSPAWN_DOMAIN, APPSPAWN_LABEL, "[%s:%d]" fmt,  (FILE_NAME), (__LINE__), ##__VA_ARGS__)
 
-#define APPSPAWN_CHECK(retCode, exper, ...) \
+#define APPSPAWN_CHECK(retCode, exper, fmt, ...) \
     if (!(retCode)) {                    \
-        APPSPAWN_LOGE(__VA_ARGS__);         \
+        APPSPAWN_LOGE(fmt, ##__VA_ARGS__);         \
         exper;                           \
     }
 
@@ -106,9 +125,9 @@ pid_t AppSpawnFork(int (*childFunc)(void *arg), void *args);
         exper;                 \
     }                         \
 
-#define APPSPAWN_CHECK_ONLY_LOG(retCode, ...) \
+#define APPSPAWN_CHECK_ONLY_LOG(retCode, fmt, ...) \
     if (!(retCode)) {                    \
-        APPSPAWN_LOGE(__VA_ARGS__);      \
+        APPSPAWN_LOGE(fmt, ##__VA_ARGS__);      \
     }
 
 #ifdef __cplusplus

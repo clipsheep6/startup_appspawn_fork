@@ -30,7 +30,7 @@ void SetAppAccessToken(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
     int32_t ret = SetSelfTokenID(appProperty->property.accessTokenIdEx);
-    APPSPAWN_LOGI("AppSpawnServer::set access token id = %d, ret = %d %d",
+    APPSPAWN_LOGV("AppSpawnServer::set access token id = %d, ret = %d %d",
         appProperty->property.accessTokenIdEx, ret, getuid());
 }
 
@@ -45,7 +45,7 @@ void SetSelinuxCon(struct AppSpawnContent_ *content, AppSpawnClient *client)
         APPSPAWN_LOGE("AppSpawnServer::Failed to hap domain set context, errno = %d %s",
             errno, appProperty->property.apl);
     } else {
-        APPSPAWN_LOGI("AppSpawnServer::Success to hap domain set context, ret = %d", ret);
+        APPSPAWN_LOGV("AppSpawnServer::Success to hap domain set context, ret = %d", ret);
     }
 #endif
 }
@@ -56,7 +56,7 @@ void SetUidGidFilter(struct AppSpawnContent_ *content)
     if (!SetSeccompPolicyWithName(APPSPAWN_NAME)) {
         APPSPAWN_LOGE("Failed to set APPSPAWN seccomp filter");
     } else {
-        APPSPAWN_LOGI("Success to set APPSPAWN seccomp filter");
+        APPSPAWN_LOGV("Success to set APPSPAWN seccomp filter");
     }
 #endif
 }
@@ -72,7 +72,7 @@ void SetSeccompFilter(struct AppSpawnContent_ *content, AppSpawnClient *client)
     if (!SetSeccompPolicyWithName(appName)) {
         APPSPAWN_LOGE("Failed to set %s seccomp filter", appName);
     } else {
-        APPSPAWN_LOGI("Success to set %s seccomp filter", appName);
+        APPSPAWN_LOGV("Success to set %s seccomp filter", appName);
     }
 #endif
 }
@@ -80,7 +80,7 @@ void SetSeccompFilter(struct AppSpawnContent_ *content, AppSpawnClient *client)
 void HandleInternetPermission(const AppSpawnClient *client)
 {
     AppSpawnClientExt *appPropertyExt = (AppSpawnClientExt *)client;
-    APPSPAWN_LOGI("HandleInternetPermission id %d setAllowInternet %hhu allowInternet %hhu",
+    APPSPAWN_LOGV("HandleInternetPermission id %d setAllowInternet %hhu allowInternet %hhu",
         client->id, appPropertyExt->setAllowInternet, appPropertyExt->allowInternet);
     if (appPropertyExt->setAllowInternet == 1 && appPropertyExt->allowInternet == 0) {
         DisallowInternet();

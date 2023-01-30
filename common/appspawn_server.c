@@ -63,7 +63,7 @@ static void ProcessExit(void)
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
 {
     int32_t ret = 0;
-    APPSPAWN_LOGI("DoStartApp id %d longProcNameLen %u", client->id, longProcNameLen);
+    APPSPAWN_LOGV("DoStartApp id %d longProcNameLen %u", client->id, longProcNameLen);
     if (content->handleInternetPermission != NULL) {
         content->handleInternetPermission(client);
     }

@@ -142,7 +142,7 @@ static void InitDebugParams(struct AppSpawnContent_ *content, AppSpawnClient *cl
 
 static void ClearEnvironment(AppSpawnContent *content, AppSpawnClient *client)
 {
-    APPSPAWN_LOGI("ClearEnvironment id %d", client->id);
+    APPSPAWN_LOGV("ClearEnvironment id %d", client->id);
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGCHLD);
