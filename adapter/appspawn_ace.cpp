@@ -19,6 +19,7 @@
 #include "js_runtime.h"
 #include "parameters.h"
 #include "runtime.h"
+#include "appspawn_service.h"
 
 #include "foundation/ability/ability_runtime/interfaces/kits/native/appkit/app/main_thread.h"
 
@@ -70,8 +71,22 @@ void LoadExtendLib(AppSpawnContent *content)
     APPSPAWN_LOGI("LoadExtendLib: End preload JS VM");
 }
 
+static void ExecvNativeProcess(AppSpawnClientExt *appProperty)
+{
+    APPSPAWN_LOGI("ExecvNativeProcess: %s", appProperty->property.renderCmd);
+    int ret = system(appProperty->property.renderCmd);
+    APPSPAWN_LOGI("system %s finished %d, errno:%d.", appProperty->property.renderCmd, ret, errno);
+}
+
 void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
+    AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
+
+    if (appProperty->property.code == SPAWN_NATIVE_PROCESS) {
+        ExecvNativeProcess(appProperty);
+        return;
+    }
+
     APPSPAWN_LOGI("AppExecFwk::MainThread::Start");
 #ifndef APPSPAWN_TEST
     OHOS::AppExecFwk::MainThread::Start();

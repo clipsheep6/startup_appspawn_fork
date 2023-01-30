@@ -106,6 +106,7 @@ ohos_unittest("AppSpawn_ut") {
     "${appspawn_path}/test/unittest/app_spawn_socket_test/app_spawn_socket_test.cpp",
     "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_sandbox_test.cpp",
     "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_standard_test.cpp",
+    "${appspawn_path}/test/unittest/app_spawn_standard_test/spawn_native_process_test.cpp",
     "${appspawn_path}/test/unittest/app_spawn_stub.cpp",
     "${appspawn_path}/test/unittest/client_socket_test/client_socket_test.cpp",
   ]
@@ -115,6 +116,7 @@ ohos_unittest("AppSpawn_ut") {
   deps = [
     "${ability_runtime_path}/frameworks/native/appkit:appkit_native",
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
+    "//third_party/selinux:libselinux",
   ]
 
   external_deps = [

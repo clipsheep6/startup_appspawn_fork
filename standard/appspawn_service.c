@@ -356,6 +356,26 @@ APPSPAWN_STATIC bool ReceiveRequestData(const TaskHandle taskHandle, AppSpawnCli
         buffLen -= sizeof(client->property);
     }
 
+#ifdef APPSPAWN_TEST
+    APPSPAWN_LOGI("Msginfo code:%d uid:%u gid:%u:%d cflags:%x flags:%x",
+        client->property.code, client->property.uid, client->property.gid, client->property.gidCount,
+        client->property.cloneFlags, client->property.flags);
+    APPSPAWN_LOGI("Msginfo token:%x tokenEx: %llu bidx:%d net:%d:%d",
+        client->property.accessTokenId, client->property.accessTokenIdEx, client->property.bundleIndex,
+        client->property.setAllowInternet, client->property.allowInternet);
+    APPSPAWN_LOGI("processName: %s", client->property.processName);
+    APPSPAWN_LOGI("bundleName: %s", client->property.bundleName);
+    APPSPAWN_LOGI("soPath: %s", client->property.soPath);
+    APPSPAWN_LOGI("apl: %s", client->property.apl);
+    APPSPAWN_LOGI("renderCmd: %s", client->property.renderCmd);
+#endif
+
+    if (client->property.code == SPAWN_NATIVE_PROCESS) {
+        // Force using native_spawner process name
+        snprintf_s(client->property.processName, sizeof(client->property.processName), sizeof(client->property.processName) - 1,
+                "native_spawner");
+    }
+
     // 2. check whether hspList exist
     if (client->property.hspList.totalLength == 0) { // no hspList
         APPSPAWN_LOGI("ReceiveRequestData: no hspList");
@@ -442,6 +462,10 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
     sandboxArg.content = &g_appSpawnContent->content;
     sandboxArg.client = &appProperty->client;
     sandboxArg.client->cloneFlags = GetAppNamespaceFlags(appProperty->property.bundleName);
+    // Check if not enter sandbox
+    if ((appProperty->property.flags & (~APP_NO_SANDBOX)) != 0) {
+        sandboxArg.client->cloneFlags = 0;
+    }
     int result = AppSpawnProcessMsg(&sandboxArg, &appProperty->pid);
     if (result == 0) {  // wait child process result
         result = WaitChild(appProperty->fd[0], appProperty->pid, appProperty);

@@ -49,6 +49,7 @@ enum AppType {
 typedef enum AppOperateType_ {
     DEFAULT = 0,
     GET_RENDER_TERMINATION_STATUS,
+    SPAWN_NATIVE_PROCESS        // Spawn native process instead of app process
 } AppOperateType;
 
 #define APP_MSG_MAX_SIZE 4096  // appspawn message max size
@@ -59,6 +60,7 @@ typedef enum AppOperateType_ {
 #define APP_APL_MAX_LEN 32
 #define APP_RENDER_CMD_MAX_LEN 1024
 #define APP_COLD_BOOT 0x01
+#define APP_NO_SANDBOX 0x02  // Do not enter sandbox
 #define BITLEN32 32
 #define FDLEN2 2
 #define FD_INIT_VALUE 0
