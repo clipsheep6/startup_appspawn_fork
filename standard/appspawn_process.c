@@ -189,6 +189,11 @@ static int SetUidGid(struct AppSpawnContent_ *content, AppSpawnClient *client)
         APPSPAWN_CHECK(!isRet, return -errno, "setuid(%u) failed: %d", appProperty->property.uid, errno);
     }
 #endif
+    if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) {
+        APPSPAWN_LOGE("Failed to set the app dumpable: %s", strerror(errno));    
+    } else {
+        APPSPAWN_LOGE("success to set the app dumpable");
+    }
     return 0;
 }
 
