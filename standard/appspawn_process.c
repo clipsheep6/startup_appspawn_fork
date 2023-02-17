@@ -32,8 +32,39 @@
 
 #include "securec.h"
 #include "parameter.h"
-
+#ifndef NWEB_SPAWN
+#include "hichecker_asan.h"
+#endif
 #define DEVICE_NULL_STR "/dev/null"
+
+// ide-asan
+#ifndef NWEB_SPAWN
+static void EnvReplace(const char* name, const char* value, const char* delim)
+{
+    setenv(name, value, 1);
+}
+
+static int SetAsanEnabledEnv(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+    AppParameter *appProperty = &((AppSpawnClientExt *)client)->property;
+    const int userId = appProperty->uid;
+    char *bundleName = appProperty->bundleName;
+    char *logPath = strcat(strcat("/data/app/el1/100/base/", bundleName), "/log");
+    char *devPath = "/dev/asanlog";
+    char *asanOptions = strcat(strcat("log_path=", logPath), "/asan.log:include=/system/etc/asan_appspawn.options");
+
+    if (GetAsanEnabled(userId, bundleName)) {
+        mount(logPath, devPath, "tmpfs", 0, NULL);
+#if defined (__aarch64__) || defined (__x86_64__)
+        EnvReplace("LD_LIBRARY_PATH", "/system/lib64/libclang_rt.asan.so", ":");
+#else
+        EnvReplace("LD_LIBRARY_PATH", "/system/lib/libclang_rt.asan.so", ":");
+#endif    
+        EnvReplace("ASAN_OPTIONS", asanOptions, ",");
+    }
+    return 0;
+}
+#endif
 
 static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *client,
     char *longProcName, uint32_t longProcNameLen)
@@ -436,6 +467,9 @@ void SetContentFunction(AppSpawnContent *content)
     content->setAppSandbox = SetAppSandboxProperty;
     content->setAppAccessToken = SetAppAccessToken;
     content->coldStartApp = ColdStartApp;
+#ifndef NWEB_SPAWN
+    content->SetAsanEnabledEnv = SetAsanEnabledEnv;
+#endif
 #ifdef ASAN_DETECTOR
     content->getWrapBundleNameValue = GetWrapBundleNameValue;
 #endif
