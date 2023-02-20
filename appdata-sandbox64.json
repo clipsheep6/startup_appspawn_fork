@@ -144,6 +144,11 @@
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
+                    "src-path" : "/mnt/share/<currentUserId>/<PackageName>",
+                    "sandbox-path" : "/data/storage/el2/share",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }, {
                     "src-path" : "/data/unix",
                     "sandbox-path" : "/data/unix",
                     "sandbox-flags" : [ "bind", "rec" ],
@@ -191,8 +196,18 @@
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
+                    "src-path" : "/system/app/SystemResources",
+                    "sandbox-path" : "/data/storage/el1/bundle/systemResources",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }, {
                     "src-path" : "/data/app/el1/bundle/public/ohos.global.systemres.overlay",
                     "sandbox-path" : "/data/storage/el1/bundle/ohos.global.systemres.overlay",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }, {
+                    "src-path" : "/data/misc",
+                    "sandbox-path" : "/data/storage/el1/bundle/misc",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }
@@ -268,6 +283,12 @@
                     "src-path" : "/storage/media/<currentUserId>",
                     "sandbox-path" : "/storage/media",
                     "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }, {
+                    "src-path" : "none",
+                    "sandbox-path" : "/storage/media/local/epfs",
+                    "sandbox-flags" : [ "MS_NODEV" ],
+                    "fs-type": "epfs",
                     "check-action-status": "false"
                 }
             ],
@@ -420,9 +441,14 @@
                     "sandbox-path" : "/data/app/el1/bundle/public/com.ohos.nweb",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
+                }, {
+                    "src-path" : "/system/app/NWeb",
+                    "sandbox-path" : "/system/app/NWeb",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
                 }
             ],
-            "symbol-links" : [ {
+            "symbol-links" : [{
                     "target-name" : "/system/etc",
                     "link-name" : "/etc",
                     "check-action-status": "false"
@@ -439,7 +465,18 @@
                     "link-name" : "/lib64",
                     "check-action-status": "false"
                 }
-            ]
+            ],
+            "flags-point" : [{
+                "flags": "DLP_MANAGER",
+                "sandbox-root" : "/mnt/sandbox/com.ohos.render/<PackageName>",
+                "mount-paths" : [{
+                    "src-path" : "/data/app/el2/<currentUserId>/base/<PackageName_index>",
+                    "sandbox-path" : "/data/storage/el2/base",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }],
+                "symbol-links" : [{}]
+            }]
         }]
     }]
 }

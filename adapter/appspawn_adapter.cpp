@@ -54,14 +54,17 @@ void SetUidGidFilter(struct AppSpawnContent_ *content)
 {
 #ifdef WITH_SECCOMP
     if (!SetSeccompPolicyWithName(APPSPAWN_NAME)) {
-        APPSPAWN_LOGE("Failed to set APPSPAWN seccomp filter");
+        APPSPAWN_LOGE("Failed to set APPSPAWN seccomp filter and exit");
+#ifndef APPSPAWN_TEST
+        _exit(0x7f);
+#endif
     } else {
         APPSPAWN_LOGI("Success to set APPSPAWN seccomp filter");
     }
 #endif
 }
 
-void SetSeccompFilter(struct AppSpawnContent_ *content, AppSpawnClient *client)
+int SetSeccompFilter(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
 #ifdef WITH_SECCOMP
 #ifdef NWEB_SPAWN
@@ -70,11 +73,15 @@ void SetSeccompFilter(struct AppSpawnContent_ *content, AppSpawnClient *client)
     const char *appName = APP_NAME;
 #endif
     if (!SetSeccompPolicyWithName(appName)) {
-        APPSPAWN_LOGE("Failed to set %s seccomp filter", appName);
+        APPSPAWN_LOGE("Failed to set %s seccomp filter and exit", appName);
+#ifndef APPSPAWN_TEST
+        return -EINVAL;
+#endif
     } else {
         APPSPAWN_LOGI("Success to set %s seccomp filter", appName);
     }
 #endif
+    return 0;
 }
 
 void HandleInternetPermission(const AppSpawnClient *client)
