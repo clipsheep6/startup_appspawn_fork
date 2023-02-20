@@ -34,6 +34,7 @@
 #include "parameter.h"
 #ifndef NWEB_SPAWN
 #include "hichecker_asan.h"
+#include "string.h"
 #endif
 #define DEVICE_NULL_STR "/dev/null"
 
@@ -49,9 +50,25 @@ static int SetAsanEnabledEnv(struct AppSpawnContent_ *content, AppSpawnClient *c
     AppParameter *appProperty = &((AppSpawnClientExt *)client)->property;
     const int userId = appProperty->uid;
     char *bundleName = appProperty->bundleName;
-    char *logPath = strcat(strcat("/data/app/el1/100/base/", bundleName), "/log");
+    char *strTmp1 = "/data/app/el1/100/base/";
+    char *strTmp2 = "/log";
+    char *strTmp3 = "log_path=";
+    char *strTmp4 = "/asan.log:include=/system/etc/asan_appspawn.options";
+    int len1 = strlen(strTmp1) + strlen(bundleName) + 1;
+    int ret = strcat_s(strTmp1, len1, bundleName);
+	APPSPAWN_CHECK(ret != EOK, return -1, "Invalid strcat");
+    int len2 = strlen(strTmp1) + strlen(strTmp2) + 1;
+    ret = strcat_s(strTmp1, len2, strTmp2);
+	APPSPAWN_CHECK(ret != EOK, return -1, "Invalid strcat");
+    char *logPath = strTmp1;
+    int len3 = strlen(strTmp3) + strlen(strTmp1) + 1;
+    ret = strcat_s(strTmp3, len3, strTmp1);
+	APPSPAWN_CHECK(ret != EOK, return -1, "Invalid strcat");
+    int len4 = strlen(strTmp3) + strlen(strTmp4) + 1;
+    ret = strcat_s(strTmp3, len4, strTmp4);
+	APPSPAWN_CHECK(ret != EOK, return -1, "Invalid strcat");
+    char *asanOptions = strTmp3;
     char *devPath = "/dev/asanlog";
-    char *asanOptions = strcat(strcat("log_path=", logPath), "/asan.log:include=/system/etc/asan_appspawn.options");
 
     if (GetAsanEnabled(userId, bundleName)) {
         mount(logPath, devPath, "tmpfs", 0, NULL);
@@ -59,7 +76,7 @@ static int SetAsanEnabledEnv(struct AppSpawnContent_ *content, AppSpawnClient *c
         EnvReplace("LD_LIBRARY_PATH", "/system/lib64/libclang_rt.asan.so", ":");
 #else
         EnvReplace("LD_LIBRARY_PATH", "/system/lib/libclang_rt.asan.so", ":");
-#endif    
+#endif
         EnvReplace("ASAN_OPTIONS", asanOptions, ",");
     }
     return 0;
