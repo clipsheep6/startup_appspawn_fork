@@ -99,7 +99,6 @@ ohos_static_library("appspawn_server") {
   ldflags = [ "-Wl,--dynamic-linker,/system/bin/linker64z" ]
   deps = [
     ":asan_appspawn.options",
-    "//base/hiviewdfx/hichecker/interfaces/native/innerkits:libhichecker_asan",
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
     "//base/startup/init/interfaces/innerkits:libbegetutil",
     "//foundation/communication/netmanager_base/services/netmanagernative/netsys_client:netsys_client",
@@ -107,6 +106,7 @@ ohos_static_library("appspawn_server") {
   external_deps = [
     "c_utils:utils",
     "init:libbegetutil",
+    "hichecker_native:libhichecker_asan",
   ]
   if (build_selinux) {
     external_deps += [ "selinux:libhap_restorecon" ]
