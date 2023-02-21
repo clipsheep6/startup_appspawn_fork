@@ -57,7 +57,7 @@ static int SetAsanEnabledEnv(struct AppSpawnContent_ *content, AppSpawnClient *c
     APPSPAWN_CHECK(ret > 0, return -1, "Invalid strcat");
     char asanOptions[PATH_MAX] = {0};
     ret = snprintf_s(asanOptions, sizeof(asanOptions), sizeof(asanOptions) - 1,
-                    "log_path=%s/asan.log:include=/system/etc/asan_appspawn.options", logPath);
+                    "log_path=%s/asan.log:include=/system/etc/asan.options", logPath);
     APPSPAWN_CHECK(ret > 0, return -1, "Invalid strcat");
     char *devPath = "/dev/asanlog";
 
