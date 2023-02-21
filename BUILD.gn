@@ -13,7 +13,7 @@
 
 import("//base/startup/appspawn/appspawn.gni")
 import("//build/ohos.gni")
-import("//base/startup/appspawn/appspawn.gni")
+import("//base/hiviewdfx/hichecker/hichecker.gni")
 
 config("appspawn_config") {
   visibility = [ ":*" ]
