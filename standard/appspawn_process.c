@@ -32,8 +32,47 @@
 
 #include "securec.h"
 #include "parameter.h"
-
+#ifndef NWEB_SPAWN
+#include "hichecker_asan.h"
+#include "string.h"
+#include "limits.h"
+#endif
 #define DEVICE_NULL_STR "/dev/null"
+
+// ide-asan
+#ifndef NWEB_SPAWN
+static void EnvReplace(const char* name, const char* value, const char* delim)
+{
+    setenv(name, value, 1);
+}
+
+static int SetAsanEnabledEnv(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+    AppParameter *appProperty = &((AppSpawnClientExt *)client)->property;
+    const int userId = appProperty->uid;
+    char *bundleName = appProperty->bundleName;
+    char logPath[PATH_MAX] = {0};
+    int ret = snprintf_s(logPath, sizeof(logPath), sizeof(logPath) - 1,
+                    "/data/app/el1/100/base/%s/log", bundleName);
+    APPSPAWN_CHECK(ret > 0, return -1, "Invalid strcat");
+    char asanOptions[PATH_MAX] = {0};
+    ret = snprintf_s(asanOptions, sizeof(asanOptions), sizeof(asanOptions) - 1,
+                    "log_path=%s/asan.log:include=/system/etc/asan.options", logPath);
+    APPSPAWN_CHECK(ret > 0, return -1, "Invalid strcat");
+    char *devPath = "/dev/asanlog";
+
+    if (GetAsanEnabled(userId, bundleName)) {
+        mount(logPath, devPath, "tmpfs", 0, NULL);
+#if defined (__aarch64__) || defined (__x86_64__)
+        EnvReplace("LD_LIBRARY_PATH", "/system/lib64/libclang_rt.asan.so", ":");
+#else
+        EnvReplace("LD_LIBRARY_PATH", "/system/lib/libclang_rt.asan.so", ":");
+#endif
+        EnvReplace("ASAN_OPTIONS", asanOptions, ",");
+    }
+    return 0;
+}
+#endif
 
 static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *client,
     char *longProcName, uint32_t longProcNameLen)
@@ -436,6 +475,9 @@ void SetContentFunction(AppSpawnContent *content)
     content->setAppSandbox = SetAppSandboxProperty;
     content->setAppAccessToken = SetAppAccessToken;
     content->coldStartApp = ColdStartApp;
+#ifndef NWEB_SPAWN
+    content->SetAsanEnabledEnv = SetAsanEnabledEnv;
+#endif
 #ifdef ASAN_DETECTOR
     content->getWrapBundleNameValue = GetWrapBundleNameValue;
 #endif
