@@ -82,6 +82,7 @@ typedef struct AppParameter_ {
     int32_t pid;                     // query render process exited status by render process pid
     int32_t bundleIndex;
     AppOperateType code;
+    uint8_t allowAccessBundleDir; // access bundle dir allowed
 #ifndef APPSPAWN_TEST
 #ifndef OHOS_LITE
     uint8_t setAllowInternet;
