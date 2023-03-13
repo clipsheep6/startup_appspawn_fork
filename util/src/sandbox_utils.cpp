@@ -862,7 +862,23 @@ int32_t SandboxUtils::DoSandboxRootFolderCreate(const ClientSocket::AppProperty 
 #ifndef APPSPAWN_TEST
     int rc = mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL);
     if (rc) {
+        APPSPAWN_LOGE("root path slave mount failed %d", errno);
         return rc;
+    }
+
+    rc = mount("/", "/", NULL, MS_BIND | MS_REC, NULL);
+    if (rc) {
+        APPSPAWN_LOGE("root path bind mount failed %d", errno);
+    }
+
+    rc = chroot("/..");
+    if (rc) {
+        APPSPAWN_LOGE("chroot failed %d", errno);
+    }
+
+    rc = mount(NULL, "/mnt", NULL, MS_REC | MS_PRIVATE, NULL);
+    if (rc) {
+        APPSPAWN_LOGE("mnt path bind mount failed %d", errno);
     }
 #endif
     DoAppSandboxMountOnce(sandboxPackagePath.c_str(), sandboxPackagePath.c_str(), "",
@@ -973,6 +989,11 @@ int32_t SandboxUtils::SetAppSandboxProperty(const ClientSocket::AppProperty *app
     APPSPAWN_CHECK(rc == 0, return rc, "chdir failed, packagename is %s, path is %s",
         bundleName.c_str(), sandboxPackagePath.c_str());
 
+    rc = mount(NULL, sandboxPackagePath.c_str(), NULL, MS_PRIVATE, NULL);
+    if (rc) {
+        APPSPAWN_LOGE("package path mount failed %s %d", sandboxPackagePath.c_str(), errno);
+    }
+
     rc = syscall(SYS_pivot_root, sandboxPackagePath.c_str(), sandboxPackagePath.c_str());
     APPSPAWN_CHECK(rc == 0, return rc, "errno is %d, pivot root failed, packagename is %s",
         errno, bundleName.c_str());
@@ -980,6 +1001,7 @@ int32_t SandboxUtils::SetAppSandboxProperty(const ClientSocket::AppProperty *app
     rc = umount2(".", MNT_DETACH);
     APPSPAWN_CHECK(rc == 0, return rc, "MNT_DETACH failed, packagename is %s", bundleName.c_str());
 #endif
+    APPSPAWN_LOGI("SetAppSandboxProperty end!");
     return 0;
 }
 } // namespace AppSpawn
