@@ -136,7 +136,7 @@
                 }, {
                     "src-path" : "/mnt/share/<currentUserId>/<PackageName>",
                     "sandbox-path" : "/data/storage/el2/share",
-                    "sandbox-flags" : [ "bind", "rec" ],
+                    "sandbox-flags" : [ "bind", "rec", "slave" ],
                     "check-action-status": "false"
                 }
             ],
