@@ -189,8 +189,10 @@ ohos_executable("nwebspawn") {
   configs = [ ":appspawn_config" ]
   deps = [ "${appspawn_path}:nwebspawn_server" ]
 
+  external_deps = [ "aa:bb" ]
+
   if (build_selinux) {
-    external_deps = [ "selinux:libhap_restorecon" ]
+    external_deps += [ "selinux:libhap_restorecon" ]
   }
 
   install_enable = true
