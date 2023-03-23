@@ -170,6 +170,7 @@ pid_t AppSpawnFork(int (*childFunc)(void *arg), void *args)
     pid_t pid = fork();
     if (pid == 0) {
         ProcessSafeExit(childFunc(args));
+        APPSPAWN_LOGI("AppSpawnFork notify hidumper update cpu");
         return -1;
     }
     return pid;
