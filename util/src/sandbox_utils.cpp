@@ -204,7 +204,7 @@ int32_t SandboxUtils::DoAppSandboxMountOnce(const char *originPath, const char *
     ret = mount(originPath, destinationPath, fsType, mountFlags, options);
     APPSPAWN_CHECK(ret == 0, return ret,  "errno is: %d, bind mount %s to %s failed, just DEBUG MESSAGE here",
                    errno, originPath, destinationPath);
-    ret = mount(NULL, destinationPath, NULL, MS_PRIVATE, NULL);
+    ret = mount(NULL, destinationPath, NULL, MS_SLAVE, NULL);
     APPSPAWN_CHECK(ret == 0, return ret, "errno is: %d, private mount to %s failed", errno, destinationPath);
 #endif
     return 0;
@@ -851,7 +851,7 @@ int32_t SandboxUtils::DoSandboxRootFolderCreateAdapt(std::string &sandboxPackage
     // bind mount "/" to /mnt/sandbox/<packageName> path
     // rootfs: to do more resources bind mount here to get more strict resources constraints
 #ifndef APPSPAWN_TEST
-    rc = mount("/", sandboxPackagePath.c_str(), NULL, BASIC_MOUNT_FLAGS, NULL);
+    rc = mount("/", sandboxPackagePath.c_str(), NULL, MS_SLAVE, NULL);
     APPSPAWN_CHECK(rc == 0, return rc, "mount bind / failed, %d", errno);
 #endif
     return 0;
