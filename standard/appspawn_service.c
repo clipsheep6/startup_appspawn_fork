@@ -313,11 +313,14 @@ static void GetProcessTerminationStatus(AppSpawnClientExt *appProperty)
 }
 #endif
 
+void DisallowInternetByUid(uint32_t uid);
+
 static void SetInternetPermission(AppSpawnClientExt *appProperty)
 {
     if (appProperty->property.setAllowInternet == 1 && appProperty->property.allowInternet == 0) {
         appProperty->setAllowInternet = 1;
         appProperty->allowInternet = 0;
+        DisallowInternetByUid(appProperty->property.uid);
     }
 }
 
