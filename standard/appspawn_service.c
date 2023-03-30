@@ -90,7 +90,7 @@ APPSPAWN_STATIC void AddAppInfo(pid_t pid, const char *processName)
     ret = OH_HashMapAdd(g_appSpawnContent->appMap, &node->node);
     APPSPAWN_CHECK(ret == 0, free(node);
         return, "Failed to add appinfo to hash");
-    APPSPAWN_LOGI("Add %s, pid=%d success", processName, pid);
+    APPSPAWN_LOGV("Add %s, pid=%d success", processName, pid);
 }
 
 APPSPAWN_STATIC void ProcessTimer(const TimerHandle taskHandle, void *context)
@@ -335,7 +335,7 @@ static void FreeHspList(AppSpawnClientExt *client)
 APPSPAWN_STATIC bool ReceiveRequestData(const TaskHandle taskHandle, AppSpawnClientExt *client,
     const uint8_t *buffer, uint32_t buffLen)
 {
-    APPSPAWN_LOGI("ReceiveRequestData: buffLen=%u", buffLen);
+    APPSPAWN_LOGV("ReceiveRequestData: buffLen=%u", buffLen);
     APPSPAWN_CHECK(buffer != NULL && buffLen > 0, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return false, "ReceiveRequestData: Invalid buff");
 
@@ -359,10 +359,10 @@ APPSPAWN_STATIC bool ReceiveRequestData(const TaskHandle taskHandle, AppSpawnCli
 
     // 2. check whether hspList exist
     if (client->property.hspList.totalLength == 0) { // no hspList
-        APPSPAWN_LOGI("ReceiveRequestData: no hspList");
+        APPSPAWN_LOGV("ReceiveRequestData: no hspList");
         return true;
     } else if (buffLen == 0) {
-        APPSPAWN_LOGI("ReceiveRequestData: waiting for hspList");
+        APPSPAWN_LOGV("ReceiveRequestData: waiting for hspList");
         return false;
     }
 
@@ -377,7 +377,7 @@ APPSPAWN_STATIC bool ReceiveRequestData(const TaskHandle taskHandle, AppSpawnCli
     uint32_t saved = hspList->savedLength;
     uint32_t total = hspList->totalLength;
     char *data = hspList->data;
-    APPSPAWN_LOGI("ReceiveRequestData: receiving hspList: (%u saved + %u incoming) / %u total", saved, buffLen, total);
+    APPSPAWN_LOGV("ReceiveRequestData: receiving hspList: (%u saved + %u incoming) / %u total", saved, buffLen, total);
 
     APPSPAWN_CHECK((total - saved) >= buffLen, FreeHspList(client); LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
                    return false, "ReceiveRequestData: too many data for hspList %u ", buffLen);
