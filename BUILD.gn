@@ -35,6 +35,9 @@ config("appspawn_config") {
     "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
     "//foundation/arkui/napi",
     "//third_party/libuv/include",
+    "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/appexecfwk_core/include",
+    "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/appexecfwk_base/include",
+    "//base/notification/common_event_service/interfaces/inner_api",
   ]
 
   if (build_selinux) {
@@ -103,8 +106,13 @@ ohos_static_library("appspawn_server") {
     "//foundation/communication/netmanager_base/services/netmanagernative/netsys_client:netsys_client",
   ]
   external_deps = [
+    "ability_base:want",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
+    "common_event_service:cesfwk_core",
     "init:libbegetutil",
+    "ipc:ipc_core",
+    "samgr:samgr_proxy",
   ]
   if (build_selinux) {
     external_deps += [ "selinux:libhap_restorecon" ]
@@ -155,8 +163,13 @@ ohos_static_library("nwebspawn_server") {
     "//foundation/communication/netmanager_base/services/netmanagernative/netsys_client:netsys_client",
   ]
   external_deps = [
+    "ability_base:want",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
+    "common_event_service:cesfwk_core",
     "init:libbegetutil",
+    "ipc:ipc_core",
+    "samgr:samgr_proxy",
   ]
   if (build_selinux) {
     external_deps += [ "selinux:libhap_restorecon" ]

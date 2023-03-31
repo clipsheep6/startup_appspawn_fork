@@ -31,6 +31,13 @@
 #include "hap_restorecon.h"
 #endif
 
+#include "bundlemgr/bundle_mgr_proxy.h"
+#include "iservice_registry.h"
+#include "overlay/overlay_manager_proxy.h"
+#include "refbase.h"
+#include "system_ability_definition.h"
+#include <vector>
+
 using namespace std;
 using namespace OHOS;
 
@@ -64,6 +71,7 @@ namespace {
     const std::string g_hspList_key_bundles = "bundles";
     const std::string g_hspList_key_modules = "modules";
     const std::string g_hspList_key_versions = "versions";
+    const std::string g_overlaySandboxDir = "/data/app/el2/overlay";
     const char *g_actionStatuc = "check-action-status";
     const char *g_accountPrefix = "/account/data/";
     const char *g_accountNonPrefix = "/non_account/data/";
@@ -932,6 +940,60 @@ static int CheckBundleName(const std::string &bundleName)
     return 0;
 }
 
+static sptr<AppExecFwk::IOverlayManager> GetOverlayManagerProxy()
+{
+    auto samgrProxy = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (samgrProxy == nullptr) {
+        APPSPAWN_LOGE("[overlay debug] fail to get samgr.");
+        return nullptr;
+    }
+    APPSPAWN_LOGE("[overlay debug] get samgr success.");
+    // return /* nullptr */;
+    sptr<IRemoteObject> bundleObj = samgrProxy->GetSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID);
+    if (bundleObj == nullptr) {
+        APPSPAWN_LOGE("[overlay debug] fail to get bundle manager service.");
+        return nullptr;
+    }
+    APPSPAWN_LOGE("[overlay debug] get bundle obj success.");
+    sptr<AppExecFwk::IBundleMgr> bms = iface_cast<AppExecFwk::IBundleMgr>(bundleObj);
+    return bms->GetOverlayManagerProxy();
+}
+
+int32_t SandboxUtils::SetOverlayAppSandboxProperty(const ClientSocket::AppProperty *appProperty,
+                                         std::string &sandboxPackagePath)
+{
+    sptr<AppExecFwk::IOverlayManager> overlayManagerProxy = GetOverlayManagerProxy();
+    if (overlayManagerProxy == nullptr) {
+        APPSPAWN_LOGE("[overlay debug] fail to get overlay manager proxy.");
+        return -1;
+    }
+
+    std::vector<std::string> mountFlagVec = {"bind", "rec"};
+    unsigned long mountFlags = GetMountFlagsFromConfig(mountFlagVec);
+    std::string overlaySandboxRoot = sandboxPackagePath + g_overlaySandboxDir;
+
+    std::vector<AppExecFwk::OverlayModuleInfo> overlayModuleInfo;
+    overlayManagerProxy->GetOverlayModuleInfoForTarget(appProperty->bundleName, "", overlayModuleInfo,
+                                                       appProperty->uid / UID_BASE);
+    APPSPAWN_LOGE("[overlay debug] get overlay manager success, uid: %d, base: %d, size: %d.", appProperty->uid,
+                  appProperty->uid / UID_BASE, overlayModuleInfo.size());
+    for (const AppExecFwk::OverlayModuleInfo& info : overlayModuleInfo) {
+        APPSPAWN_LOGE("[overlay debug] OverlayBundleInfo is bundleName: %s", info.bundleName.c_str());
+        APPSPAWN_LOGE("[overlay debug] moduleName: %s", info.moduleName.c_str());
+        APPSPAWN_LOGE("[overlay debug] targetModuleName: %s", info.targetModuleName.c_str());
+        APPSPAWN_LOGE("[overlay debug] hapPath: %s", info.hapPath.c_str());
+        int pathIndex = info.hapPath.find_last_of("/");
+        APPSPAWN_LOGE("[overlay debug] pathIndex: %d", pathIndex);
+        std::string srcPath = info.hapPath.substr(0, pathIndex);
+        APPSPAWN_LOGE("[overlay debug] srcPath: %s", srcPath.c_str());
+        std::string destPath = overlaySandboxRoot + "/" + info.bundleName;
+        int32_t ret = DoAppSandboxMountOnce(srcPath.c_str(), destPath.c_str(), nullptr, mountFlags, nullptr);
+        return ret;
+    }
+    APPSPAWN_LOGE("[overlay debug] end SetOverlayAppSandboxProperty.");
+    return 0;
+}
+
 int32_t SandboxUtils::SetAppSandboxProperty(const ClientSocket::AppProperty *appProperty)
 {
     if (appProperty == nullptr || CheckBundleName(appProperty->bundleName) != 0) {
@@ -975,6 +1037,18 @@ int32_t SandboxUtils::SetAppSandboxProperty(const ClientSocket::AppProperty *app
     APPSPAWN_CHECK(rc == 0, return rc, "SetRenderSandboxProperty failed, packagename is %s",
         sandboxPackagePath.c_str());
 #endif
+
+    APPSPAWN_LOGE("[overlay debug] flags is %d.", appProperty->flags);
+    if ((appProperty->flags & 0x40) == 0x40) {
+        APPSPAWN_LOGE("[overlay debug] start to calling SetOverlayAppSandboxProperty.");
+        APPSPAWN_LOGE("[overlay debug] bundleName is: %s", appProperty->bundleName);
+        rc = SetOverlayAppSandboxProperty(appProperty, sandboxPackagePath);
+        APPSPAWN_CHECK(rc == 0, return rc, "SetOverlayAppSandboxProperty failed, packagename is %s",
+            bundleName.c_str());
+    } else {
+        APPSPAWN_LOGE("[overlay debug] not to calling SetOverlayAppSandboxProperty.");
+        APPSPAWN_LOGE("[overlay debug] bundleName is: %s", appProperty->bundleName);
+    }
 
 #ifndef APPSPAWN_TEST
     rc = chdir(sandboxPackagePath.c_str());
