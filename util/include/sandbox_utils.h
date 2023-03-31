@@ -75,6 +75,8 @@ private:
                                           nlohmann::json &config);
     static int32_t SetRenderSandboxProperty(const ClientSocket::AppProperty *appProperty,
                                             std::string &sandboxPackagePath);
+    static int32_t SetOverlayAppSandboxProperty(const ClientSocket::AppProperty *appProperty,
+                                                std::string &sandboxPackagePath);
 
 private:
     static nlohmann::json appNamespaceConfig_;
