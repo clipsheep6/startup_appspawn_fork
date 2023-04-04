@@ -858,7 +858,7 @@ int32_t SandboxUtils::DoSandboxRootFolderCreateAdapt(std::string &sandboxPackage
     // bind mount "/" to /mnt/sandbox/<packageName> path
     // rootfs: to do more resources bind mount here to get more strict resources constraints
 #ifndef APPSPAWN_TEST
-    rc = mount("/", sandboxPackagePath.c_str(), NULL, BASIC_MOUNT_FLAGS, NULL);
+    rc = mount("/", sandboxPackagePath.c_str(), NULL, MS_SLAVE, NULL);
     APPSPAWN_CHECK(rc == 0, return rc, "mount bind / failed, %d", errno);
 #endif
     return 0;
