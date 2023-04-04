@@ -49,10 +49,10 @@ int main(int argc, char *const argv[])
         int isRet = memset_s(argv[0], argvSize, 0, (size_t)argvSize) != EOK;
         APPSPAWN_CHECK(!isRet, return -EINVAL, "Failed to memset argv[0]");
         isRet = strncpy_s(argv[0], argvSize, APPSPAWN_SERVER_NAME, strlen(APPSPAWN_SERVER_NAME)) != EOK;
-        APPSPAWN_CHECK(!isRet, return -EINVAL, "strncpy_s appspawn server name error: %d", errno);
+        APPSPAWN_CHECK(!isRet, return -EINVAL, "strncpy_s appspawn server name error: %{public}d", errno);
     }
 
-    APPSPAWN_LOGI("AppSpawnCreateContent argc %d mode %d %u", argc, mode, argvSize);
+    APPSPAWN_LOGI("AppSpawnCreateContent argc %{public}d mode %{public}d %u", argc, mode, argvSize);
     AppSpawnContent *content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, argv[0], argvSize, mode);
     APPSPAWN_CHECK(content != NULL, return -1, "Invalid content for appspawn");
     APPSPAWN_CHECK(content->initAppSpawn != NULL, return -1, "Invalid content for appspawn");
