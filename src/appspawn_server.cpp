@@ -1128,6 +1128,7 @@ bool AppSpawnServer::SetAppProcProperty(const ClientSocket::AppProperty *appProp
     }
     funcNWebRenderMain(appProperty->renderCmd);
 #else
+    HiLog::Info(LABEL, "Jump to main thread");
     AppExecFwk::MainThread::Start();
 #endif
 
