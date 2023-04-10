@@ -770,6 +770,7 @@ int32_t AppSpawnServer::DoAppSandboxMountOnce(const std::string originPath, cons
 {
     int rc = 0;
 
+    HiLog::Error(LABEL, "bind mount %{public}s to %{public}s", originPath.c_str(), destinationPath.c_str());
     rc = mount(originPath.c_str(), destinationPath.c_str(), NULL, MS_BIND | MS_REC, NULL);
     if (rc) {
         HiLog::Error(LABEL, "bind mount %{public}s to %{public}s failed %{public}d", originPath.c_str(),
@@ -783,6 +784,7 @@ int32_t AppSpawnServer::DoAppSandboxMountOnce(const std::string originPath, cons
         return rc;
     }
 
+    HiLog::Error(LABEL, "DoAppSandboxMountOnce done");
     return 0;
 }
 
@@ -995,6 +997,7 @@ int32_t AppSpawnServer::SetAppSandboxProperty(const ClientSocket::AppProperty *a
 {
     int rc = 0;
 
+    HiLog::Error(LABEL, "Enter SetAppSandboxProperty, packagename is %{public}s", appProperty->processName);
     // create /mnt/sandbox/<packagename> path， later put it to rootfs module
     std::string sandboxPackagePath = "/mnt/sandbox/";
     mkdir(sandboxPackagePath.c_str(), FILE_MODE);
@@ -1008,6 +1011,7 @@ int32_t AppSpawnServer::SetAppSandboxProperty(const ClientSocket::AppProperty *a
         return rc;
     }
 
+    HiLog::Error(LABEL, "Do DoSandboxRootFolderCreate start");
     // to make wargnar work
     if (access("/3rdmodem", F_OK) == 0) {
         rc = DoSandboxRootFolderCreateAdapt(sandboxPackagePath);
@@ -1019,21 +1023,25 @@ int32_t AppSpawnServer::SetAppSandboxProperty(const ClientSocket::AppProperty *a
         return rc;
     }
 
+    HiLog::Error(LABEL, "Do DoSandboxRootFolderCreate done");
     // to create /mnt/sandbox/<packagename>/data/storage related path
     DoAppSandboxMkdir(sandboxPackagePath, appProperty);
 
+    HiLog::Error(LABEL, "Do DoAppSandboxMount start");
     rc = DoAppSandboxMount(appProperty, sandboxPackagePath);
     if (rc) {
         HiLog::Error(LABEL, "DoAppSandboxMount failed, packagename is %{public}s", appProperty->processName);
         return rc;
     }
 
+    HiLog::Error(LABEL, "Do DoAppSandboxMountCustomized start");
     rc = DoAppSandboxMountCustomized(appProperty, sandboxPackagePath);
     if (rc) {
         HiLog::Error(LABEL, "DoAppSandboxMountCustomized failed, packagename is %{public}s", appProperty->processName);
         return rc;
     }
 
+    HiLog::Error(LABEL, "Do chdir start");
     rc = chdir(sandboxPackagePath.c_str());
     if (rc) {
         HiLog::Error(LABEL, "chdir failed, packagename is %{public}s, path is %{public}s", \
@@ -1041,6 +1049,7 @@ int32_t AppSpawnServer::SetAppSandboxProperty(const ClientSocket::AppProperty *a
         return rc;
     }
 
+    HiLog::Error(LABEL, "Do SYS_pivot_root start");
     rc = syscall(SYS_pivot_root, sandboxPackagePath.c_str(), sandboxPackagePath.c_str());
     if (rc) {
         HiLog::Error(LABEL, "pivot root failed, packagename is %{public}s, errno is %{public}d", \
@@ -1054,6 +1063,7 @@ int32_t AppSpawnServer::SetAppSandboxProperty(const ClientSocket::AppProperty *a
         return rc;
     }
 
+    HiLog::Error(LABEL, "Do SetAppSandboxProperty done");
     return ERR_OK;
 }
 
@@ -1082,9 +1092,11 @@ bool AppSpawnServer::SetAppProcProperty(const ClientSocket::AppProperty *appProp
     int32_t ret = SetAppSandboxProperty(appProperty);
     if (FAILED(ret)) {
         NotifyResToParentProc(fd, ret);
+        HiLog::Error(LABEL, "AppSpawnServer::SetAppSandboxProperty failed, pid = %{public}d", getpid());
         return false;
     }
 
+    HiLog::Error(LABEL, "AppSpawnServer::SetAppSandboxProperty done, pid = %{public}d", getpid());
     ret = SetKeepCapabilities(appProperty->uid);
     if (FAILED(ret)) {
         NotifyResToParentProc(fd, ret);
