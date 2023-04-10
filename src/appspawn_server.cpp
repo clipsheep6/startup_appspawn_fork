@@ -1078,25 +1078,25 @@ void AppSpawnServer::SetAppAccessToken(const ClientSocket::AppProperty *appPrope
 bool AppSpawnServer::SetAppProcProperty(const ClientSocket::AppProperty *appProperty, char *longProcName,
     int64_t longProcNameLen, const int32_t fd)
 {
-    HiLog::Debug(LABEL, "AppSpawnServer::Success to fork new process, pid = %{public}d", getpid());
+    HiLog::Error(LABEL, "AppSpawnServer::Success to fork new process, pid = %{public}d", getpid());
     int32_t ret = SetAppSandboxProperty(appProperty);
     if (FAILED(ret)) {
         NotifyResToParentProc(fd, ret);
         return false;
     }
-
+    HiLog::Error(LABEL, "AppSpawnServer::SetAppSandboxProperty done, pid = %{public}d", getpid());
     ret = SetKeepCapabilities(appProperty->uid);
     if (FAILED(ret)) {
         NotifyResToParentProc(fd, ret);
         return false;
     }
-
+    HiLog::Error(LABEL, "AppSpawnServer::SetKeepCapabilities done, pid = %{public}d", getpid());
     ret = SetProcessName(longProcName, longProcNameLen, appProperty->processName, strlen(appProperty->processName) + 1);
     if (FAILED(ret)) {
         NotifyResToParentProc(fd, ret);
         return false;
     }
-
+    HiLog::Error(LABEL, "AppSpawnServer::SetProcessName done, pid = %{public}d", getpid());
 #ifdef GRAPHIC_PERMISSION_CHECK
     ret = SetUidGid(appProperty->uid, appProperty->gid, appProperty->gidTable, appProperty->gidCount);
     if (FAILED(ret)) {
@@ -1104,31 +1104,36 @@ bool AppSpawnServer::SetAppProcProperty(const ClientSocket::AppProperty *appProp
         return false;
     }
 #endif
-
+    HiLog::Error(LABEL, "AppSpawnServer::SetUidGid done, pid = %{public}d", getpid());
     ret = SetFileDescriptors();
     if (FAILED(ret)) {
         NotifyResToParentProc(fd, ret);
         return false;
     }
-
+    HiLog::Error(LABEL, "AppSpawnServer::SetFileDescriptors done, pid = %{public}d", getpid());
     ret = SetCapabilities();
     if (FAILED(ret)) {
         NotifyResToParentProc(fd, ret);
         return false;
     }
     // notify success to father process and start app process
+    HiLog::Error(LABEL, "AppSpawnServer::notify parent fork child process  done, pid = %{public}d", getpid());
     NotifyResToParentProc(fd, ret);
 
 #ifdef NWEB_SPAWN
+    HiLog::Error(LABEL, "AppSpawnServer::NWEB_SPAWN, pid = %{public}d", getpid());
     using FuncType = void (*)(const char *cmd);
     FuncType funcNWebRenderMain = reinterpret_cast<FuncType>(dlsym(nwebHandle, "NWebRenderMain"));
     if (funcNWebRenderMain == nullptr) {
         HiLog::Error(LABEL, "nwebspawn dlsym ERROR=%{public}s", dlerror());
         return false;
     }
+    HiLog::Error(LABEL, "AppSpawnServer::funcNWebRenderMain, pid = %{public}d", getpid());
     funcNWebRenderMain(appProperty->renderCmd);
 #else
+    HiLog::Error(LABEL, "AppSpawnServer:: AppExecFwk::MainThread::Start, pid = %{public}d", getpid());
     AppExecFwk::MainThread::Start();
+    HiLog::Error(LABEL, "AppSpawnServer:: AppExecFwk::MainThread::Start done, pid = %{public}d", getpid());
 #endif
 
     HiLog::Error(LABEL, "Failed to start process, pid = %{public}d", getpid());
