@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Copyright (C) 2022-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,21 +15,27 @@
 
 #include "sandbox_utils.h"
 
+#include <cerrno>
 #include <fcntl.h>
-#include <unistd.h>
-
+#include <regex>
+#include <vector>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <cerrno>
+#include <unistd.h>
 
-#include "json_utils.h"
-#include "securec.h"
 #include "appspawn_server.h"
+#include "bundle_mgr_proxy.h"
+#include "constants.h"
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
 #endif
+#include "iservice_registry.h"
+#include "json_utils.h"
+#include "refbase.h"
+#include "securec.h"
+#include "system_ability_definition.h"
 
 using namespace std;
 using namespace OHOS;
@@ -48,22 +54,23 @@ namespace {
     constexpr static mode_t BASIC_MOUNT_FLAGS = MS_REC | MS_BIND;
     constexpr std::string_view APL_SYSTEM_CORE("system_core");
     constexpr std::string_view APL_SYSTEM_BASIC("system_basic");
-    const std::string g_packageItems[] = {{"cache"}, {"files"}, {"temp"}, {"preferences"}, {"haps"}};
-    const std::string g_physicalAppInstallPath = "/data/app/el1/bundle/public/";
-    const std::string g_sandboxHspInstallPath = "/data/storage/el1/bundle/";
-    const std::string g_sandBoxAppInstallPath = "/data/accounts/account_0/applications/";
-    const std::string g_dataBundles = "/data/bundles/";
-    const std::string g_userId = "<currentUserId>";
-    const std::string g_packageName = "<PackageName>";
-    const std::string g_packageNameIndex = "<PackageName_index>";
-    const std::string g_sandBoxDir = "/mnt/sandbox/";
-    const std::string g_statusCheck = "true";
-    const std::string g_sbxSwitchCheck = "ON";
-    const std::string g_dlpBundleName = "com.ohos.dlpmanager";
-    const std::string g_internal = "__internal__";
-    const std::string g_hspList_key_bundles = "bundles";
-    const std::string g_hspList_key_modules = "modules";
-    const std::string g_hspList_key_versions = "versions";
+    const std::string PACKAGE_ITEMS[] = {{"cache"}, {"files"}, {"temp"}, {"preferences"}, {"haps"}};
+    const std::string PHYSICAL_APP_INSTALL_PATH = "/data/app/el1/bundle/public/";
+    const std::string SANDBOX_HSP_INSTALL_PATH = "/data/storage/el1/bundle/";
+    const std::string SANDBOX_APP_INSTALL_PATH = "/data/accounts/account_0/applications/";
+    const std::string DATA_BUNDLES = "/data/bundles/";
+    const std::string USER_ID = "<currentUserId>";
+    const std::string PACKAGE_NAME = "<PackageName>";
+    const std::string PACKAGE_NAME_INDEX = "<PackageName_index>";
+    const std::string SANDBOX_DIR = "/mnt/sandbox/";
+    const std::string STATUS_CHECK = "true";
+    const std::string SBX_SWITCH_CHECK = "ON";
+    const std::string DLP_BUNDLE_NAME = "com.ohos.dlpmanager";
+    const std::string INTERNAL = "__internal__";
+    const std::string HSP_LIST_KEY_BUNDLES = "bundles";
+    const std::string HSP_LIST_KEY_MODULES = "modules";
+    const std::string HSP_LIST_KEY_VERSIONS = "versions";
+    const std::string OVERLAY_PATH = "/data/storage/ovl/";
     const char *g_actionStatuc = "check-action-status";
     const char *g_accountPrefix = "/account/data/";
     const char *g_accountNonPrefix = "/non_account/data/";
@@ -93,10 +100,10 @@ namespace {
     const char *g_sandBoxNameSpace = "sandbox-namespace";
     const char *g_sandBoxCloneFlags = "clone-flags";
 #ifndef NWEB_SPAWN
-    const std::string g_sandBoxRootDir = "/mnt/sandbox/";
+    const std::string SANDBOX_ROOT_DIR = "/mnt/sandbox/";
 #else
     const std::string g_ohosRender = "__internal__.com.ohos.render";
-    const std::string g_sandBoxRootDir = "/mnt/sandbox/com.ohos.render/";
+    const std::string SANDBOX_ROOT_DIR = "/mnt/sandbox/com.ohos.render/";
 #endif
 }
 
@@ -211,12 +218,12 @@ int32_t SandboxUtils::DoAppSandboxMountOnce(const char *originPath, const char *
     return 0;
 }
 
-static std::string& replace_all(std::string& str, const std::string& old_value, const std::string& new_value)
+static std::string& ReplaceAll(std::string& str, const std::string& oldValue, const std::string& newValue)
 {
     while (true) {
         std::string::size_type pos(0);
-        if ((pos = str.find(old_value)) != std::string::npos) {
-            str.replace(pos, old_value.length(), new_value);
+        if ((pos = str.find(oldValue)) != std::string::npos) {
+            str.replace(pos, oldValue.length(), newValue);
         } else {
             break;
         }
@@ -296,18 +303,18 @@ unsigned long SandboxUtils::GetMountFlagsFromConfig(const std::vector<std::strin
 
 string SandboxUtils::ConvertToRealPath(const ClientSocket::AppProperty *appProperty, std::string path)
 {
-    if (path.find(g_packageNameIndex) != std::string::npos) {
+    if (path.find(PACKAGE_NAME_INDEX) != std::string::npos) {
         std::string bundleNameIndex = appProperty->bundleName;
         bundleNameIndex = bundleNameIndex + "_" + std::to_string(appProperty->bundleIndex);
-        path = replace_all(path, g_packageNameIndex, bundleNameIndex);
+        path = ReplaceAll(path, PACKAGE_NAME_INDEX, bundleNameIndex);
     }
 
-    if (path.find(g_packageName) != std::string::npos) {
-        path = replace_all(path, g_packageName, appProperty->bundleName);
+    if (path.find(PACKAGE_NAME) != std::string::npos) {
+        path = ReplaceAll(path, PACKAGE_NAME, appProperty->bundleName);
     }
 
-    if (path.find(g_userId) != std::string::npos) {
-        path = replace_all(path, g_userId, std::to_string(appProperty->uid / UID_BASE));
+    if (path.find(USER_ID) != std::string::npos) {
+        path = ReplaceAll(path, USER_ID, std::to_string(appProperty->uid / UID_BASE));
     }
 
     return path;
@@ -320,7 +327,7 @@ std::string SandboxUtils::GetSbxPathByConfig(const ClientSocket::AppProperty *ap
         sandboxRoot = config[g_sandboxRootPrefix].get<std::string>();
         sandboxRoot = ConvertToRealPath(appProperty, sandboxRoot);
     } else {
-        sandboxRoot = g_sandBoxDir + appProperty->bundleName;
+        sandboxRoot = SANDBOX_DIR + appProperty->bundleName;
         APPSPAWN_LOGE("read sandbox-root config failed, set sandbox-root to default root"
             "app name is %{public}s", appProperty->bundleName);
     }
@@ -332,7 +339,7 @@ bool SandboxUtils::GetSbxSwitchStatusByConfig(nlohmann::json &config)
 {
     if (config.find(g_sandBoxSwitchPrefix) != config.end()) {
         std::string switchStatus = config[g_sandBoxSwitchPrefix].get<std::string>();
-        if (switchStatus == g_sbxSwitchCheck) {
+        if (switchStatus == SBX_SWITCH_CHECK) {
             return true;
         } else {
             return false;
@@ -351,9 +358,9 @@ static bool CheckMountConfig(nlohmann::json &mntPoint, const ClientSocket::AppPr
     APPSPAWN_CHECK(!istrue, return false, "read mount config failed, app name is %{public}s", appProperty->bundleName);
 
     if (mntPoint[g_appAplName] != nullptr) {
-        std::string app_apl_name = mntPoint[g_appAplName].get<std::string>();
+        std::string appAplName = mntPoint[g_appAplName].get<std::string>();
         const char *p_app_apl = nullptr;
-        p_app_apl = app_apl_name.c_str();
+        p_app_apl = appAplName.c_str();
         if (!strcmp(p_app_apl, appProperty->apl)) {
             return false;
         }
@@ -364,7 +371,7 @@ static bool CheckMountConfig(nlohmann::json &mntPoint, const ClientSocket::AppPr
     if (checkFlag && (configSrcPath.find("/data/app") != std::string::npos &&
         (configSrcPath.find("/base") != std::string::npos ||
          configSrcPath.find("/database") != std::string::npos
-        ) && configSrcPath.find(g_packageName) != std::string::npos)) {
+        ) && configSrcPath.find(PACKAGE_NAME) != std::string::npos)) {
         return false;
     }
 
@@ -410,7 +417,7 @@ static int32_t HandleSpecialAppMount(const ClientSocket::AppProperty *appPropert
 
     /* dlp application mount strategy */
     /* dlp is an example, we should change to real bundle name later */
-    if (bundleName.find(g_dlpBundleName) != std::string::npos) {
+    if (bundleName.find(DLP_BUNDLE_NAME) != std::string::npos) {
         if (fsType.empty()) {
             return -1;
         } else {
@@ -461,7 +468,7 @@ void SandboxUtils::CheckAndPrepareSrcPath(const ClientSocket::AppProperty *appPr
             MakeDirRecursive(srcPath.c_str(), BASE_FOLDER_FILE_MODE);
             chown(srcPath.c_str(), appProperty->uid, appProperty->gid);
 
-            for (const std::string &packageItem : g_packageItems) {
+            for (const std::string &packageItem : PACKAGE_ITEMS) {
                 const std::string newPath = srcPath + "/" + packageItem;
                 MkdirAndChown(newPath, BASE_FOLDER_FILE_MODE, appProperty->uid, appProperty->gid);
             }
@@ -542,9 +549,9 @@ int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProper
             }
         }
         if (ret) {
-            std::string actionStatus = g_statusCheck;
+            std::string actionStatus = STATUS_CHECK;
             (void)JsonUtils::GetStringFromJson(mntPoint, g_actionStatuc, actionStatus);
-            if (actionStatus == g_statusCheck) {
+            if (actionStatus == STATUS_CHECK) {
                 APPSPAWN_LOGE("DoAppSandboxMountOnce failed, %{public}s", sandboxPath.c_str());
                 return ret;
             }
@@ -582,9 +589,9 @@ int SandboxUtils::DoAllSymlinkPointslink(const ClientSocket::AppProperty *appPro
         if (ret && errno != EEXIST) {
             APPSPAWN_LOGE("errno is %{public}d, symlink failed, %{public}s", errno, linkName.c_str());
 
-            std::string actionStatus = g_statusCheck;
+            std::string actionStatus = STATUS_CHECK;
             (void)JsonUtils::GetStringFromJson(symPoint, g_actionStatuc, actionStatus);
-            if (actionStatus == g_statusCheck) {
+            if (actionStatus == STATUS_CHECK) {
                 return ret;
             }
         }
@@ -800,8 +807,8 @@ int32_t SandboxUtils::SetCommonAppSandboxProperty(const ClientSocket::AppPropert
         strcmp(appProperty->apl, APL_SYSTEM_CORE.data()) == 0 ||
         (appProperty->flags & APP_ACCESS_BUNDLE_DIR) != 0) {
         // need permission check for system app here
-        std::string destbundlesPath = sandboxPackagePath + g_dataBundles;
-        DoAppSandboxMountOnce(g_physicalAppInstallPath.c_str(), destbundlesPath.c_str(), "", BASIC_MOUNT_FLAGS,
+        std::string destbundlesPath = sandboxPackagePath + DATA_BUNDLES;
+        DoAppSandboxMountOnce(PHYSICAL_APP_INSTALL_PATH.c_str(), destbundlesPath.c_str(), "", BASIC_MOUNT_FLAGS,
                               nullptr);
     }
 
@@ -821,12 +828,12 @@ int32_t SandboxUtils::MountAllHsp(const ClientSocket::AppProperty *appProperty, 
     }
 
     nlohmann::json hsps = nlohmann::json::parse(appProperty->hspList.data, nullptr, false);
-    APPSPAWN_CHECK(!hsps.is_discarded() && hsps.contains(g_hspList_key_bundles) && hsps.contains(g_hspList_key_modules)
-        && hsps.contains(g_hspList_key_versions), return -1, "MountAllHsp: json parse failed");
+    APPSPAWN_CHECK(!hsps.is_discarded() && hsps.contains(HSP_LIST_KEY_BUNDLES) && hsps.contains(HSP_LIST_KEY_MODULES)
+        && hsps.contains(HSP_LIST_KEY_VERSIONS), return -1, "MountAllHsp: json parse failed");
 
-    nlohmann::json& bundles = hsps[g_hspList_key_bundles];
-    nlohmann::json& modules = hsps[g_hspList_key_modules];
-    nlohmann::json& versions = hsps[g_hspList_key_versions];
+    nlohmann::json& bundles = hsps[HSP_LIST_KEY_BUNDLES];
+    nlohmann::json& modules = hsps[HSP_LIST_KEY_MODULES];
+    nlohmann::json& versions = hsps[HSP_LIST_KEY_VERSIONS];
     APPSPAWN_CHECK(bundles.is_array() && modules.is_array() && versions.is_array() && bundles.size() == modules.size()
         && bundles.size() == versions.size(), return -1, "MountAllHsp: value is not arrary or sizes are not same");
 
@@ -843,8 +850,9 @@ int32_t SandboxUtils::MountAllHsp(const ClientSocket::AppProperty *appProperty, 
         APPSPAWN_CHECK(CheckPath(libBundleName) && CheckPath(libModuleName) && CheckPath(libVersion),
             return -1, "MountAllHsp: path error");
 
-        std::string libPhysicalPath = g_physicalAppInstallPath + libBundleName + "/" + libVersion + "/" + libModuleName;
-        std::string mntPath =  sandboxPackagePath + g_sandboxHspInstallPath + libBundleName + "/" + libModuleName;
+        std::string libPhysicalPath = PHYSICAL_APP_INSTALL_PATH + libBundleName + "/" + libVersion + "/"
+                                      + libModuleName;
+        std::string mntPath =  sandboxPackagePath + SANDBOX_HSP_INSTALL_PATH + libBundleName + "/" + libModuleName;
         ret = DoAppSandboxMountOnce(libPhysicalPath.c_str(), mntPath.c_str(), "", BASIC_MOUNT_FLAGS, nullptr);
         APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %{public}d", ret);
     }
@@ -885,7 +893,7 @@ int32_t SandboxUtils::DoSandboxRootFolderCreate(const ClientSocket::AppProperty 
 
 bool SandboxUtils::CheckBundleNameForPrivate(const std::string &bundleName)
 {
-    if (bundleName.find(g_internal) != std::string::npos) {
+    if (bundleName.find(INTERNAL) != std::string::npos) {
         return false;
     }
     return true;
@@ -898,7 +906,7 @@ bool SandboxUtils::CheckTotalSandboxSwitchStatus(const ClientSocket::AppProperty
     nlohmann::json commonAppConfig = wholeConfig[g_commonPrefix][0];
     if (commonAppConfig.find(g_topSandBoxSwitchPrefix) != commonAppConfig.end()) {
         std::string switchStatus = commonAppConfig[g_topSandBoxSwitchPrefix].get<std::string>();
-        if (switchStatus == g_sbxSwitchCheck) {
+        if (switchStatus == SBX_SWITCH_CHECK) {
             return true;
         } else {
             return false;
@@ -936,12 +944,71 @@ static int CheckBundleName(const std::string &bundleName)
     return 0;
 }
 
+static sptr<AppExecFwk::IOverlayManager> GetOverlayManagerProxy()
+{
+    auto samgrProxy = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (samgrProxy == nullptr) {
+        APPSPAWN_LOGE("fail to get samgr.");
+        return nullptr;
+    }
+    sptr<IRemoteObject> bundleObj = samgrProxy->GetSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID);
+    if (bundleObj == nullptr) {
+        APPSPAWN_LOGE("fail to get bundle manager service.");
+        return nullptr;
+    }
+    sptr<AppExecFwk::IBundleMgr> bms = iface_cast<AppExecFwk::IBundleMgr>(bundleObj);
+    return bms->GetOverlayManagerProxy();
+}
+
+int32_t SandboxUtils::SetOverlayAppSandboxProperty(const ClientSocket::AppProperty *appProperty,
+                                                   string &sandboxPackagePath)
+{
+    if ((appProperty->flags & APP_OVERLAY) != APP_OVERLAY) {
+        return 0;
+    }
+    sptr<AppExecFwk::IOverlayManager> overlayManagerProxy = GetOverlayManagerProxy();
+    if (overlayManagerProxy == nullptr) {
+        APPSPAWN_LOGE("fail to get overlay manager proxy.");
+        return -1;
+    }
+
+    vector<string> mountFlagVec = {"bind", "rec"};
+    unsigned long mountFlags = GetMountFlagsFromConfig(mountFlagVec);
+    string sandboxOverlayPath = sandboxPackagePath + OVERLAY_PATH;
+
+    vector<AppExecFwk::OverlayModuleInfo> overlayModuleInfo;
+    overlayManagerProxy->GetOverlayModuleInfoForTarget(appProperty->bundleName, "", overlayModuleInfo,
+                                                       appProperty->uid / UID_BASE);
+    int32_t ret = 0;
+    set<string> mountedSrcSet;
+    for (const AppExecFwk::OverlayModuleInfo& info : overlayModuleInfo) {
+        int32_t pathIndex = info.hapPath.find_last_of(AbilityBase::Constants::FILE_SEPARATOR);
+        std::string srcPath = info.hapPath.substr(0, pathIndex);
+        if (!mountedSrcSet.empty() && mountedSrcSet.find(srcPath) != mountedSrcSet.end()) {
+            APPSPAWN_LOGI("%{public}s have mounted before, no need to mount twice.", srcPath.c_str());
+            continue;
+        }
+
+        int32_t bundleNameIndex = srcPath.find_last_of(AbilityBase::Constants::FILE_SEPARATOR);
+        string destPath = sandboxOverlayPath + srcPath.substr(bundleNameIndex + 1, srcPath.length());
+        int32_t retMount = DoAppSandboxMountOnce(srcPath.c_str(), destPath.c_str(),
+                                                 nullptr, mountFlags, nullptr);
+        if (retMount != 0) {
+            APPSPAWN_LOGE("fail to mount overlay path, src is %s.", info.hapPath.c_str());
+            ret = retMount;
+        }
+
+        mountedSrcSet.emplace(srcPath);
+    }
+    return ret;
+}
+
 int32_t SandboxUtils::SetAppSandboxProperty(const ClientSocket::AppProperty *appProperty)
 {
     if (appProperty == nullptr || CheckBundleName(appProperty->bundleName) != 0) {
         return -1;
     }
-    std::string sandboxPackagePath = g_sandBoxRootDir;
+    std::string sandboxPackagePath = SANDBOX_ROOT_DIR;
     const std::string bundleName = appProperty->bundleName;
     sandboxPackagePath += bundleName;
     MakeDirRecursive(sandboxPackagePath.c_str(), FILE_MODE);
@@ -979,6 +1046,10 @@ int32_t SandboxUtils::SetAppSandboxProperty(const ClientSocket::AppProperty *app
     APPSPAWN_CHECK(rc == 0, return rc, "SetRenderSandboxProperty failed, packagename is %{public}s",
         sandboxPackagePath.c_str());
 #endif
+
+    rc = SetOverlayAppSandboxProperty(appProperty, sandboxPackagePath);
+    APPSPAWN_CHECK(rc == 0, return rc, "SetOverlayAppSandboxProperty failed, packagename is %s",
+        bundleName.c_str());
 
 #ifndef APPSPAWN_TEST
     rc = chdir(sandboxPackagePath.c_str());

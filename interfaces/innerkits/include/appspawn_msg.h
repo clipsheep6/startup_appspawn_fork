@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -67,6 +67,7 @@ typedef enum AppOperateType_ {
 #define APP_ASANENABLED 0x10
 #define APP_ACCESS_BUNDLE_DIR 0x20
 #define APP_NATIVEDEBUG 0X40
+#define APP_OVERLAY 0x80
 
 #define BITLEN32 32
 #define FDLEN2 2
