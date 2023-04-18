@@ -278,13 +278,14 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003, TestSize.Level0)
 */
 HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_1, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "App_Spawn_Standard_003_1 start";
+    APPSPAWN_LOGI("App_Spawn_Standard_003_1 start");
     AppSpawnClientExt client = {};
     char arg1[] = "/system/bin/appspawn";
     char arg2[] = "cold-start";
     char arg3[] = "1";
     {
-        char arg4[] = "1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:default:671201800:system_core:default";
+        char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
+            "default:671201800:system_core:default:0:671201800";
         char arg5[] = "10";
         char arg6[] = "012345678";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5, arg6};
@@ -293,35 +294,39 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_1, TestSize.Level0)
         FreeHspList(client.property.hspList);
     }
     { // hsp length is 0
-        char arg4[] = "1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:default:671201800:system_core:default";
+        char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
+            "default:671201800:system_core:default:0:671201800";
         char arg5[] = "0";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5, nullptr};
         int argc = sizeof(argv)/sizeof(argv[0]);
         EXPECT_EQ(0, GetAppSpawnClientFromArg(argc, argv, &client));
     }
     { // hsp length is null
-        char arg4[] = "1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:default:671201800:system_core:default";
+        char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
+            "default:671201800:system_core:default:0:671201800";
         char arg6[] = "0123456789";
         char* argv[] = {arg1, arg2, arg3, arg4, nullptr, arg6};
         int argc = sizeof(argv)/sizeof(argv[0]);
         EXPECT_EQ(-1, GetAppSpawnClientFromArg(argc, argv, &client));
     }
     { // hsp length is non-zero, but argc is 5
-        char arg4[] = "1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:default:671201800:system_core:default";
+        char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
+            "default:671201800:system_core:default:0:671201800";
         char arg5[] = "10";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5};
         int argc = sizeof(argv)/sizeof(argv[0]);
         EXPECT_EQ(-1, GetAppSpawnClientFromArg(argc, argv, &client));
     }
     { // hsp length is non-zero, but content is null
-        char arg4[] = "1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:default:671201800:system_core:default";
+        char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
+            "default:671201800:system_core:default:0:671201800";
         char arg5[] = "10";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5, nullptr};
         int argc = sizeof(argv)/sizeof(argv[0]);
         EXPECT_EQ(-1, GetAppSpawnClientFromArg(argc, argv, &client));
     }
 
-    GTEST_LOG_(INFO) << "App_Spawn_Standard_003_1 end";
+    APPSPAWN_LOGI("App_Spawn_Standard_003_1 en");
 }
 
 /**
@@ -333,13 +338,14 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_1, TestSize.Level0)
 */
 HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_2, TestSize.Level0)
 {
-    GTEST_LOG_(INFO) << "App_Spawn_Standard_003_2 start";
+    APPSPAWN_LOGI("App_Spawn_Standard_003_2 start");
     AppSpawnClientExt client = {};
     char arg1[] = "/system/bin/appspawn";
     char arg2[] = "cold-start";
     char arg3[] = "1";
     { // actual data is shorter than totalLength
-        char arg4[] = "1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:default:671201800:system_core:default";
+        char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
+            "default:671201800:system_core:default:0:671201800";
         char arg5[] = "10";
         char arg6[] = "01234";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5, arg6};
@@ -348,7 +354,8 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_2, TestSize.Level0)
         FreeHspList(client.property.hspList);
     }
     { // actual data is longer than totalLength
-        char arg4[] = "1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:default:671201800:system_core:default";
+        char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
+            "default:671201800:system_core:default:0:671201800";
         char arg5[] = "5";
         char arg6[] = "0123456789";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5, arg6};
@@ -357,7 +364,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_2, TestSize.Level0)
         FreeHspList(client.property.hspList);
     }
 
-    GTEST_LOG_(INFO) << "App_Spawn_Standard_003_2 end";
+    APPSPAWN_LOGI("App_Spawn_Standard_003_2 end");
 }
 
 /**
@@ -379,12 +386,13 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_004, TestSize.Level0)
     content->runChildProcessor = RunChildProcessor;
 
     content->runChildProcessor(content, nullptr);
+
     char tmp0[] = "/system/bin/appspawn";
     char tmp1[] = "cold-start";
     char tmp2[] = "1";
     {
-        char tmp3[] = "1:1:1:1:2:1000:1000:ohos.samples.ecg.default: \
-            ohos.samples.ecg:default:671201800:system_core:default";
+        char tmp3[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
+            "default:671201800:system_core:default:0:671201800";
         char * const argv[] = {tmp0, tmp1, tmp2, tmp3};
         AppSpawnColdRun(content, 4, argv);
     }

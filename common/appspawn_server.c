@@ -17,16 +17,13 @@
 
 #include <stdlib.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <signal.h>
 #undef _GNU_SOURCE
 #define _GNU_SOURCE
 #include <sched.h>
-#include <string.h>
 #include <time.h>
-#include <stdbool.h>
 
 #define DEFAULT_UMASK 0002
 #define SANDBOX_STACK_SIZE (1024 * 1024 * 8)
@@ -89,7 +86,7 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
         content->handleInternetPermission(client);
     }
 
-    if ((client->cloneFlags & CLONE_NEWNS) && (content->setAppSandbox)) {
+    if (content->setAppSandbox) {
         ret = content->setAppSandbox(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to set app sandbox");
@@ -203,7 +200,7 @@ int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
     pid_t pid;
     APPSPAWN_CHECK(sandbox != NULL && sandbox->content != NULL, return -1, "Invalid content for appspawn");
     APPSPAWN_CHECK(sandbox->client != NULL && childPid != NULL, return -1, "Invalid client for appspawn");
-    APPSPAWN_LOGI("AppSpawnProcessMsg id %{public}d 0x%x", sandbox->client->id, sandbox->client->flags);
+    APPSPAWN_LOGI("AppSpawnProcessMsg id %{public}d 0x%{public}x", sandbox->client->id, sandbox->client->flags);
 
 #ifndef OHOS_LITE
     AppSpawnClient *client = sandbox->client;

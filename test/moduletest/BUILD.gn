@@ -40,6 +40,7 @@ ohos_moduletest("AppSpawnModuleTest") {
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",
     "hiviewdfx_hilog_native:libhilog",
+    "init:libbegetutil",
   ]
 }
 
