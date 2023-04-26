@@ -117,7 +117,13 @@ void LoadExtendLib(AppSpawnContent *content)
 
 void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
-    APPSPAWN_LOGI("AppExecFwk::MainThread::Start");
+    APPSPAWN_LOGI("LoadExtendLib: RunChildProcessor");
+    APPSPAWN_CHECK(client != NULL && content != NULL, return, "Invalid client");
+    AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
+    if (appProperty->property.code == SPAWN_NATIVE_PROCESS) {
+        (void)system(appProperty->property.renderCmd);
+        return;
+    }
 #ifndef APPSPAWN_TEST
     OHOS::AppExecFwk::MainThread::Start();
 #endif
