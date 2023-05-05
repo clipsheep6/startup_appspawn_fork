@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Copyright (c) 2022-2023 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -118,6 +118,7 @@ ohos_unittest("AppSpawn_ut") {
   ]
 
   external_deps = [
+    "ability_base:extractortool",
     "ability_base:want",
     "ability_runtime:app_manager",
     "ability_runtime:runtime",
@@ -131,6 +132,7 @@ ohos_unittest("AppSpawn_ut") {
     "init:libbegetutil",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "samgr:samgr_proxy",
   ]
 
   if (appspawn_report_event) {
