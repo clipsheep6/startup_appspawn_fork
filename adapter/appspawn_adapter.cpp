@@ -14,6 +14,7 @@
  */
 
 #include "appspawn_adapter.h"
+#include "socket_permission.h"
 
 #include <cerrno>
 
@@ -101,5 +102,10 @@ void HandleInternetPermission(const AppSpawnClient *client)
         client->id, appPropertyExt->property.setAllowInternet, appPropertyExt->property.allowInternet);
     if (appPropertyExt->property.setAllowInternet == 1 && appPropertyExt->property.allowInternet == 0) {
         DisallowInternet();
+        int32_t ret = SetInternetPermission(appPropertyExt->property.uid, 0);
+        APPSPAWN_LOGV("SetInternetPermission ret = %{public}d", ret);
+    } else {
+        int32_t ret = SetInternetPermission(appPropertyExt->property.uid, 1);
+        APPSPAWN_LOGV("SetInternetPermission ret = %{public}d", ret);
     }
 }
