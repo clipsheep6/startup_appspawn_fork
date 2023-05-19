@@ -46,6 +46,14 @@ int HapContextStub::HapDomainSetcontext(HapDomainInfo& hapDomainInfo)
     }
     return g_testHapDomainSetcontext;
 }
+
+int32_t SetInternetPermission(uint32_t uid, uint8_t allow)
+{
+    UNUSED(uid);
+    UNUSED(allow);
+    return 0;
+}
+
 #ifdef __cplusplus
     extern "C" {
 #endif

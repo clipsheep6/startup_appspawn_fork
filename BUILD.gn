@@ -100,6 +100,7 @@ ohos_static_library("appspawn_server") {
     "${appspawn_path}/util/src/json_utils.cpp",
     "${appspawn_path}/util/src/sandbox_utils.cpp",
   ]
+  include_dirs = [ "//foundation/communication/netmanager_base/interfaces/innerkits/netmanagernative/include" ]
   defines = [
     "GRAPHIC_PERMISSION_CHECK",
     "INIT_AGENT",
@@ -115,6 +116,7 @@ ohos_static_library("appspawn_server") {
     ":asan.options",
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
     "//base/startup/init/interfaces/innerkits:libbegetutil",
+    "//foundation/communication/netmanager_base/frameworks/native/netmanagernative:socket_permission",
     "//foundation/communication/netmanager_base/services/netmanagernative/netsys_client:netsys_client",
   ]
   external_deps = [
@@ -159,6 +161,7 @@ ohos_static_library("nwebspawn_server") {
     "${appspawn_path}/util/src/json_utils.cpp",
     "${appspawn_path}/util/src/sandbox_utils.cpp",
   ]
+  include_dirs = [ "//foundation/communication/netmanager_base/interfaces/innerkits/netmanagernative/include" ]
   defines = [
     "GRAPHIC_PERMISSION_CHECK",
     "INIT_AGENT",
@@ -170,6 +173,7 @@ ohos_static_library("nwebspawn_server") {
   ldflags = [ "-Wl,--dynamic-linker,/system/bin/linker64z" ]
   deps = [
     "//base/security/access_token/interfaces/innerkits/token_setproc:libtoken_setproc",
+    "//foundation/communication/netmanager_base/frameworks/native/netmanagernative:socket_permission",
     "//foundation/communication/netmanager_base/services/netmanagernative/netsys_client:netsys_client",
   ]
   external_deps = [

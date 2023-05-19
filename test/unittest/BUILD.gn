@@ -110,6 +110,8 @@ ohos_unittest("AppSpawn_ut") {
     "${appspawn_path}/test/unittest/client_socket_test/client_socket_test.cpp",
   ]
 
+  include_dirs = [ "//foundation/communication/netmanager_base/interfaces/innerkits/netmanagernative/include" ]
+
   configs = [ "//base/startup/appspawn/test/unittest:utest_config" ]
 
   deps = [
