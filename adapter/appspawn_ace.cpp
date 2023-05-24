@@ -21,6 +21,7 @@
 #include "runtime.h"
 
 #include "foundation/ability/ability_runtime/interfaces/kits/native/appkit/app/main_thread.h"
+#include "syspara/parameter.h"
 
 void LoadExtendLib(AppSpawnContent *content)
 {
@@ -74,6 +75,12 @@ void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("AppExecFwk::MainThread::Start");
 #ifndef APPSPAWN_TEST
+    std::string checkExit;
+    if (GetIntParameter("persist.init.debug.checkexit", true)) {
+        checkExit = std::to_string(getpid());
+    }
+    setenv(APPSPAWN_CHECK_EXIT, checkExit.c_str(), true);
     OHOS::AppExecFwk::MainThread::Start();
+    unsetenv(APPSPAWN_CHECK_EXIT);
 #endif
 }

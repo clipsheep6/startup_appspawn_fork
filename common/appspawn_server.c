@@ -26,10 +26,6 @@
 #ifdef OHOS_DEBUG
 #include <time.h>
 #endif // OHOS_DEBUG
-#include <stdbool.h>
-
-#include "syspara/parameter.h"
-#include "securec.h"
 
 #define DEFAULT_UMASK 0002
 
@@ -40,7 +36,6 @@ void DisallowInternet(void);
 #endif
 
 #define SANDBOX_STACK_SIZE (1024 * 1024 * 8)
-#define APPSPAWN_CHECK_EXIT "AppSpawnCheckUnexpectedExitCall"
 
 static void SetInternetPermission(const AppSpawnClient *client)
 {
@@ -68,7 +63,7 @@ static void NotifyResToParent(struct AppSpawnContent_ *content, AppSpawnClient *
 
 static void ProcessExit(int code)
 {
-    APPSPAWN_LOGI("App exit: %{public}d", code);
+    APPSPAWN_LOGI("App exit code: %{public}d", code);
 #ifndef APPSPAWN_TEST
 #ifdef OHOS_LITE
     _exit(0x7f); // 0x7f user exit
@@ -85,7 +80,7 @@ void exit(int code)
 {
     char *checkExit = getenv(APPSPAWN_CHECK_EXIT);
     if (checkExit && atoi(checkExit) == getpid()) {
-        APPSPAWN_LOGF("Unexpected exit call: %{public}d", code);
+        APPSPAWN_LOGF("Unexpected call: exit(%{public}d)", code);
         abort();
     }
     // hook `exit` to `ProcessExit` to ensure app exit in a clean way
@@ -148,7 +143,7 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
     return 0;
 }
 
-static int AppSpawnChildRun(void *arg)
+int AppSpawnChild(void *arg)
 {
     APPSPAWN_CHECK(arg != NULL, return -1, "Invalid arg for appspawn child");
     AppSandboxArg *sandbox = (AppSandboxArg *)arg;
@@ -202,18 +197,6 @@ static int AppSpawnChildRun(void *arg)
         content->runChildProcessor(content, client);
     }
     return 0;
-}
-
-int AppSpawnChild(void *arg)
-{
-    char checkExit[16] = ""; // 16 is enough to store an int
-    if (GetIntParameter("persist.init.debug.checkexit", false)) {
-        (void)sprintf_s(checkExit, sizeof(checkExit), "%d", getpid());
-    }
-    setenv(APPSPAWN_CHECK_EXIT, checkExit, true);
-    int ret = AppSpawnChildRun(arg);
-    unsetenv(APPSPAWN_CHECK_EXIT);
-    return ret;
 }
 
 int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
