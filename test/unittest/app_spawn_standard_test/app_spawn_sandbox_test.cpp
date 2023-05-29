@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1351,5 +1351,82 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_38, TestSize.Level0)
     ret = SandboxUtils::SetCommonAppSandboxProperty(m_appProperty, sandboxPackagePath);
     EXPECT_EQ(0, ret);
     APPSPAWN_LOGI("App_Spawn_Sandbox_38 end");
+}
+
+/**
+* @tc.name: App_Spawn_Sandbox_39
+* @tc.desc: load overlay infos SetAppSandboxProperty by App com.ohos.overlay.
+* @tc.type: FUNC
+* @tc.require:issueI791GY
+* @tc.author:
+*/
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_39, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_39 start";
+    ClientSocket::AppProperty *m_appProperty = GetAppProperty();
+    m_appProperty->uid = 1000;
+    m_appProperty->gid = 1000;
+    m_appProperty->gidCount = 1;
+    std::string sandBoxRootDir = "/mnt/sandbox/com.ohos.overlay";
+
+    if (strcpy_s(m_appProperty->processName, APP_LEN_PROC_NAME, "com.ohos.overlay") != 0) {
+        GTEST_LOG_(INFO) << "SetAppSandboxProperty start 1" << std::endl;
+    }
+
+    if (strcpy_s(m_appProperty->bundleName, APP_LEN_BUNDLE_NAME, "com.ohos.overlay") != 0) {
+        GTEST_LOG_(INFO) << "SetAppSandboxProperty start 2" << std::endl;
+    }
+
+    if (strcpy_s(m_appProperty->apl, APP_APL_MAX_LEN, "normal") != 0) {
+        GTEST_LOG_(INFO) << "SetAppSandboxProperty start 3" << std::endl;
+    }
+
+    GTEST_LOG_(INFO) << "SetAppSandboxProperty section 2"  << std::endl;
+    m_appProperty->accessTokenId = 671201800; // 671201800 is accessTokenId
+    m_appProperty->pid = 354; // query render process exited status by render process pid
+
+    int32_t ret = OHOS::AppSpawn::SandboxUtils::SetOverlayAppSandboxProperty(m_appProperty, sandBoxRootDir);
+    EXPECT_EQ(0, ret);
+
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_39 end";
+}
+
+/**
+* @tc.name: App_Spawn_Sandbox_40
+* @tc.desc: load overlay infos SetAppSandboxProperty by App com.ohos.overlay.
+* @tc.type: FUNC
+* @tc.require:issueI791GY
+* @tc.author:
+*/
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_40, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_40 start";
+    ClientSocket::AppProperty *m_appProperty = GetAppProperty();
+    m_appProperty->uid = 1000;
+    m_appProperty->gid = 1000;
+    m_appProperty->gidCount = 1;
+    m_appProperty->flags |= 0x100;
+    std::string sandBoxRootDir = "/mnt/sandbox/com.ohos.overlay";
+
+    if (strcpy_s(m_appProperty->processName, APP_LEN_PROC_NAME, "com.ohos.overlay") != 0) {
+        GTEST_LOG_(INFO) << "SetAppSandboxProperty start 1" << std::endl;
+    }
+
+    if (strcpy_s(m_appProperty->bundleName, APP_LEN_BUNDLE_NAME, "com.ohos.overlay") != 0) {
+        GTEST_LOG_(INFO) << "SetAppSandboxProperty start 2" << std::endl;
+    }
+
+    if (strcpy_s(m_appProperty->apl, APP_APL_MAX_LEN, "normal") != 0) {
+        GTEST_LOG_(INFO) << "SetAppSandboxProperty start 3" << std::endl;
+    }
+
+    GTEST_LOG_(INFO) << "SetAppSandboxProperty section 2"  << std::endl;
+    m_appProperty->accessTokenId = 671201800; // 671201800 is accessTokenId
+    m_appProperty->pid = 354; // query render process exited status by render process pid
+
+    int32_t ret = OHOS::AppSpawn::SandboxUtils::SetOverlayAppSandboxProperty(m_appProperty, sandBoxRootDir);
+    EXPECT_EQ(0, ret);
+
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_40 end";
 }
 } // namespace OHOS

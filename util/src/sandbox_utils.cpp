@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Copyright (C) 2022-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,6 +17,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <vector>
 
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -24,10 +25,13 @@
 #include <sys/types.h>
 #include <cerrno>
 
-#include "json_utils.h"
-#include "securec.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
+#include "bundle_mgr_proxy.h"
+#include "iservice_registry.h"
+#include "json_utils.h"
+#include "securec.h"
+#include "system_ability_definition.h"
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
 #endif
@@ -65,6 +69,7 @@ namespace {
     const std::string g_hspList_key_bundles = "bundles";
     const std::string g_hspList_key_modules = "modules";
     const std::string g_hspList_key_versions = "versions";
+    const std::string OVERLAY_PATH = "/data/storage/ovl/";
     const char *g_actionStatuc = "check-action-status";
     const char *g_accountPrefix = "/account/data/";
     const char *g_accountNonPrefix = "/non_account/data/";
@@ -93,6 +98,7 @@ namespace {
     const char *g_flags = "flags";
     const char *g_sandBoxNameSpace = "sandbox-namespace";
     const char *g_sandBoxCloneFlags = "clone-flags";
+    const char* g_fileSeparator = "/";
 #ifndef NWEB_SPAWN
     const std::string g_sandBoxRootDir = "/mnt/sandbox/";
 #else
@@ -918,6 +924,62 @@ static int CheckBundleName(const std::string &bundleName)
     return 0;
 }
 
+static sptr<AppExecFwk::IOverlayManager> GetOverlayManagerProxy()
+{
+    auto samgrProxy = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (samgrProxy == nullptr) {
+        APPSPAWN_LOGE("fail to get samgr.");
+        return nullptr;
+    }
+    sptr<IRemoteObject> bundleObj = samgrProxy->GetSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID);
+    if (bundleObj == nullptr) {
+        APPSPAWN_LOGE("fail to get bundle manager service.");
+        return nullptr;
+    }
+    sptr<AppExecFwk::IBundleMgr> bms = iface_cast<AppExecFwk::IBundleMgr>(bundleObj);
+    return bms->GetOverlayManagerProxy();
+}
+
+int32_t SandboxUtils::SetOverlayAppSandboxProperty(const ClientSocket::AppProperty *appProperty,
+                                                   string &sandboxPackagePath)
+{
+    if ((appProperty->flags & APP_OVERLAY) != APP_OVERLAY) {
+        return 0;
+    }
+    sptr<AppExecFwk::IOverlayManager> overlayManagerProxy = GetOverlayManagerProxy();
+    if (overlayManagerProxy == nullptr) {
+        APPSPAWN_LOGE("fail to get overlay manager proxy.");
+        return -1;
+    }
+
+    string sandboxOverlayPath = sandboxPackagePath + OVERLAY_PATH;
+    vector<AppExecFwk::OverlayModuleInfo> overlayModuleInfo;
+    overlayManagerProxy->GetOverlayModuleInfoForTarget(appProperty->bundleName, "", overlayModuleInfo,
+                                                       appProperty->uid / UID_BASE);
+    int32_t ret = 0;
+    set<string> mountedSrcSet;
+    for (const AppExecFwk::OverlayModuleInfo& info : overlayModuleInfo) {
+        int32_t pathIndex = info.hapPath.find_last_of(g_fileSeparator);
+        std::string srcPath = info.hapPath.substr(0, pathIndex);
+        if (!mountedSrcSet.empty() && mountedSrcSet.find(srcPath) != mountedSrcSet.end()) {
+            APPSPAWN_LOGI("%{public}s have mounted before, no need to mount twice.", srcPath.c_str());
+            continue;
+        }
+
+        int32_t bundleNameIndex = srcPath.find_last_of(g_fileSeparator);
+        string destPath = sandboxOverlayPath + srcPath.substr(bundleNameIndex + 1, srcPath.length());
+        int32_t retMount = DoAppSandboxMountOnce(srcPath.c_str(), destPath.c_str(),
+                                                 nullptr, BASIC_MOUNT_FLAGS, nullptr);
+        if (retMount != 0) {
+            APPSPAWN_LOGE("fail to mount overlay path, src is %s.", info.hapPath.c_str());
+            ret = retMount;
+        }
+
+        mountedSrcSet.emplace(srcPath);
+    }
+    return ret;
+}
+
 int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
 {
     APPSPAWN_CHECK(client != NULL, return -1, "Invalid appspwn client");
@@ -965,6 +1027,10 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
     APPSPAWN_CHECK(rc == 0, return rc, "SetRenderSandboxProperty failed, packagename is %{public}s",
         sandboxPackagePath.c_str());
 #endif
+
+    rc = SetOverlayAppSandboxProperty(appProperty, sandboxPackagePath);
+    APPSPAWN_CHECK(rc == 0, return rc, "SetOverlayAppSandboxProperty failed, packagename is %s",
+        bundleName.c_str());
 
 #ifndef APPSPAWN_TEST
     rc = chdir(sandboxPackagePath.c_str());
