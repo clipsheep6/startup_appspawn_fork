@@ -27,7 +27,6 @@
 
 #include "init_hashmap.h"
 #include "init_socket.h"
-#include "init_utils.h"
 #include "parameter.h"
 #include "securec.h"
 
