@@ -47,10 +47,12 @@ void SetSelinuxCon(struct AppSpawnContent_ *content, AppSpawnClient *client)
     if ((appProperty->property.flags & APP_DEBUGGABLE) != 0) {
         hapDomainInfo.hapFlags |= SELINUX_HAP_DEBUGGABLE;
     }
+    APPSPAWN_LOGE("AppSpawnServer:: hapDomainInfo.apl:%{public}s,hapDomainInfo.packageName:%{public}s,hapDomainInfo.hapFlags:%{public}d"
+        ,hapDomainInfo.apl.c_str(),hapDomainInfo.packageName.c_str(),hapDomainInfo.hapFlags);
     int32_t ret = hapContext.HapDomainSetcontext(hapDomainInfo);
     if (ret != 0) {
-        APPSPAWN_LOGE("AppSpawnServer::Failed to hap domain set context, errno = %{public}d %{public}s",
-            errno, appProperty->property.apl);
+        APPSPAWN_LOGE("AppSpawnServer::Failed to hap domain set context, errno = %{public}d %{public}s ret:%{public}d",
+            errno, appProperty->property.apl,ret);
     } else {
         APPSPAWN_LOGV("AppSpawnServer::Success to hap domain set context, ret = %{public}d", ret);
     }

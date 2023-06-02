@@ -16,10 +16,12 @@
 #include "appspawn_adapter.h"
 
 #include <string>
+#include <set>
 #include "appspawn_service.h"
 #include "config_policy_utils.h"
 #include "json_utils.h"
 #include "sandbox_utils.h"
+#include "accesstoken_kit.h"
 
 using namespace std;
 using namespace OHOS;
@@ -56,6 +58,32 @@ void LoadAppSandboxConfig(void)
     SandboxUtils::StoreNamespaceJsonConfig(appNamespaceConfig);
 }
 
+int32_t QueryAPPMountPermission(AppSpawnClient *client){
+    AppSpawnClientExt *clientExt = reinterpret_cast<AppSpawnClientExt *>(client);
+    ClientSocket::AppProperty *appProperty = &clientExt->property;
+    APPSPAWN_LOGI("QueryAPPMountPermission:bundleName:%{public}s",appProperty->bundleName);
+    for(auto permissionItem : SandboxUtils::GetPermissionNames()){
+        APPSPAWN_LOGI("permissionItem:%{public}s start",permissionItem.c_str());
+        if(appProperty-> permissionCount >= PERMISSION_NUM){
+            APPSPAWN_LOGW("permissionCount(%{public}d) has not been then less PERMISSION_NUM(%{public}d)",
+                appProperty-> permissionCount, PERMISSION_NUM);
+            break;
+        }
+        Security::AccessToken::AccessTokenID tokenId = static_cast<Security::AccessToken::AccessTokenID>(appProperty -> accessTokenId);
+        int ret = Security::AccessToken::AccessTokenKit::VerifyAccessToken(tokenId, permissionItem);
+        // int ret = Security::AccessToken::TypePermissionState::PERMISSION_DENIED;~
+        if (ret == Security::AccessToken::TypePermissionState::PERMISSION_DENIED) {
+            APPSPAWN_LOGI("accessTokenId:%{public}d don't have %{public}s",
+                appProperty-> accessTokenId, permissionItem.c_str());
+            continue;
+        }
+        // 添加权限
+        strcpy(appProperty -> permissionTable[appProperty -> permissionCount++], permissionItem.c_str());
+    }
+
+    return 0;
+}
+
 int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     APPSPAWN_CHECK(client != NULL, return -1, "Invalid appspwn client");
@@ -68,6 +96,10 @@ int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *
     if ((client->cloneFlags & CLONE_NEWNS) != CLONE_NEWNS) {
         return 0;
     }
+    // 查询app权限
+    APPSPAWN_LOGI("QueryAPPMountPermission start");
+    QueryAPPMountPermission(client);
+    APPSPAWN_LOGI("QueryAPPMountPermission end");
     int ret = SandboxUtils::SetAppSandboxProperty(client);
     // free HspList
     if (clientExt->property.hspList.data != nullptr) {
@@ -81,6 +113,8 @@ int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *
     }
     return ret;
 }
+
+
 
 uint32_t GetAppNamespaceFlags(const char *bundleName)
 {

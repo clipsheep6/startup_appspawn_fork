@@ -122,6 +122,7 @@ ohos_static_library("appspawn_server") {
     "config_policy:configpolicy_util",
     "hilog_native:libhilog",
     "init:libbegetutil",
+    "access_token:libaccesstoken_sdk",
   ]
   if (build_selinux) {
     external_deps += [ "selinux:libhap_restorecon" ]
@@ -177,6 +178,7 @@ ohos_static_library("nwebspawn_server") {
     "config_policy:configpolicy_util",
     "hilog_native:libhilog",
     "init:libbegetutil",
+    "access_token:libaccesstoken_sdk",
   ]
   if (build_selinux) {
     external_deps += [ "selinux:libhap_restorecon" ]

@@ -45,6 +45,7 @@ namespace {
     constexpr int32_t DFS_GID = 1009;
     constexpr static mode_t FILE_MODE = 0711;
     constexpr static mode_t BASE_FOLDER_FILE_MODE = 0700;
+    // 02771
     constexpr static mode_t DATABASE_FOLDER_FILE_MODE = S_IRWXU | S_IRWXG;
     constexpr static mode_t BASIC_MOUNT_FLAGS = MS_REC | MS_BIND;
     constexpr std::string_view APL_SYSTEM_CORE("system_core");
@@ -79,6 +80,7 @@ namespace {
     const char *g_fsType = "fs-type";
     const char *g_linkName = "link-name";
     const char *g_mountPrefix = "mount-paths";
+    const char *g_gidPrefix = "gids";
     const char *g_privatePrefix = "individual";
     const char *g_permissionPrefix = "permission";
     const char *g_srcPath = "src-path";
@@ -194,8 +196,11 @@ int32_t SandboxUtils::DoAppSandboxMountOnce(const char *originPath, const char *
     int ret = 0;
     // to mount fs and bind mount files or directory
     ret = mount(originPath, destinationPath, fsType, mountFlags, options);
-    APPSPAWN_CHECK(ret == 0, return ret,  "errno is: %{public}d, bind mount %{public}s to %{public}s failed",
-        errno, originPath, destinationPath);
+    if (ret != 0) {
+        APPSPAWN_LOGI("errno is: %{public}d, bind mount %{public}s to %{public}s", errno, originPath,
+                      destinationPath);
+        return ret;
+    }
     ret = mount(NULL, destinationPath, NULL, MS_SLAVE, NULL);
     APPSPAWN_CHECK(ret == 0, return ret,
         "errno is: %{public}d, private mount to %{public}s failed", errno, destinationPath);
@@ -547,6 +552,26 @@ int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProper
     return 0;
 }
 
+int32_t SandboxUtils::DoAddGid(ClientSocket::AppProperty *appProperty,
+    nlohmann::json &appConfig, const char* permissionName, const std::string &section){
+        std::string bundleName = appProperty->bundleName;
+        if(appConfig.find(g_gidPrefix) == appConfig.end()){
+            APPSPAWN_LOGV("gids config is not found in %{public}s, app name is %{public}s permission is %{public}s",
+            section.c_str(),bundleName.c_str(),permissionName);
+        }
+        nlohmann::json gids = appConfig[g_gidPrefix];
+        unsigned int gidSize = gids.size();
+        for(unsigned int i = 0; i< gidSize; i++){
+             if (appProperty->gidCount < APP_MAX_GIDS) {
+                APPSPAWN_LOGI("add gid to gitTable in %{public}s, permission is %{public}s, gid:%{public}u",
+                    bundleName.c_str(), permissionName, gids[i].get<uint32_t>());
+                appProperty->gidTable[appProperty->gidCount++] = gids[i].get<uint32_t>();
+            }
+        }
+    return 0;
+}
+
+
 int SandboxUtils::DoAllSymlinkPointslink(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig)
 {
     APPSPAWN_CHECK(appConfig.find(g_symlinkPrefix) != appConfig.end(), return 0, "symlink config is not found,"
@@ -598,7 +623,7 @@ int32_t SandboxUtils::DoSandboxFilePrivateBind(const ClientSocket::AppProperty *
     return 0;
 }
 
-int32_t SandboxUtils::DoSandboxFilePermissionBind(const ClientSocket::AppProperty *appProperty,
+int32_t SandboxUtils::DoSandboxFilePermissionBind(ClientSocket::AppProperty *appProperty,
                                                nlohmann::json &wholeConfig)
 {
     if(wholeConfig.find(g_permissionPrefix)==wholeConfig.end()){
@@ -606,17 +631,40 @@ int32_t SandboxUtils::DoSandboxFilePermissionBind(const ClientSocket::AppPropert
         return 0;
     }
     nlohmann::json permissionAppConfig = wholeConfig[g_permissionPrefix][0];
+
      APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind permissionAppConfig: %{public}s",permissionAppConfig.dump().c_str());
-    for(unsigned int i=0;i<sizeof(appProperty->permission)/sizeof(appProperty->permission[0]);i++){
-        if(strlen(appProperty->permission[i]) > 0 && permissionAppConfig.find(appProperty->permission[i]) != permissionAppConfig.end()){
-            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, appProperty->permission[i]);
-            return DoAllMntPointsMount(appProperty, permissionAppConfig[appProperty->permission[i]][0], g_privatePrefix);
+    for(unsigned int i=0;i<sizeof(appProperty->permissionTable)/sizeof(appProperty->permissionTable[0]);i++){
+        if(strlen(appProperty->permissionTable[i]) > 0 && permissionAppConfig.find(appProperty->permissionTable[i]) != permissionAppConfig.end()){
+            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, appProperty->permissionTable[i]);
+            int ret = 0;
+            ret = DoAddGid(appProperty, permissionAppConfig[appProperty->permissionTable[i]][0], appProperty->permissionTable[i], g_permissionPrefix);
+            ret = DoAllMntPointsMount(appProperty, permissionAppConfig[appProperty->permissionTable[i]][0], g_permissionPrefix);
+            return ret;
         }else {
-            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, appProperty->permission[i]);
+            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, appProperty->permissionTable[i]);
         }
     }
     return 0;
 }
+
+std::set<std::string> SandboxUtils::GetPermissionNames(){
+    APPSPAWN_LOGI("GetPermissionNames :开始查找权限");
+    std::set<std::string> permissionSet;
+    for (auto config : SandboxUtils::GetJsonConfig()) {
+        if(config.find(g_permissionPrefix) == config.end()){
+            continue;
+        }
+        nlohmann::json permissionAppConfig = config[g_permissionPrefix][0];
+        for(auto it = permissionAppConfig.begin(); it != permissionAppConfig.end(); it++){
+            APPSPAWN_LOGI("GetPermissionNames : find permission:%{public}s",it.key().c_str());
+            permissionSet.insert(it.key());
+            APPSPAWN_LOGI("GetPermissionNames : insert permission:%{public}s",it.key().c_str());
+        }
+    }
+    APPSPAWN_LOGI("GetPermissionNames end");
+    return permissionSet;
+}
+
 int32_t SandboxUtils::DoSandboxFilePrivateSymlink(const ClientSocket::AppProperty *appProperty,
                                                   nlohmann::json &wholeConfig)
 {
@@ -730,9 +778,10 @@ int32_t SandboxUtils::SetPrivateAppSandboxProperty_(const ClientSocket::AppPrope
 
     return ret;
 }
-int32_t SandboxUtils::SetPermissionAppSandboxProperty_(const ClientSocket::AppProperty *appProperty,
+int32_t SandboxUtils::SetPermissionAppSandboxProperty_(ClientSocket::AppProperty *appProperty,
     nlohmann::json &config)
 {
+    
     int ret = DoSandboxFilePermissionBind(appProperty, config);
     APPSPAWN_CHECK(ret == 0, return ret, "DoSandboxFilePermissionBind failed");
     return ret;
@@ -772,7 +821,7 @@ int32_t SandboxUtils::SetPrivateAppSandboxProperty(const ClientSocket::AppProper
     return ret;
 }
 
-int32_t SandboxUtils::SetPermissionAppSandboxProperty(const ClientSocket::AppProperty *appProperty)
+int32_t SandboxUtils::SetPermissionAppSandboxProperty(ClientSocket::AppProperty *appProperty)
 {
     int ret = 0;
     for (auto config : SandboxUtils::GetJsonConfig()) {

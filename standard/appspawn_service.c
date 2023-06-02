@@ -249,14 +249,6 @@ static void HandleSpecial(AppSpawnClientExt *appProperty)
 
 }
 
-static void ADDPermissionToMyAPP(AppSpawnClientExt *appProperty){
-    const char *myapplicationName = "com.liang.myapplication";
-    if(strcmp(appProperty->property.bundleName, myapplicationName) == 0){
-        APPSPAWN_LOGI("===zxl=== ADDPermissionToMyAPP: 设置权限: %{public}s",appProperty->property.processName);
-        strcpy(appProperty->property.permission[0],"xxxxx");
-        APPSPAWN_LOGI("===zxl=== ADDPermissionToMyAPP: 设置权限: %{public}s",appProperty->property.permission[0]);
-    }
-}
 
 static int WaitChild(int fd, int pid, const AppSpawnClientExt *appProperty)
 {
@@ -318,6 +310,9 @@ APPSPAWN_STATIC bool ReceiveRequestData(const TaskHandle taskHandle, AppSpawnCli
         // update buffer
         buffer += sizeof(client->property);
         buffLen -= sizeof(client->property);
+
+        // reset permission
+        client->property.permissionCount = 0;
     }
 
     // 2. check whether hspList exist
@@ -417,7 +412,6 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
 
     // special handle bundle name medialibrary and scanner
     HandleSpecial(appProperty);
-    ADDPermissionToMyAPP(appProperty);
     if (g_appSpawnContent->timer != NULL) {
         LE_StopTimer(LE_GetDefaultLoop(), g_appSpawnContent->timer);
         g_appSpawnContent->timer = NULL;

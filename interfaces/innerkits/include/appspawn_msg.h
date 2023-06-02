@@ -99,7 +99,8 @@ typedef struct AppParameter_ {
     int32_t bundleIndex;
     uint64_t accessTokenIdEx;
     uint32_t hapFlags;
-    char permission[PERMISSION_NUM][PERMISSION_NAME];
+    char permissionTable[PERMISSION_NUM][PERMISSION_NAME];
+    uint32_t permissionCount;
 
 #ifndef OHOS_LITE
     uint8_t setAllowInternet;
