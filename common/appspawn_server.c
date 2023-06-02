@@ -189,7 +189,7 @@ static int AppSpawnChildRun(void *arg)
 static int AppSpawnChild(void *arg)
 {
     char checkExit[16] = ""; // 16 is enough to store an int
-    if (GetIntParameter("persist.init.debug.checkexit", true)) {
+    if (GetIntParameter("persist.init.debug.checkexit", false)) {
         (void)sprintf_s(checkExit, sizeof(checkExit), "%d", getpid());
     }
     setenv(APPSPAWN_CHECK_EXIT, checkExit, true);
