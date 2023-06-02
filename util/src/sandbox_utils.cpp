@@ -23,7 +23,7 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <cerrno>
-
+#include <set>
 #include "json_utils.h"
 #include "securec.h"
 #include "appspawn_server.h"
@@ -80,6 +80,7 @@ namespace {
     const char *g_linkName = "link-name";
     const char *g_mountPrefix = "mount-paths";
     const char *g_privatePrefix = "individual";
+    const char *g_permissionPrefix = "permission";
     const char *g_srcPath = "src-path";
     const char *g_sandBoxPath = "sandbox-path";
     const char *g_sandBoxFlags = "sandbox-flags";
@@ -177,7 +178,7 @@ static void MakeDirRecursive(const std::string &path, mode_t mode)
         std::string dir = path.substr(0, index);
 #ifndef APPSPAWN_TEST
         APPSPAWN_CHECK(!(access(dir.c_str(), F_OK) < 0 && mkdir(dir.c_str(), mode) < 0),
-            return, "error is %{public}d, mkdir %{public}s failed", errno, dir.c_str());
+            return, "errno is %{public}d, mkdir %{public}s failed", errno, dir.c_str());
 #endif
     } while (index < size);
 }
@@ -186,6 +187,7 @@ int32_t SandboxUtils::DoAppSandboxMountOnce(const char *originPath, const char *
                                             const char *fsType, unsigned long mountFlags,
                                             const char *options)
 {
+    APPSPAWN_LOGV("====zxl==== originPath:%{public}s destinationPath:%{public}s fsType:%{public}s mountFlags:%{public}lu options:%{public}s", originPath,destinationPath,fsType,mountFlags,options);
     // To make sure destinationPath exist
     MakeDirRecursive(destinationPath, FILE_MODE);
 #ifndef APPSPAWN_TEST
@@ -596,6 +598,25 @@ int32_t SandboxUtils::DoSandboxFilePrivateBind(const ClientSocket::AppProperty *
     return 0;
 }
 
+int32_t SandboxUtils::DoSandboxFilePermissionBind(const ClientSocket::AppProperty *appProperty,
+                                               nlohmann::json &wholeConfig)
+{
+    if(wholeConfig.find(g_permissionPrefix)==wholeConfig.end()){
+        APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind 配置文件中没有权限信息");
+        return 0;
+    }
+    nlohmann::json permissionAppConfig = wholeConfig[g_permissionPrefix][0];
+     APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind permissionAppConfig: %{public}s",permissionAppConfig.dump().c_str());
+    for(unsigned int i=0;i<sizeof(appProperty->permission)/sizeof(appProperty->permission[0]);i++){
+        if(strlen(appProperty->permission[i]) > 0 && permissionAppConfig.find(appProperty->permission[i]) != permissionAppConfig.end()){
+            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, appProperty->permission[i]);
+            return DoAllMntPointsMount(appProperty, permissionAppConfig[appProperty->permission[i]][0], g_privatePrefix);
+        }else {
+            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, appProperty->permission[i]);
+        }
+    }
+    return 0;
+}
 int32_t SandboxUtils::DoSandboxFilePrivateSymlink(const ClientSocket::AppProperty *appProperty,
                                                   nlohmann::json &wholeConfig)
 {
@@ -709,6 +730,14 @@ int32_t SandboxUtils::SetPrivateAppSandboxProperty_(const ClientSocket::AppPrope
 
     return ret;
 }
+int32_t SandboxUtils::SetPermissionAppSandboxProperty_(const ClientSocket::AppProperty *appProperty,
+    nlohmann::json &config)
+{
+    int ret = DoSandboxFilePermissionBind(appProperty, config);
+    APPSPAWN_CHECK(ret == 0, return ret, "DoSandboxFilePermissionBind failed");
+    return ret;
+}
+
 
 int32_t SandboxUtils::SetRenderSandboxProperty(const ClientSocket::AppProperty *appProperty,
                                                std::string &sandboxPackagePath)
@@ -742,6 +771,17 @@ int32_t SandboxUtils::SetPrivateAppSandboxProperty(const ClientSocket::AppProper
     }
     return ret;
 }
+
+int32_t SandboxUtils::SetPermissionAppSandboxProperty(const ClientSocket::AppProperty *appProperty)
+{
+    int ret = 0;
+    for (auto config : SandboxUtils::GetJsonConfig()) {
+        ret = SetPermissionAppSandboxProperty_(appProperty, config);
+        APPSPAWN_CHECK(ret == 0, return ret, "parse adddata-sandbox config failed");
+    }
+    return ret;
+}
+
 
 int32_t SandboxUtils::SetCommonAppSandboxProperty_(const ClientSocket::AppProperty *appProperty,
                                                    nlohmann::json &config)
@@ -926,7 +966,7 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
     if (CheckBundleName(appProperty->bundleName) != 0) {
         return -1;
     }
-
+    APPSPAWN_LOGV("=====zxl===== bundleName:%{public}s", appProperty->bundleName);
     std::string sandboxPackagePath = g_sandBoxRootDir;
     const std::string bundleName = appProperty->bundleName;
     sandboxPackagePath += bundleName;
@@ -952,10 +992,14 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
     APPSPAWN_CHECK(rc == 0, return rc, "SetCommonAppSandboxProperty failed, packagename is %{public}s",
         bundleName.c_str());
     if (CheckBundleNameForPrivate(bundleName)) {
+        APPSPAWN_LOGV("=====zxl===== CheckBundleNameForPrivate bundleName:%{public}s", bundleName.c_str());
         rc = SetPrivateAppSandboxProperty(appProperty);
         APPSPAWN_CHECK(rc == 0, return rc, "SetPrivateAppSandboxProperty failed, packagename is %{public}s",
             bundleName.c_str());
     }
+    rc = SetPermissionAppSandboxProperty(appProperty);
+    APPSPAWN_CHECK(rc == 0, return rc, "SetPermissionAppSandboxProperty failed, packagename is %{public}s",
+        bundleName.c_str());
 #else
     // rendering process can be created by different apps,
     // and the bundle names of these apps are different,

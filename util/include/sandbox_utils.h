@@ -75,7 +75,11 @@ private:
                                           nlohmann::json &config);
     static int32_t SetRenderSandboxProperty(const ClientSocket::AppProperty *appProperty,
                                             std::string &sandboxPackagePath);
-
+    static int32_t DoSandboxFilePermissionBind(const ClientSocket::AppProperty *appProperty,
+                                               nlohmann::json &wholeConfig);
+    static int32_t SetPermissionAppSandboxProperty_(const ClientSocket::AppProperty *appProperty,
+                                                nlohmann::json &config);
+    static int32_t SetPermissionAppSandboxProperty(const ClientSocket::AppProperty *appProperty);
 private:
     static nlohmann::json appNamespaceConfig_;
     static std::vector<nlohmann::json> appSandboxConfig_;

@@ -458,5 +458,44 @@
                 "symbol-links" : [{}]
             }]
         }]
-    }]
+    }],
+    "permission":[
+        {
+          "xxxxx":[
+            {
+              "sandbox-switch": "ON",
+              "sandbox-root": "/mnt/sandbox/<PackageName>",
+              "mount-paths": [
+                {
+                  "src-path": "/storage/media/<currentUserId>/local/files/Documents",
+                  "sandbox-path": "/data/storage/el2/base/Documents",
+                  "sandbox-flags": [
+                    "bind",
+                    "rec"
+                  ],
+                  "check-action-status": "true"
+                },
+                {
+                  "src-path": "/data/service/el1/public/storage_daemon/share/public",
+                  "sandbox-path": "/data/storage/el2/base/Share",
+                  "sandbox-flags": [
+                    "bind",
+                    "rec"
+                  ],
+                  "check-action-status": "true"
+                },
+                {
+                  "src-path": "/mnt/external",
+                  "sandbox-path": "/data/storage/el2/base/External",
+                  "sandbox-flags": [
+                    "bind",
+                    "rec"
+                  ],
+                  "check-action-status": "true"
+                }
+              ]
+            }
+          ]
+        }
+    ]
 }

@@ -222,12 +222,14 @@ APPSPAWN_STATIC void SignalHandler(const struct signalfd_siginfo *siginfo)
 static void HandleSpecial(AppSpawnClientExt *appProperty)
 {
     const char *fileExtensionHapBundleName = "com.ohos.UserFile.ExternalFileManager";
-    if (strcmp(appProperty->property.bundleName, fileExtensionHapBundleName) == 0) {
+    if (strcmp(appProperty->property.bundleName, fileExtensionHapBundleName) == 0
+        || strcmp(appProperty->property.bundleName, "com.liang.myapplication") == 0) {
         if (appProperty->property.gidCount < APP_MAX_GIDS) {
             appProperty->property.gidTable[appProperty->property.gidCount] = GID_FILE_ACCESS;
             appProperty->property.gidCount++;
         }
     }
+
 
     // special handle bundle name medialibrary and scanner
     const char *specialBundleNames[] = {
@@ -242,6 +244,17 @@ static void HandleSpecial(AppSpawnClientExt *appProperty)
             }
             break;
         }
+    }
+
+
+}
+
+static void ADDPermissionToMyAPP(AppSpawnClientExt *appProperty){
+    const char *myapplicationName = "com.liang.myapplication";
+    if(strcmp(appProperty->property.bundleName, myapplicationName) == 0){
+        APPSPAWN_LOGI("===zxl=== ADDPermissionToMyAPP: 设置权限: %{public}s",appProperty->property.processName);
+        strcpy(appProperty->property.permission[0],"xxxxx");
+        APPSPAWN_LOGI("===zxl=== ADDPermissionToMyAPP: 设置权限: %{public}s",appProperty->property.permission[0]);
     }
 }
 
@@ -404,6 +417,7 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
 
     // special handle bundle name medialibrary and scanner
     HandleSpecial(appProperty);
+    ADDPermissionToMyAPP(appProperty);
     if (g_appSpawnContent->timer != NULL) {
         LE_StopTimer(LE_GetDefaultLoop(), g_appSpawnContent->timer);
         g_appSpawnContent->timer = NULL;
