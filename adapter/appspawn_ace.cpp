@@ -118,7 +118,9 @@ void LoadExtendLib(AppSpawnContent *content)
 void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_CHECK(client != NULL && content != NULL, return, "Invalid client");
+    APPSPAWN_LOGI("LoadExtendLib: RunChildProcessor 121");
     AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
+    APPSPAWN_LOGI("LoadExtendLib: RunChildProcessor 123");
     if (appProperty->property.code == SPAWN_NATIVE_PROCESS) {
         APPSPAWN_LOGI("renderCmd %{public}s", appProperty->property.renderCmd);
         (void)system(appProperty->property.renderCmd);

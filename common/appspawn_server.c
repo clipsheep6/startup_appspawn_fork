@@ -14,6 +14,7 @@
  */
 
 #include "appspawn_server.h"
+#include "appspawn_adapter.h"
 
 #include <stdlib.h>
 #include <errno.h>
@@ -84,6 +85,7 @@ void exit(int code)
 
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
 {
+    APPSPAWN_LOGI("zkx DoStartApp begin!");
     int32_t ret = 0;
     APPSPAWN_LOGV("DoStartApp id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     if (content->handleInternetPermission != NULL) {
@@ -146,10 +148,13 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
 
 static int AppSpawnChildRun(void *arg)
 {
+    APPSPAWN_LOGI("zkx AppSpawnChildRun begin!");
     APPSPAWN_CHECK(arg != NULL, return -1, "Invalid arg for appspawn child");
     AppSandboxArg *sandbox = (AppSandboxArg *)arg;
     struct AppSpawnContent_ *content = sandbox->content;
     AppSpawnClient *client = sandbox->client;
+
+    APPSPAWN_LOGI("zkx AppSpawnChildRun begin2!");
 
 #ifdef OHOS_DEBUG
     struct timespec tmStart = {0};
@@ -157,23 +162,31 @@ static int AppSpawnChildRun(void *arg)
 #endif
     // close socket id and signal for child
     if (content->clearEnvironment != NULL) {
+        APPSPAWN_LOGI("zkx AppSpawnChildRun begin3!");
         content->clearEnvironment(content, client);
     }
+    APPSPAWN_LOGI("zkx AppSpawnChildRun begin3!");
 
     if (content->setAppAccessToken != NULL) {
+        APPSPAWN_LOGI("zkx AppSpawnChildRun begin171!");
         content->setAppAccessToken(content, client);
     }
 
+    APPSPAWN_LOGI("zkx AppSpawnChildRun begin175!");
     int ret = -1;
     if ((content->getWrapBundleNameValue != NULL && content->getWrapBundleNameValue(content, client) == 0) ||
         ((client->flags & APP_COLD_START) != 0)) {
+        APPSPAWN_LOGI("zkx AppSpawnChildRun begin179!");
         // cold start fail, to start normal
         if (content->coldStartApp != NULL && content->coldStartApp(content, client) == 0) {
+            APPSPAWN_LOGI("zkx AppSpawnChildRun begin182!");
             return 0;
         }
     }
+    APPSPAWN_LOGI("zkx AppSpawnChildRun begin186!");
     ret = DoStartApp(content, client, content->longProcName, content->longProcNameLen);
     if (content->initDebugParams != NULL) {
+        APPSPAWN_LOGI("zkx AppSpawnChildRun begin189!");
         content->initDebugParams(content, client);
     }
 #ifdef OHOS_DEBUG
@@ -181,8 +194,10 @@ static int AppSpawnChildRun(void *arg)
     APPSPAWN_LOGI("App timeused %{public}d %lld ns.", getpid(), diff);
 #endif
     if (ret == 0 && content->runChildProcessor != NULL) {
+        APPSPAWN_LOGI("zkx AppSpawnChildRun begin197!");
         content->runChildProcessor(content, client);
     }
+    APPSPAWN_LOGI("zkx AppSpawnChildRun begin200!");
     return 0;
 }
 
@@ -223,24 +238,30 @@ int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
     APPSPAWN_LOGI("AppSpawnProcessMsg id %{public}d 0x%{public}x", sandbox->client->id, sandbox->client->flags);
 
 #ifndef OHOS_LITE
+    
     AppSpawnClient *client = sandbox->client;
     if (client->cloneFlags & CLONE_NEWPID) {
         APPSPAWN_CHECK(client->cloneFlags & CLONE_NEWNS, return -1, "clone flags error");
         char *childStack = (char *)malloc(SANDBOX_STACK_SIZE);
         APPSPAWN_CHECK(childStack != NULL, return -1, "malloc failed");
+        (void)InitAppSandboxInfo(client);
         pid_t pid = clone(CloneAppSpawn,
             childStack + SANDBOX_STACK_SIZE, client->cloneFlags | SIGCHLD, (void *)sandbox);
         if (pid > 0) {
             free(childStack);
+            CleanAppSandboxInfo(client);
             *childPid = pid;
             return 0;
         }
         client->cloneFlags &= ~CLONE_NEWPID;
         free(childStack);
+        CleanAppSandboxInfo(client);
     }
 #endif
+    (void)InitAppSandboxInfo(client);
     *childPid = AppSpawnFork(AppSpawnChild, (void *)sandbox);
     APPSPAWN_CHECK(*childPid >= 0, return -errno, "fork child process error: %{public}d", -errno);
+    CleanAppSandboxInfo(client);
     return 0;
 }
 

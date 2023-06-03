@@ -33,6 +33,8 @@ public:
     static std::vector<nlohmann::json> &GetJsonConfig();
     static int32_t SetAppSandboxProperty(AppSpawnClient *client);
     static uint32_t GetNamespaceFlagsFromConfig(const char *bundleName);
+    static uint32_t GetOverlayInfo(AppSpawnClient *client);
+    static uint32_t CleanOverlayInfo(AppSpawnClient *client);
 
 private:
     static int32_t DoAppSandboxMountOnce(const char *originPath, const char *destinationPath,

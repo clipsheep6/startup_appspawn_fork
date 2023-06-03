@@ -17,6 +17,8 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <vector>
+#include <sstream>
 
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -28,6 +30,11 @@
 #include "securec.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
+#include "bundle_mgr_proxy.h"
+#include "iservice_registry.h"
+#include "json_utils.h"
+#include "securec.h"
+#include "system_ability_definition.h"
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
 #endif
@@ -374,6 +381,7 @@ static int32_t DoDlpAppMountStrategy(const ClientSocket::AppProperty *appPropert
     char options[FUSE_OPTIONS_MAX_LEN];
     (void)sprintf_s(options, sizeof(options), "fd=%d,rootmode=40000,user_id=%d,group_id=%d,allow_other", fd,
         appProperty->uid, appProperty->gid);
+
 
     // To make sure destinationPath exist
     MakeDirRecursive(sandboxPath, FILE_MODE);
@@ -941,6 +949,28 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
         rc = unshare(CLONE_NEWNS);
         APPSPAWN_CHECK(rc == 0, return rc, "unshare failed, packagename is %{public}s", bundleName.c_str());
     }
+    APPSPAWN_LOGI("zkx zkx new appspawn");
+
+    // if (clientExt->sandboxInfo.overlayPath != nullptr) {
+    //     string overlayPath(clientExt->sandboxInfo.overlayPath);
+    //     stringstream overlayPathStream(overlayPath);
+    //     string tmpPath;
+    //     while(getline(overlayPathStream, tmpPath, '|')) {
+    //         if (!tmpPath.empty()) {
+    //             APPSPAWN_LOGI("zkx zkx overlayPath is %{public}s", tmpPath.c_str());
+    //             int32_t bundleNameIndex = tmpPath.find_last_of("/");
+    //             string destPath = "/data/storage/ovl/" + tmpPath.substr(bundleNameIndex + 1, tmpPath.length());
+    //             int32_t retMount = DoAppSandboxMountOnce(tmpPath.c_str(), destPath.c_str(),
+    //                                                     nullptr, BASIC_MOUNT_FLAGS, nullptr);
+    //             if (retMount != 0) {
+    //                 APPSPAWN_LOGW("fail to mount overlay path, src is %{public}s.", tmpPath.c_str());
+    //             }
+    //         }
+    //     }
+    //     APPSPAWN_LOGI("zkx zkx clientExt->sandboxInfo.overlayPathLen is not empty");
+    // } else {
+    //     APPSPAWN_LOGI("zkx zkx clientExt->sandboxInfo.overlayPathLen is empty");
+    // }
 
     // check app sandbox switch
     if ((CheckTotalSandboxSwitchStatus(appProperty) == false) ||
@@ -983,5 +1013,89 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
 #endif
     return 0;
 }
+
+static sptr<AppExecFwk::IOverlayManager> GetOverlayManagerProxy()
+{
+    auto samgrProxy = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (samgrProxy == nullptr) {
+        APPSPAWN_LOGE("zkx zkx fail to get samgr.");
+        return nullptr;
+    }
+    sptr<IRemoteObject> bundleObj = samgrProxy->GetSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID);
+    if (bundleObj == nullptr) {
+        APPSPAWN_LOGE("zkx zkx fail to get bundle manager service.");
+        return nullptr;
+    }
+    sptr<AppExecFwk::IBundleMgr> bms = iface_cast<AppExecFwk::IBundleMgr>(bundleObj);
+    return bms->GetOverlayManagerProxy();
+}
+
+uint32_t SandboxUtils::GetOverlayInfo(AppSpawnClient *client)
+{
+    APPSPAWN_LOGI("zkx zkx GetOverlayInfo Begin");
+    AppSpawnClientExt *clientExt = reinterpret_cast<AppSpawnClientExt *>(client);
+    ClientSocket::AppProperty *appProperty = &clientExt->property;
+    clientExt->sandboxInfo.overlayPath = nullptr;
+    if (CheckBundleName(appProperty->bundleName) != 0) {
+        return -1;
+    }
+
+    // if ((appProperty->flags & APP_OVERLAY) != APP_OVERLAY) {
+    //     APPSPAWN_LOGI("GetOverlayInfo not overlay hap");
+    //     return 0;
+    // }
+
+    sptr<AppExecFwk::IOverlayManager> overlayManagerProxy = GetOverlayManagerProxy();
+    if (overlayManagerProxy == nullptr) {
+        APPSPAWN_LOGE("zkx zkx GetOverlayInfo fail to get overlay manager proxy.");
+        return -1;
+    }
+
+    // vector<AppExecFwk::OverlayModuleInfo> overlayModuleInfo;
+    // overlayManagerProxy->GetOverlayModuleInfoForTarget(appProperty->bundleName, "", overlayModuleInfo,
+    //                                                    appProperty->uid / UID_BASE);
+    APPSPAWN_LOGI("zkx zkx GetOverlayInfo overlayManagerProxy success!");
+    int32_t ret = 0;
+    std::set<string> mountedSrcSet;
+    int32_t overlayPathLen = 0;
+    std::vector<std::string> testInfo = {"/data/app/el1/bundle/public/com.demo.a/com.demo.a.hap", "/data/app/el1/bundle/public/com.demo.b/com.demo.b.hap"};
+    for (const auto& info : testInfo) {
+        int32_t pathIndex = info.find_last_of("/");
+        std::string srcPath = info.substr(0, pathIndex);
+        if (!mountedSrcSet.empty() && mountedSrcSet.find(srcPath) != mountedSrcSet.end()) {
+            APPSPAWN_LOGI("zkx zkx %{public}s have mounted before, no need to mount twice.", srcPath.c_str());
+            continue;
+        }
+
+        mountedSrcSet.emplace(srcPath);
+        overlayPathLen += srcPath.size() + 1;
+    }
+
+    char* overlayPath = new char[overlayPathLen + 1]{'|'};
+    int size = 0;
+    for (const auto& srcPath : mountedSrcSet) {
+        strcpy_s(overlayPath + size, srcPath.size(), srcPath.c_str());
+        size += srcPath.size() + 1;
+        APPSPAWN_LOGI("zkx zkx src path is %{public}s", srcPath.c_str());
+    }
+    overlayPath[overlayPathLen] = '\0';
+
+    // clientExt->sandboxInfo.overlayPath = overlayPath;
+
+    
+    return ret;
+}
+
+uint32_t SandboxUtils::CleanOverlayInfo(AppSpawnClient *client)
+{
+    APPSPAWN_LOGI("zkx zkx CleanOverlayInfo Begin");
+    AppSpawnClientExt *clientExt = reinterpret_cast<AppSpawnClientExt *>(client);
+    if (clientExt->sandboxInfo.overlayPath != nullptr) {
+        delete[] clientExt->sandboxInfo.overlayPath;
+        clientExt->sandboxInfo.overlayPath = nullptr;
+    }
+    return 0;
+}
+
 } // namespace AppSpawn
 } // namespace OHOS
