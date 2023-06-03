@@ -195,6 +195,11 @@ int32_t SandboxUtils::DoAppSandboxMountOnce(const char *originPath, const char *
     if (ret != 0) {
         APPSPAWN_LOGI("errno is: %{public}d, bind mount %{public}s to %{public}s", errno, originPath,
                       destinationPath);
+        struct stat st = {};
+        if (stat(originPath, &st) != 0)
+            APPSPAWN_LOGE("Cannot get stat of %s , err = %d", originPath, errno);
+        if (stat(destinationPath, &st) != 0)
+            APPSPAWN_LOGE("Cannot get stat of %s , err = %d", destinationPath, errno);
         return ret;
     }
     ret = mount(NULL, destinationPath, NULL, MS_SLAVE, NULL);
