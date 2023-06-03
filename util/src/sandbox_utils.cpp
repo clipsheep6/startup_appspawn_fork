@@ -197,7 +197,7 @@ int32_t SandboxUtils::DoAppSandboxMountOnce(const char *originPath, const char *
                       destinationPath);
         return ret;
     }
-    ret = mount(NULL, destinationPath, NULL, MS_SLAVE, NULL);
+    ret = mount(NULL, destinationPath, NULL, MS_SHARED, NULL);
     APPSPAWN_CHECK(ret == 0, return ret,
         "errno is: %{public}d, private mount to %{public}s failed", errno, destinationPath);
 #endif
