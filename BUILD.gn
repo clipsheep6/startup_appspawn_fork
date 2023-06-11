@@ -65,6 +65,7 @@ ohos_executable("appspawn") {
     "hilog_native:libhilog",
     "hitrace_native:hitrace_meter",
     "init:libbegetutil",
+    "resource_management:global_resmgr",
   ]
 
   install_enable = true
@@ -99,6 +100,7 @@ ohos_static_library("appspawn_server") {
     "${appspawn_path}/standard/appspawn_service.c",
     "${appspawn_path}/util/src/json_utils.cpp",
     "${appspawn_path}/util/src/sandbox_utils.cpp",
+    "${appspawn_path}/interfaces/innerkits/src/appspawn_monut_permission.c",
   ]
   defines = [
     "GRAPHIC_PERMISSION_CHECK",
@@ -122,7 +124,6 @@ ohos_static_library("appspawn_server") {
     "config_policy:configpolicy_util",
     "hilog_native:libhilog",
     "init:libbegetutil",
-    "access_token:libaccesstoken_sdk",
   ]
   if (build_selinux) {
     external_deps += [ "selinux:libhap_restorecon" ]
@@ -159,6 +160,7 @@ ohos_static_library("nwebspawn_server") {
     "${appspawn_path}/standard/appspawn_service.c",
     "${appspawn_path}/util/src/json_utils.cpp",
     "${appspawn_path}/util/src/sandbox_utils.cpp",
+    "${appspawn_path}/interfaces/innerkits/src/appspawn_monut_permission.c",
   ]
   defines = [
     "GRAPHIC_PERMISSION_CHECK",
@@ -178,7 +180,6 @@ ohos_static_library("nwebspawn_server") {
     "config_policy:configpolicy_util",
     "hilog_native:libhilog",
     "init:libbegetutil",
-    "access_token:libaccesstoken_sdk",
   ]
   if (build_selinux) {
     external_deps += [ "selinux:libhap_restorecon" ]
@@ -210,6 +211,7 @@ ohos_executable("nwebspawn") {
     "${appspawn_path}/standard/main.c",
     "${appspawn_path}/util/src/json_utils.cpp",
     "${appspawn_path}/util/src/sandbox_utils.cpp",
+    "${appspawn_path}/interfaces/innerkits/src/appspawn_monut_permission.c",
   ]
   configs = [ ":appspawn_config" ]
   deps = [ "${appspawn_path}:nwebspawn_server" ]

@@ -311,8 +311,6 @@ APPSPAWN_STATIC bool ReceiveRequestData(const TaskHandle taskHandle, AppSpawnCli
         buffer += sizeof(client->property);
         buffLen -= sizeof(client->property);
 
-        // reset permission
-        client->property.permissionCount = 0;
     }
 
     // 2. check whether hspList exist

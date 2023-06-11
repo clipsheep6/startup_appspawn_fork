@@ -60,7 +60,6 @@ typedef enum AppOperateType_ {
 #define APP_APL_MAX_LEN 32
 #define APP_RENDER_CMD_MAX_LEN 1024
 #define PERMISSION_NUM 10 
-#define PERMISSION_NAME 256
 
 /* AppParameter.flags bit definition */
 #define APP_COLD_BOOT 0x01
@@ -99,8 +98,7 @@ typedef struct AppParameter_ {
     int32_t bundleIndex;
     uint64_t accessTokenIdEx;
     uint32_t hapFlags;
-    char permissionTable[PERMISSION_NUM][PERMISSION_NAME];
-    uint32_t permissionCount;
+    uint32_t mountPermissionFlags;
 
 #ifndef OHOS_LITE
     uint8_t setAllowInternet;

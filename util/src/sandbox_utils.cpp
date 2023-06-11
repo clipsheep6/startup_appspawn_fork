@@ -28,6 +28,7 @@
 #include "securec.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
+#include "appspawn_monut_permission.h"
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
 #endif
@@ -633,15 +634,16 @@ int32_t SandboxUtils::DoSandboxFilePermissionBind(ClientSocket::AppProperty *app
     nlohmann::json permissionAppConfig = wholeConfig[g_permissionPrefix][0];
 
      APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind permissionAppConfig: %{public}s",permissionAppConfig.dump().c_str());
-    for(unsigned int i=0;i<sizeof(appProperty->permissionTable)/sizeof(appProperty->permissionTable[0]);i++){
-        if(strlen(appProperty->permissionTable[i]) > 0 && permissionAppConfig.find(appProperty->permissionTable[i]) != permissionAppConfig.end()){
-            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, appProperty->permissionTable[i]);
+    for(auto permission : permissionAppConfig){
+        const std::string permissionstr = permission.get<std::string>();
+        if(isMonutPermission(appProperty -> mountPermissionFlags,permissionstr.c_str())){
+            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, permissionstr.c_str());
             int ret = 0;
-            ret = DoAddGid(appProperty, permissionAppConfig[appProperty->permissionTable[i]][0], appProperty->permissionTable[i], g_permissionPrefix);
-            ret = DoAllMntPointsMount(appProperty, permissionAppConfig[appProperty->permissionTable[i]][0], g_permissionPrefix);
+            ret = DoAddGid(appProperty, permissionAppConfig[permissionstr][0], permissionstr.c_str(), g_permissionPrefix);
+            ret = DoAllMntPointsMount(appProperty, permissionAppConfig[permissionstr][0], g_permissionPrefix);
             return ret;
         }else {
-            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, appProperty->permissionTable[i]);
+            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, permissionstr.c_str());
         }
     }
     return 0;
