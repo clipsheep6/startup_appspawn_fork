@@ -13,23 +13,34 @@
  * limitations under the License.
  */
 
-#include "appspawn_monut_permission.h"
-#include <string.h>
+#include "appspawn_mount_permission.h"
+
+namespace OHOS {
+namespace AppSpawn {
 
 #define ARRAY_SIZE_X(a) (sizeof(a)/sizeof(a[0]))
 
-uint32_t GenPermissionCode(const Permission permissions[],int len)
+const std::string AppspawnMountPermission::mountPermissionList[] ={
+ {"ohos.permission.FILE_ACCESS_MANAGER"},
+};
+
+
+uint32_t AppspawnMountPermission::GetMountPermissionListSize(){
+    return ARRAY_SIZE_X(AppspawnMountPermission::mountPermissionList);
+}
+
+uint32_t AppspawnMountPermission::GenPermissionCode(const std::string permissions[],int len)
 {
     uint32_t result = 0;
     if (len <= 0){
         return result;
     }
     uint32_t flagIndex = 1;
-    for (int index = 0; index < ARRAY_SIZE_X(mountPermissionList); index++)
+    for (int index = 0; index < ARRAY_SIZE_X(AppspawnMountPermission::mountPermissionList); index++)
     {
         for (int j = 0; j < len; j++)
         {
-            if (strcmp(permissions[j].name, mountPermissionList[index].name) == 0)
+            if (AppspawnMountPermission::mountPermissionList[index].compare(permissions[j])==0)
             {
                 result |= flagIndex;
                 break;
@@ -41,14 +52,17 @@ uint32_t GenPermissionCode(const Permission permissions[],int len)
 }
 
 
-bool isMonutPermission(uint32_t code, const char permission[])
+bool AppspawnMountPermission::isMountPermission(uint32_t code, const std::string permission)
 {
-    for (int i = 0; i < ARRAY_SIZE_X(mountPermissionList); i++)
+    for (int i = 0; i < ARRAY_SIZE_X(AppspawnMountPermission::mountPermissionList); i++)
     {
-        if(strcmp(permission, mountPermissionList[i].name) == 0){
+        if (AppspawnMountPermission::mountPermissionList[i].compare(permission))
+        {
             return code&1;
         }
         code >>=1;
     }
     return false;
+}
+}
 }

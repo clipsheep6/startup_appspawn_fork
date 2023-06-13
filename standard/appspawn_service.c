@@ -403,7 +403,7 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
         return;
     }
 #endif
-
+    APPSPAWN_LOGI("=====zxl======:OnReceiveRequest permissionFlag:%u",appProperty->property.mountPermissionFlags);
     APPSPAWN_CHECK(appProperty->property.gidCount <= APP_MAX_GIDS && strlen(appProperty->property.processName) > 0,
         LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "Invalid property %{public}u", appProperty->property.gidCount);

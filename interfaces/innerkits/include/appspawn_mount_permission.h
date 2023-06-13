@@ -16,28 +16,21 @@
 #ifndef APPSPAWN_MOUNT_PERMISSION_H
 #define APPSPAWN_MOUNT_PERMISSION_H
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <string>
 
-typedef struct {
-    const char* name;
-} Permission;
+namespace OHOS {
+namespace AppSpawn {
+class AppspawnMountPermission{
+    public:
+    static const std::string mountPermissionList[];
 
-static const Permission mountPermissionList[] = {
-    {"ohos.permission.FILE_ACCESS_MANAGER"}
+    static uint32_t GetMountPermissionListSize();
+    
+    static uint32_t GenPermissionCode(const std::string permissions[],int len);
+
+    static bool isMountPermission(uint32_t code, const std::string permission);
 };
-
-uint32_t GenPermissionCode(const Permission permissions[],int len);
-
-bool isMonutPermission(uint32_t code, const char permission[]);
-
-#ifdef __cplusplus
-}
-#endif
-
+}// AppSpawn
+}//OHOS
 #endif
 

@@ -28,7 +28,7 @@
 #include "securec.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
-#include "appspawn_monut_permission.h"
+#include "appspawn_mount_permission.h"
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
 #endif
@@ -636,7 +636,7 @@ int32_t SandboxUtils::DoSandboxFilePermissionBind(ClientSocket::AppProperty *app
      APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind permissionAppConfig: %{public}s",permissionAppConfig.dump().c_str());
     for(auto permission : permissionAppConfig){
         const std::string permissionstr = permission.get<std::string>();
-        if(isMonutPermission(appProperty -> mountPermissionFlags,permissionstr.c_str())){
+        if(AppspawnMountPermission::isMountPermission(appProperty -> mountPermissionFlags,permissionstr.c_str())){
             APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, permissionstr.c_str());
             int ret = 0;
             ret = DoAddGid(appProperty, permissionAppConfig[permissionstr][0], permissionstr.c_str(), g_permissionPrefix);

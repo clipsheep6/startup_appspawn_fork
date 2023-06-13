@@ -262,7 +262,7 @@
                     "check-action-status": "false"
                 }, {
                     "src-path" : "none",
-                    "sandbox-path" : "/storage/media/local/epfs",
+                    "sandbox-path" : "/storage/cloud/epfs",
                     "sandbox-flags" : [ "MS_NODEV" ],
                     "fs-type": "epfs",
                     "check-action-status": "false"
@@ -295,6 +295,18 @@
             "symbol-links" : []
         }],
         "com.ohos.permissionmanager" : [{
+            "sandbox-switch": "ON",
+            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "mount-paths" : [{
+                    "src-path" : "/data/app/el1/bundle/public/",
+                    "sandbox-path" : "/data/bundles/",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "true"
+                }
+            ],
+            "symbol-links" : []
+        }],
+        "com.ohos.certmanager" : [{
             "sandbox-switch": "ON",
             "sandbox-root" : "/mnt/sandbox/<PackageName>",
             "mount-paths" : [{
