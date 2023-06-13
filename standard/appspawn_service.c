@@ -18,6 +18,7 @@
 #include "appspawn_server.h"
 
 #include <fcntl.h>
+#include <sys/mount.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -144,6 +145,10 @@ static void OnClose(const TaskHandle taskHandle)
         client->property.hspList.savedLength = 0;
         client->property.hspList.data = NULL;
     }
+
+    if (client->sandboxInfo.fuseFd > 0) {
+        close(client->sandboxInfo.fuseFd);
+    }
 }
 
 static void SendMessageComplete(const TaskHandle taskHandle, BufferHandle handle)
@@ -219,6 +224,37 @@ APPSPAWN_STATIC void SignalHandler(const struct signalfd_siginfo *siginfo)
     }
 }
 
+static void SetDlpFuseFd(AppSpawnClientExt *clientExt)
+{
+    const char *dlpManagerBundleName = "com.ohos.dlpmanager";
+    clientExt->sandboxInfo.fuseFd = -1;
+
+    if (strcmp(clientExt->property.bundleName, dlpManagerBundleName) != 0) {
+        return;
+    }  
+
+    int fd = open("/dev/fuse", O_RDWR);
+    if (fd < 0) {
+        APPSPAWN_LOGE("open /dev/fuse failed, errno is %{public}d", errno);
+        return;
+    }
+
+    const int FUSE_OPTIONS_MAX_LEN = 128;
+    char options[FUSE_OPTIONS_MAX_LEN];
+    (void)sprintf_s(options, sizeof(options), "fd=%d,rootmode=40000,user_id=%d,group_id=%d,allow_other", fd,
+        clientExt->property.uid, clientExt->property.gid);
+    int ret = 0;
+    ret = mount("/dev/fuse", "/mnt/fuse", "fuse", MS_NOSUID | MS_NODEV | MS_NOEXEC |
+                                                  MS_NOATIME | MS_LAZYTIME, options);
+    if (ret != 0) {
+        APPSPAWN_LOGE("mount /dev/fuse to /mnt/fuse failed, errno is %{public}d", errno);
+        return;
+    }
+
+    clientExt->sandboxInfo.fuseFd = fd;
+    return;
+}
+
 static void HandleSpecial(AppSpawnClientExt *appProperty)
 {
     const char *fileExtensionHapBundleName = "com.ohos.UserFile.ExternalFileManager";
@@ -243,6 +279,8 @@ static void HandleSpecial(AppSpawnClientExt *appProperty)
             break;
         }
     }
+
+    SetDlpFuseFd(appProperty);
 }
 
 static int WaitChild(int fd, int pid, const AppSpawnClientExt *appProperty)

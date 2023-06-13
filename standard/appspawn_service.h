@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -45,12 +45,18 @@ extern "C" {
 #define HSP_LIST_INDEX 5
 #define NULL_INDEX 6
 #define PARAM_BUFFER_LEN 128
+
+typedef struct {
+    int fuseFd;
+} AppSandboxInfo;
+
 typedef struct {
     AppSpawnClient client;
     TaskHandle stream;
     int32_t fd[2];  // 2 fd count
     AppParameter property;
     pid_t pid;
+    AppSandboxInfo sandboxInfo;
 } AppSpawnClientExt;
 
 typedef struct {
