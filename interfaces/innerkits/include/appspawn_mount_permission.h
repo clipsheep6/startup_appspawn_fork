@@ -19,9 +19,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
+
+namespace OHOS {
+namespace AppSpawn {
 
 typedef struct {
     const char* name;
@@ -33,11 +33,9 @@ static const Permission mountPermissionList[] = {
 
 uint32_t GenPermissionCode(const Permission permissions[],int len);
 
-bool isMonutPermission(uint32_t code, const char permission[]);
+bool isMountPermission(uint32_t code, const char permission[]);
 
-#ifdef __cplusplus
-}
-#endif
-
+}// AppSpawn
+}//OHOS
 #endif
 

@@ -55,7 +55,8 @@
                         "header_base": "//base/startup/appspawn/interfaces/innerkits/include/",
                         "header_files": [
                             "appspawn_socket.h",
-                            "client_socket.h"
+                            "client_socket.h",
+                            "appspawn_mount_permission.h"
                         ]
                     },
                     "name": "//base/startup/appspawn/interfaces/innerkits:appspawn_socket_client"

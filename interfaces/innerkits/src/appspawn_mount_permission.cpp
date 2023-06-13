@@ -13,10 +13,13 @@
  * limitations under the License.
  */
 
-#include "appspawn_monut_permission.h"
+#include "appspawn_mount_permission.h"
 #include <string.h>
+namespace OHOS {
+namespace AppSpawn {
 
 #define ARRAY_SIZE_X(a) (sizeof(a)/sizeof(a[0]))
+
 
 uint32_t GenPermissionCode(const Permission permissions[],int len)
 {
@@ -41,7 +44,7 @@ uint32_t GenPermissionCode(const Permission permissions[],int len)
 }
 
 
-bool isMonutPermission(uint32_t code, const char permission[])
+bool isMountPermission(uint32_t code, const char permission[])
 {
     for (int i = 0; i < ARRAY_SIZE_X(mountPermissionList); i++)
     {
@@ -51,4 +54,6 @@ bool isMonutPermission(uint32_t code, const char permission[])
         code >>=1;
     }
     return false;
+}
+}
 }
