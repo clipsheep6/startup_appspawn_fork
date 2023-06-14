@@ -633,17 +633,19 @@ int32_t SandboxUtils::DoSandboxFilePermissionBind(ClientSocket::AppProperty *app
     }
     nlohmann::json permissionAppConfig = wholeConfig[g_permissionPrefix][0];
 
-     APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind permissionAppConfig: %{public}s",permissionAppConfig.dump().c_str());
-    for(auto permission : permissionAppConfig){
-        const std::string permissionstr = permission.get<std::string>();
-        if(isMountPermission(appProperty -> mountPermissionFlags,permissionstr.c_str())){
-            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, permissionstr.c_str());
+     APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind 1 permissionAppConfig: %{public}s",permissionAppConfig.dump().c_str());
+    for(nlohmann::json::iterator it = permissionAppConfig.begin(); it != permissionAppConfig.end(); ++it){
+        APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind 2 permissionAppConfig: %{public}s",permissionAppConfig.dump().c_str());
+        const std::string permissionstr = it.key();
+        APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind 3 permissionAppConfig: %{public}s",permissionAppConfig.dump().c_str());
+        if(AppspawnMountPermission::isMountPermission(appProperty -> mountPermissionFlags,permissionstr)){
+            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind true %{public}s permission %{public}s",appProperty->bundleName, permissionstr.c_str());
             int ret = 0;
             ret = DoAddGid(appProperty, permissionAppConfig[permissionstr][0], permissionstr.c_str(), g_permissionPrefix);
             ret = DoAllMntPointsMount(appProperty, permissionAppConfig[permissionstr][0], g_permissionPrefix);
             return ret;
         }else {
-            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind %{public}s permission %{public}s",appProperty->bundleName, permissionstr.c_str());
+            APPSPAWN_LOGV("===zxl=== DoSandboxFilePermissionBind false %{public}s permission %{public}s",appProperty->bundleName, permissionstr.c_str());
         }
     }
     return 0;
