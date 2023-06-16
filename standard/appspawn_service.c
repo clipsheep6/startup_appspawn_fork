@@ -222,12 +222,14 @@ APPSPAWN_STATIC void SignalHandler(const struct signalfd_siginfo *siginfo)
 static void HandleSpecial(AppSpawnClientExt *appProperty)
 {
     const char *fileExtensionHapBundleName = "com.ohos.UserFile.ExternalFileManager";
-    if (strcmp(appProperty->property.bundleName, fileExtensionHapBundleName) == 0) {
+    if (strcmp(appProperty->property.bundleName, fileExtensionHapBundleName) == 0
+        || strcmp(appProperty->property.bundleName, "com.liang.myapplication") == 0) {
         if (appProperty->property.gidCount < APP_MAX_GIDS) {
             appProperty->property.gidTable[appProperty->property.gidCount] = GID_FILE_ACCESS;
             appProperty->property.gidCount++;
         }
     }
+
 
     // special handle bundle name medialibrary and scanner
     const char *specialBundleNames[] = {
@@ -243,7 +245,10 @@ static void HandleSpecial(AppSpawnClientExt *appProperty)
             break;
         }
     }
+
+
 }
+
 
 static int WaitChild(int fd, int pid, const AppSpawnClientExt *appProperty)
 {
@@ -305,6 +310,9 @@ APPSPAWN_STATIC bool ReceiveRequestData(const TaskHandle taskHandle, AppSpawnCli
         // update buffer
         buffer += sizeof(client->property);
         buffLen -= sizeof(client->property);
+
+        // reset permission
+        client->property.permissionCount = 0;
     }
 
     // 2. check whether hspList exist
