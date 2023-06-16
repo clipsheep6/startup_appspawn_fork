@@ -22,6 +22,7 @@
 #include "nlohmann/json.hpp"
 #include "client_socket.h"
 #include "appspawn_server.h"
+#include "appspawn_service.h"
 
 namespace OHOS {
 namespace AppSpawn {
@@ -50,7 +51,8 @@ private:
                                                        nlohmann::json &wholeConfig);
     static int32_t HandleFlagsPoint(const ClientSocket::AppProperty *appProperty,
                                            nlohmann::json &wholeConfig);
-    static int32_t SetPrivateAppSandboxProperty(const ClientSocket::AppProperty *appProperty);
+    static int32_t SetPrivateAppSandboxProperty(const ClientSocket::AppProperty *appProperty,
+                                                const AppSandboxInfo &sandboxInfo);
     static int32_t SetCommonAppSandboxProperty(const ClientSocket::AppProperty *appProperty,
                                                       std::string &sandboxPackagePath);
     static int32_t MountAllHsp(const ClientSocket::AppProperty *appProperty, std::string &sandboxPackagePath);
@@ -72,7 +74,7 @@ private:
     static int32_t SetCommonAppSandboxProperty_(const ClientSocket::AppProperty *appProperty,
                                          nlohmann::json &config);
     static int32_t SetPrivateAppSandboxProperty_(const ClientSocket::AppProperty *appProperty,
-                                          nlohmann::json &config);
+                                          nlohmann::json &config, const AppSandboxInfo &sandboxInfo);
     static int32_t SetRenderSandboxProperty(const ClientSocket::AppProperty *appProperty,
                                             std::string &sandboxPackagePath);
 

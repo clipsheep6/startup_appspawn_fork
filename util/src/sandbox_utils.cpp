@@ -39,7 +39,6 @@ namespace OHOS {
 namespace AppSpawn {
 namespace {
     constexpr int32_t UID_BASE = 200000;
-    constexpr int32_t FUSE_OPTIONS_MAX_LEN = 128;
     constexpr int32_t DLP_FUSE_FD = 1000;
     constexpr int32_t DATABASE_DIR_GID = 3012;
     constexpr int32_t DFS_GID = 1009;
@@ -364,56 +363,6 @@ static bool CheckMountConfig(nlohmann::json &mntPoint, const ClientSocket::AppPr
     return true;
 }
 
-static int32_t DoDlpAppMountStrategy(const ClientSocket::AppProperty *appProperty,
-                                     const std::string &srcPath, const std::string &sandboxPath,
-                                     const std::string &fsType, unsigned long mountFlags)
-{
-    int fd = open("/dev/fuse", O_RDWR);
-    APPSPAWN_CHECK(fd != -1, return -EINVAL, "open /dev/fuse failed, errno is %{public}d", errno);
-
-    char options[FUSE_OPTIONS_MAX_LEN];
-    (void)sprintf_s(options, sizeof(options), "fd=%d,rootmode=40000,user_id=%d,group_id=%d,allow_other", fd,
-        appProperty->uid, appProperty->gid);
-
-    // To make sure destinationPath exist
-    MakeDirRecursive(sandboxPath, FILE_MODE);
-
-    int ret = 0;
-#ifndef APPSPAWN_TEST
-    ret = mount(srcPath.c_str(), sandboxPath.c_str(), fsType.c_str(), mountFlags, options);
-    APPSPAWN_CHECK(ret == 0, return ret, "DoDlpAppMountStrategy failed, bind mount %{public}s to %{public}s"
-        "failed %{public}d", srcPath.c_str(), sandboxPath.c_str(), errno);
-
-    ret = mount(NULL, sandboxPath.c_str(), NULL, MS_SHARED, NULL);
-    APPSPAWN_CHECK(ret == 0, return ret,
-        "errno is: %{public}d, private mount to %{public}s failed", errno, sandboxPath.c_str());
-#endif
-    /* close DLP_FUSE_FD and dup FD to it */
-    close(DLP_FUSE_FD);
-    ret = dup2(fd, DLP_FUSE_FD);
-    APPSPAWN_CHECK_ONLY_LOG(ret != -1, "dup fuse fd %{public}d failed, errno is %{public}d", fd, errno);
-    return ret;
-}
-
-static int32_t HandleSpecialAppMount(const ClientSocket::AppProperty *appProperty,
-                                     const std::string &srcPath, const std::string &sandboxPath,
-                                     const std::string &fsType, unsigned long mountFlags)
-{
-    std::string bundleName = appProperty->bundleName;
-
-    /* dlp application mount strategy */
-    /* dlp is an example, we should change to real bundle name later */
-    if (bundleName.find(g_dlpBundleName) != std::string::npos) {
-        if (fsType.empty()) {
-            return -1;
-        } else {
-            return DoDlpAppMountStrategy(appProperty, srcPath, sandboxPath, fsType, mountFlags);
-        }
-    }
-
-    return -1;
-}
-
 static uint32_t ConvertFlagStr(const std::string &flagStr)
 {
     const std::map<std::string, int> flagsMap = {{"0", 0}, {"START_FLAGS_BACKUP", 1},
@@ -523,15 +472,13 @@ int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProper
 
         /* check and prepare /data/app/el2 base and database package path to avoid BMS failed to create this folder */
         CheckAndPrepareSrcPath(appProperty, srcPath);
-        /* if app mount failed for special strategy, we need deal with common mount config */
-        int ret = HandleSpecialAppMount(appProperty, srcPath, sandboxPath, fsType, mountFlags);
-        if (ret < 0) {
-            if (fsType.empty()) {
-                ret = DoAppSandboxMountOnce(srcPath.c_str(), sandboxPath.c_str(), nullptr, mountFlags, nullptr);
-            } else {
-                ret = DoAppSandboxMountOnce(srcPath.c_str(), sandboxPath.c_str(), fsType.c_str(), mountFlags, nullptr);
-            }
+        int ret = 0;
+        if (fsType.empty()) {
+            ret = DoAppSandboxMountOnce(srcPath.c_str(), sandboxPath.c_str(), nullptr, mountFlags, nullptr);
+        } else {
+            ret = DoAppSandboxMountOnce(srcPath.c_str(), sandboxPath.c_str(), fsType.c_str(), mountFlags, nullptr);
         }
+        
         if (ret) {
             std::string actionStatus = g_statusCheck;
             (void)JsonUtils::GetStringFromJson(mntPoint, g_actionStatuc, actionStatus);
@@ -698,8 +645,26 @@ int32_t SandboxUtils::DoSandboxFileCommonSymlink(const ClientSocket::AppProperty
     return ret;
 }
 
+int32_t DoSandboxFilePrivateSpecial(const ClientSocket::AppProperty *appProperty,
+                                    const AppSandboxInfo &sandboxInfo)
+{
+    std::string bundleName = appProperty->bundleName;
+    int ret = 0;
+
+    /* dlp application mount strategy */
+    /* dlp is an example, we should change to real bundle name later */
+    if (bundleName.find(g_dlpBundleName) != std::string::npos) {
+        /* close DLP_FUSE_FD and dup FD to it */
+        close(DLP_FUSE_FD);
+        ret = dup2(sandboxInfo.fuseFd, DLP_FUSE_FD);
+        APPSPAWN_CHECK_ONLY_LOG(ret != -1, "dup fuse fd %{public}d failed, errno is %{public}d",
+                                sandboxInfo.fuseFd, errno);
+    }
+    return ret;
+}
+
 int32_t SandboxUtils::SetPrivateAppSandboxProperty_(const ClientSocket::AppProperty *appProperty,
-                                                    nlohmann::json &config)
+                                                    nlohmann::json &config, const AppSandboxInfo &sandboxInfo)
 {
     int ret = DoSandboxFilePrivateBind(appProperty, config);
     APPSPAWN_CHECK(ret == 0, return ret, "DoSandboxFilePrivateBind failed");
@@ -709,6 +674,9 @@ int32_t SandboxUtils::SetPrivateAppSandboxProperty_(const ClientSocket::AppPrope
 
     ret = DoSandboxFilePrivateFlagsPointHandle(appProperty, config);
     APPSPAWN_CHECK_ONLY_LOG(ret == 0, "DoSandboxFilePrivateFlagsPointHandle failed");
+
+    ret = DoSandboxFilePrivateSpecial(appProperty, sandboxInfo);
+    APPSPAWN_CHECK_ONLY_LOG(ret == 0, "DoSandboxFilePrivateSpecial failed");
 
     return ret;
 }
@@ -736,11 +704,12 @@ int32_t SandboxUtils::SetRenderSandboxProperty(const ClientSocket::AppProperty *
     return 0;
 }
 
-int32_t SandboxUtils::SetPrivateAppSandboxProperty(const ClientSocket::AppProperty *appProperty)
+int32_t SandboxUtils::SetPrivateAppSandboxProperty(const ClientSocket::AppProperty *appProperty,
+                                                   const AppSandboxInfo &sandboxInfo)
 {
     int ret = 0;
     for (auto config : SandboxUtils::GetJsonConfig()) {
-        ret = SetPrivateAppSandboxProperty_(appProperty, config);
+        ret = SetPrivateAppSandboxProperty_(appProperty, config, sandboxInfo);
         APPSPAWN_CHECK(ret == 0, return ret, "parse adddata-sandbox config failed");
     }
     return ret;
@@ -925,6 +894,7 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
 {
     APPSPAWN_CHECK(client != NULL, return -1, "Invalid appspwn client");
     AppSpawnClientExt *clientExt = reinterpret_cast<AppSpawnClientExt *>(client);
+    AppSandboxInfo sandboxInfo = clientExt->sandboxInfo;
     ClientSocket::AppProperty *appProperty = &clientExt->property;
     if (CheckBundleName(appProperty->bundleName) != 0) {
         return -1;
@@ -955,7 +925,7 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
     APPSPAWN_CHECK(rc == 0, return rc, "SetCommonAppSandboxProperty failed, packagename is %{public}s",
         bundleName.c_str());
     if (CheckBundleNameForPrivate(bundleName)) {
-        rc = SetPrivateAppSandboxProperty(appProperty);
+        rc = SetPrivateAppSandboxProperty(appProperty, sandboxInfo);
         APPSPAWN_CHECK(rc == 0, return rc, "SetPrivateAppSandboxProperty failed, packagename is %{public}s",
             bundleName.c_str());
     }

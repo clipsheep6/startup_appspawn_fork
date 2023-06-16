@@ -348,11 +348,10 @@
             "sandbox-switch": "ON",
             "sandbox-root" : "/mnt/sandbox/<PackageName>",
             "mount-paths" : [{
-                    "src-path" : "/dev/fuse",
+                    "src-path" : "/mnt/fuse",
                     "sandbox-path" : "/data/fuse",
-                    "sandbox-flags" : [ "MS_NOSUID", "MS_NODEV", "MS_NOEXEC", "MS_NOATIME", "MS_LAZYTIME" ],
-                    "fs-type": "fuse",
-                    "check-action-status": "false"
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "true"
                 }
             ],
             "symbol-links" : []
