@@ -80,62 +80,64 @@ void exit(int code)
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
 {
     int32_t ret = 0;
-    APPSPAWN_LOGV("DoStartApp id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
+    APPSPAWN_LOGV("DoStartApp 1 id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     if (content->handleInternetPermission != NULL) {
         content->handleInternetPermission(client);
     }
-
+        APPSPAWN_LOGV("DoStartApp 2 id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     if (content->setAppSandbox) {
         ret = content->setAppSandbox(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to set app sandbox");
     }
-
+    APPSPAWN_LOGV("DoStartApp 3 id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     (void)umask(DEFAULT_UMASK);
     if (content->setKeepCapabilities) {
         ret = content->setKeepCapabilities(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to set KeepCapabilities");
     }
-
+    APPSPAWN_LOGV("DoStartApp 4 id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     if (content->setProcessName) {
         ret = content->setProcessName(content, client, longProcName, longProcNameLen);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to set setProcessName");
     }
-
+    APPSPAWN_LOGV("DoStartApp 5 id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     if (content->setXpmRegion) {
         ret = content->setXpmRegion(content);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to set setXpmRegion");
     }
-
+    APPSPAWN_LOGV("DoStartApp 6 id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     if (content->setUidGid) {
         ret = content->setUidGid(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to setUidGid");
     }
+        APPSPAWN_LOGV("DoStartApp 7 id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
 
     if (content->setFileDescriptors) {
         ret = content->setFileDescriptors(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to setFileDescriptors");
     }
-
+    APPSPAWN_LOGV("DoStartApp 8 id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     if (content->setCapabilities) {
         ret = content->setCapabilities(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to setCapabilities");
     }
-
+    APPSPAWN_LOGV("DoStartApp 9 id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     if (content->waitForDebugger) {
         ret = content->waitForDebugger(client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to waitForDebugger");
     }
-
+    APPSPAWN_LOGV("DoStartApp 10 id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     // notify success to father process and start app process
     NotifyResToParent(content, client, 0);
+    APPSPAWN_LOGV("DoStartApp 11 id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     return 0;
 }
 

@@ -103,6 +103,7 @@ ohos_static_library("appspawn_server") {
     "${appspawn_path}/standard/appspawn_service.c",
     "${appspawn_path}/util/src/json_utils.cpp",
     "${appspawn_path}/util/src/sandbox_utils.cpp",
+    "${appspawn_path}/interfaces/innerkits/src/appspawn_mount_permission.cpp",
   ]
   defines = [
     "GRAPHIC_PERMISSION_CHECK",
@@ -162,6 +163,7 @@ ohos_static_library("nwebspawn_server") {
     "${appspawn_path}/standard/appspawn_service.c",
     "${appspawn_path}/util/src/json_utils.cpp",
     "${appspawn_path}/util/src/sandbox_utils.cpp",
+    "${appspawn_path}/interfaces/innerkits/src/appspawn_mount_permission.cpp",
   ]
   defines = [
     "GRAPHIC_PERMISSION_CHECK",
@@ -212,6 +214,7 @@ ohos_executable("nwebspawn") {
     "${appspawn_path}/standard/main.c",
     "${appspawn_path}/util/src/json_utils.cpp",
     "${appspawn_path}/util/src/sandbox_utils.cpp",
+    "${appspawn_path}/interfaces/innerkits/src/appspawn_mount_permission.cpp",
   ]
   configs = [ ":appspawn_config" ]
   deps = [ "${appspawn_path}:nwebspawn_server" ]

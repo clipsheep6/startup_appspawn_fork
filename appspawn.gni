@@ -17,6 +17,7 @@ appspawn_path = "//base/startup/appspawn"
 subsystem_name = "startup"
 part_name = "appspawn"
 module_output_path = "${part_name}/appspawn_l2"
+access_token_path = "//base/security/access_token"
 
 declare_args() {
   appspawn_support_nweb = true

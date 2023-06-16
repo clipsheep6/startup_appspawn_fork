@@ -16,13 +16,14 @@ import("//build/ohos.gni")
 
 config("exported_header_files") {
   visibility = [ ":*" ]
-  include_dirs = [ "include/" ]
+  include_dirs = [ "include/","src/" ]
 }
 
 ohos_static_library("appspawn_socket_client") {
   sources = [
     "client/appspawn_socket.cpp",
     "client/client_socket.cpp",
+    "src/appspawn_mount_permission.cpp",
   ]
   include_dirs = [
     "include",
