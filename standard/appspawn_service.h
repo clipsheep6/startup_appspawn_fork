@@ -45,12 +45,18 @@ extern "C" {
 #define HSP_LIST_INDEX 5
 #define NULL_INDEX 6
 #define PARAM_BUFFER_LEN 128
+typedef struct AppSpawnSandboxInfo_
+{
+    char *overlayPath;
+}AppSpawnSandboxInfo;
+
 typedef struct {
     AppSpawnClient client;
     TaskHandle stream;
     int32_t fd[2];  // 2 fd count
     AppParameter property;
     pid_t pid;
+    AppSpawnSandboxInfo sandboxInfo;
 } AppSpawnClientExt;
 
 typedef struct {

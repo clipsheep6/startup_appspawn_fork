@@ -34,6 +34,8 @@ void SetUidGidFilter(struct AppSpawnContent_ *content);
 int SetSeccompFilter(struct AppSpawnContent_ *content, AppSpawnClient *client);
 uint32_t GetAppNamespaceFlags(const char *bundleName);
 void HandleInternetPermission(const AppSpawnClient *client);
+int32_t InitAppSandboxInfo(AppSpawnClient *client);
+int32_t CleanAppSandboxInfo(AppSpawnClient *client);
 
 void DisallowInternet(void);
 

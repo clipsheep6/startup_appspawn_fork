@@ -87,3 +87,13 @@ uint32_t GetAppNamespaceFlags(const char *bundleName)
     return SandboxUtils::GetNamespaceFlagsFromConfig(bundleName);
 }
 
+int32_t InitAppSandboxInfo(AppSpawnClient *client)
+{
+    return SandboxUtils::GetOverlayInfo(client);
+}
+
+int32_t CleanAppSandboxInfo(AppSpawnClient *client)
+{
+    return SandboxUtils::CleanOverlayInfo(client);
+}
+
