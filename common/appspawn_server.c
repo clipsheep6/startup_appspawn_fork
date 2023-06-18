@@ -136,6 +136,7 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
 
     // notify success to father process and start app process
     NotifyResToParent(content, client, 0);
+    sleep(6);
     return 0;
 }
 
