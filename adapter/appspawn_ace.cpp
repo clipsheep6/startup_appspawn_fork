@@ -26,6 +26,7 @@
 #include "resource_manager.h"
 #include "foundation/ability/ability_runtime/interfaces/kits/native/appkit/app/main_thread.h"
 #include "syspara/parameter.h"
+#include "init_param.h"
 
 using namespace OHOS::AppSpawn;
 using namespace OHOS::Global;
@@ -123,6 +124,8 @@ void LoadExtendLib(AppSpawnContent *content)
 
 void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
+    // exec param security by app env
+    ResetParamSecurityLabel();
     APPSPAWN_CHECK(client != NULL && content != NULL, return, "Invalid client");
     AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
     if (appProperty->property.code == SPAWN_NATIVE_PROCESS) {
