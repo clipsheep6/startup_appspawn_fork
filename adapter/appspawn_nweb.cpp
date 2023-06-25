@@ -95,7 +95,7 @@ void *LoadWithRelroFile(const std::string &lib, const std::string &nsName,
 }
 #endif
 
-void LoadExtendLib(AppSpawnContent *content)
+void LoadExtendLibNweb(AppSpawnContent *content)
 {
 #if defined(webview_arm64)
     const std::string loadLibDir = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm64";
@@ -141,7 +141,7 @@ void LoadExtendLib(AppSpawnContent *content)
     }
 }
 
-void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
+void RunChildProcessorNweb(AppSpawnContent *content, AppSpawnClient *client)
 {
     AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
     using FuncType = void (*)(const char *cmd);
