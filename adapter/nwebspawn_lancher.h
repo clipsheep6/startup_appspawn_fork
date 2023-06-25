@@ -20,9 +20,6 @@
  #include <unistd.h>
  #include <sched.h>
 
-#define FULL_CAP 0xFFFFFFFF
-#define _LINUX_CAPABILITY_VERSION_3 0x20080522
-
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -16,12 +16,16 @@
  #include "nwebspawn_lancher.h"
  #include "appspawn_server.h"
 
+#define FULL_CAP 0xFFFFFFFF
+#define _LINUX_CAPABILITY_VERSION_3 0x20080522
+#define NWEB_UID 3081
+#define NWEB_GID 3081
+
  pid_t NwebSpawnLanch(){
     pid_t ret = fork();
     if(ret == 0){
-        sleep(10);
-        setuid(3081);
-        setgid(3081);
+        setuid(NWEB_UID);
+        setgid(NWEB_GID);
 
         struct __user_cap_header_struct capHeader;
         capHeader.version = _LINUX_CAPABILITY_VERSION_3;
@@ -35,11 +39,11 @@
         capset(&capHeader, capData);
 
         for(int i = 0 ; i <= CAP_LAST_CAP ; ++i){
-            prctl(47, 2, i, 0, 0);
+            prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, i, 0, 0);
         }
 
         setcon("u:r:nwebspawn:s0");
         APPSPAWN_LOGI("nwebspawn fork here");
-        return ret;
     }
+    return ret;
  }
