@@ -95,7 +95,7 @@ void *LoadWithRelroFile(const std::string &lib, const std::string &nsName,
 }
 #endif
 
-void LoadExtendLib(AppSpawnContent *content)
+void LoadExtendLibNweb(AppSpawnContent *content)
 {
 #if defined(webview_arm64)
     const std::string loadLibDir = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm64";
@@ -105,14 +105,25 @@ void LoadExtendLib(AppSpawnContent *content)
     const std::string loadLibDir = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm";
 #endif
 
+int count_num = 0;
 #ifdef __MUSL__
     Dl_namespace dlns;
     dlns_init(&dlns, "nweb_ns");
     dlns_create(&dlns, loadLibDir.c_str());
 #if defined(webview_x86_64)
     void *handle = dlopen_ns(&dlns, "libweb_engine.so", RTLD_NOW | RTLD_GLOBAL);
+    while (handle == nullptr && count_num < 10) {
+        sleep(1);
+        handle = dlopen_ns(&dlns, "libweb_engine.so", RTLD_NOW | RTLD_GLOBAL);
+        ++count_num;
+    }
 #else
     void *handle = LoadWithRelroFile("libweb_engine.so", "nweb_ns", loadLibDir);
+    while (handle == nullptr && count_num < 10) {
+        sleep(1);
+        handle = LoadWithRelroFile("libweb_engine.so", "nweb_ns", loadLibDir);
+        ++count_num;
+    }
     if (handle == nullptr) {
         APPSPAWN_LOGE("dlopen_ns_ext failed, fallback to dlopen_ns");
         handle = dlopen_ns(&dlns, "libweb_engine.so", RTLD_NOW | RTLD_GLOBAL);
@@ -121,6 +132,11 @@ void LoadExtendLib(AppSpawnContent *content)
 #else
     const std::string engineLibDir = loadLibDir + "/libweb_engine.so";
     void *handle = dlopen(engineLibDir.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    while (handle == nullptr && count_num < 10) {
+        sleep(1);
+        handle = dlopen(engineLibDir.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        ++count_num;
+    }
 #endif
     if (handle == nullptr) {
         APPSPAWN_LOGE("Fail to dlopen libweb_engine.so, [%{public}s]", dlerror());
@@ -141,7 +157,7 @@ void LoadExtendLib(AppSpawnContent *content)
     }
 }
 
-void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
+void RunChildProcessorNweb(AppSpawnContent *content, AppSpawnClient *client)
 {
     AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
     using FuncType = void (*)(const char *cmd);

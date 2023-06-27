@@ -74,13 +74,29 @@ void SetUidGidFilter(struct AppSpawnContent_ *content)
 int SetSeccompFilter(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
 #ifdef WITH_SECCOMP
-#ifdef NWEB_SPAWN
-    const char *appName = NWEBSPAWN_NAME;
-    SeccompFilterType type = INDIVIDUAL;
-#else
+
     const char *appName = APP_NAME;
     SeccompFilterType type = APP;
+
+    if (!SetSeccompPolicyWithName(type, appName)) {
+        APPSPAWN_LOGE("Failed to set %{public}s seccomp filter and exit", appName);
+#ifndef APPSPAWN_TEST
+        return -EINVAL;
 #endif
+    } else {
+        APPSPAWN_LOGI("Success to set %{public}s seccomp filter", appName);
+    }
+#endif
+    return 0;
+}
+
+int SetSeccompFilterNweb(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+#ifdef WITH_SECCOMP
+
+    const char *appName = NWEBSPAWN_NAME;
+    SeccompFilterType type = INDIVIDUAL;
+
     if (!SetSeccompPolicyWithName(type, appName)) {
         APPSPAWN_LOGE("Failed to set %{public}s seccomp filter and exit", appName);
 #ifndef APPSPAWN_TEST
