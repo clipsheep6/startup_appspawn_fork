@@ -484,6 +484,11 @@
                 "src-path": "/mnt/external",
                 "sandbox-path": "/storage/External",
                 "sandbox-flags": [ "bind", "rec" ]
+              },
+              {
+                "src-path": "/storage/media/<currentUserId>/local/files/Documents",
+                "sandbox-path": "/storage/Documents",
+                "sandbox-flags": [ "bind", "rec" ]
               }
             ]
           }
