@@ -58,6 +58,7 @@ ohos_executable("appspawn") {
   external_deps = [
     "ability_base:want",
     "ability_runtime:app_manager",
+    "ability_runtime:module_manager",
     "ability_runtime:runtime",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
