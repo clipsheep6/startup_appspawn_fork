@@ -54,6 +54,7 @@ namespace {
     constexpr std::string_view APL_SYSTEM_BASIC("system_basic");
     const std::string g_packageItems[] = {{"cache"}, {"files"}, {"temp"}, {"preferences"}, {"haps"}};
     const std::string g_physicalAppInstallPath = "/data/app/el1/bundle/public/";
+    const std::string g_sandboxGroupPath = "/data/storage/el2/group/";
     const std::string g_sandboxHspInstallPath = "/data/storage/el1/bundle/";
     const std::string g_sandBoxAppInstallPath = "/data/accounts/account_0/applications/";
     const std::string g_dataBundles = "/data/bundles/";
@@ -68,6 +69,9 @@ namespace {
     const std::string g_hspList_key_bundles = "bundles";
     const std::string g_hspList_key_modules = "modules";
     const std::string g_hspList_key_versions = "versions";
+    const std::string g_groupList_key_dataGroupId = "dataGroupId";
+    const std::string g_groupList_key_gid = "gid";
+    const std::string g_groupList_key_dir = "dir";
     const char *g_actionStatuc = "check-action-status";
     const char *g_accountPrefix = "/account/data/";
     const char *g_accountNonPrefix = "/non_account/data/";
@@ -885,6 +889,8 @@ int32_t SandboxUtils::SetCommonAppSandboxProperty(const ClientSocket::AppPropert
 
     ret = MountAllHsp(appProperty, sandboxPackagePath);
     APPSPAWN_CHECK(ret == 0, return ret, "mount hspList failed, %{public}s", sandboxPackagePath.c_str());
+    ret = MountAllGroup(appProperty, sandboxPackagePath);
+    APPSPAWN_CHECK(ret == 0, return ret, "mount groupList failed, %{public}s", sandboxPackagePath.c_str());
 
     if (strcmp(appProperty->apl, APL_SYSTEM_BASIC.data()) == 0 ||
         strcmp(appProperty->apl, APL_SYSTEM_CORE.data()) == 0 ||
@@ -937,6 +943,42 @@ int32_t SandboxUtils::MountAllHsp(const ClientSocket::AppProperty *appProperty, 
         std::string mntPath =  sandboxPackagePath + g_sandboxHspInstallPath + libBundleName + "/" + libModuleName;
         ret = DoAppSandboxMountOnce(libPhysicalPath.c_str(), mntPath.c_str(), "", BASIC_MOUNT_FLAGS, nullptr);
         APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %{public}d", ret);
+    }
+    return ret;
+}
+
+int32_t SandboxUtils::MountAllGroup(const ClientSocket::AppProperty *appProperty, std::string &sandboxPackagePath)
+{
+    int ret = 0;
+    if (appProperty->dataGroupInfoList.totalLength == 0 || appProperty->dataGroupInfoList.data == nullptr) {
+        return ret;
+    }
+
+    nlohmann::json groups = nlohmann::json::parse(appProperty->dataGroupInfoList.data, nullptr, false);
+    APPSPAWN_CHECK(!groups.is_discarded() && groups.contains(g_groupList_key_dataGroupId) && hsps.contains(g_groupList_key_gid)
+        && groups.contains(g_groupList_key_dir), return -1, "MountAllGroup: json parse failed");
+
+    nlohmann::json& dataGroupIds = hsps[g_groupList_key_dataGroupId];
+    nlohmann::json& gids = hsps[g_groupList_key_gid];
+    nlohmann::json& dirs = hsps[g_groupList_key_dir];
+    APPSPAWN_CHECK(dataGroupIds.is_array() && gids.is_array() && dirs.is_array() && dataGroupIds.size() == gids.size()
+        && dataGroupIds.size() == dirs.size(), return -1, "MountAllGroup: value is not arrary or sizes are not same");
+    APPSPAWN_LOGI("MountAllGroup: app = %s, cnt = %u", appProperty->bundleName, dataGroupIds.size());
+    for (uint32_t i = 0; i < dataGroupIds.size(); i++) {
+        // elements in json arrary can be different type
+        APPSPAWN_CHECK(dataGroupIds[i].is_string() && gids[i].is_string() && dirs[i].is_string(),
+            return -1, "MountAllGroup: element type error");
+
+        std::string dataGroupId = dataGroupIds[i];
+        std::string gid = gids[i];
+        std::string dir = dirs[i];
+        APPSPAWN_CHECK(CheckPath(dataGroupId) && CheckPath(gid) && CheckPath(dir),
+            return -1, "MountAllGroup: path error");
+
+        std::string libPhysicalPath = g_physicalAppInstallPath + libBundleName + "/" + libVersion + "/" + libModuleName;
+        std::string mntPath =  sandboxPackagePath + g_sandboxHspInstallPath + libBundleName + "/" + libModuleName;
+        ret = DoAppSandboxMountOnce(libPhysicalPath.c_str(), mntPath.c_str(), "", BASIC_MOUNT_FLAGS, nullptr);
+        APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %d", ret);
     }
     return ret;
 }
