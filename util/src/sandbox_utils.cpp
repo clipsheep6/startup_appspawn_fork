@@ -987,12 +987,13 @@ int32_t SandboxUtils::MountAllGroup(const ClientSocket::AppProperty *appProperty
         APPSPAWN_CHECK(dataGroupIds[i].is_string() && gids[i].is_string() && dirs[i].is_string(),
             return -1, "MountAllGroup: element type error");
 
-        std::string dataGroupId = dataGroupIds[i];
         std::string gid = gids[i];
         std::string libPhysicalPath = dirs[i];
-        APPSPAWN_CHECK(CheckPath(libPhysicalPath), return -1, "MountAllGroup: path error");
+        APPSPAWN_CHECK(!CheckPath(libPhysicalPath), return -1, "MountAllGroup: path error");
 
-        std::string mntPath =  g_sandboxGroupPath + "/" + dataGroupId;
+        size_t lastPathSplitPos = libPhysicalPath.find_last_of("/");
+        std::string dataGroupUuid = libPhysicalPath.substr(lastPathSplitPos + 1);
+        std::string mntPath = sandboxPackagePath + g_sandboxGroupPath + dataGroupUuid;
         ret = DoAppSandboxMountOnce(libPhysicalPath.c_str(), mntPath.c_str(), "", BASIC_MOUNT_FLAGS, nullptr);
         APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %d", ret);
     }

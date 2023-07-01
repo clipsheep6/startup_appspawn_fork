@@ -391,7 +391,6 @@ static void Free(char **argv, HspList *hspList, DataGroupInfoList *dataGroupInfo
 
     if (dataGroupInfoList != NULL) {
         dataGroupInfoList->totalLength = 0;
-        dataGroupInfoList->savedLength = 0;
         dataGroupInfoList->data = NULL;
     }
 }
