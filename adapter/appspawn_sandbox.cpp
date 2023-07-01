@@ -74,6 +74,11 @@ int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *
         free(clientExt->property.hspList.data);
         clientExt->property.hspList = {};
     }
+    // free dataGroupInfoList
+    if (clientExt->property.dataGroupInfoList.data != nullptr) {
+        free(clientExt->property.dataGroupInfoList.data);
+        clientExt->property.dataGroupInfoList = {};
+    }
     // for module test do not create sandbox
     if (strncmp(clientExt->property.bundleName,
         MODULE_TEST_BUNDLE_NAME.c_str(), MODULE_TEST_BUNDLE_NAME.size()) == 0) {
@@ -86,4 +91,3 @@ uint32_t GetAppNamespaceFlags(const char *bundleName)
 {
     return SandboxUtils::GetNamespaceFlagsFromConfig(bundleName);
 }
-

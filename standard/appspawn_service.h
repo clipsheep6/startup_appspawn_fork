@@ -43,7 +43,9 @@ extern "C" {
 #define PARAM_INDEX 3
 #define HSP_LIST_LEN_INDEX 4
 #define HSP_LIST_INDEX 5
-#define NULL_INDEX 6
+#define DIR_LIST_LEN_INDEX 6
+#define DIR_LIST_INDEX 7
+#define NULL_INDEX 8
 #define PARAM_BUFFER_LEN 128
 typedef struct {
     AppSpawnClient client;
