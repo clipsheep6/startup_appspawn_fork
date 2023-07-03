@@ -54,7 +54,8 @@
                 "//base/startup/appspawn:appspawn_server",
                 "//base/startup/appspawn:nweb",
                 "//base/startup/appspawn/etc:etc_files",
-                "//base/startup/appspawn/interfaces/innerkits:appspawn_socket_client"
+                "//base/startup/appspawn/interfaces/innerkits:appspawn_socket_client",
+                "//third_party/selinux:libselinux"
             ],
             "inner_kits": [
                 {
