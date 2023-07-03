@@ -75,8 +75,7 @@ ohos_executable("appspawn") {
     "hilog_native:libhilog",
     "hitrace_native:hitrace_meter",
     "init:libbegetutil",
-    "resource_management:global_resmgr",
-    "selinux:libselinux"
+    "resource_management:global_resmgr"
   ]
   if (build_selinux) {
     external_deps += [ "selinux_adapter:libhap_restorecon" ]
