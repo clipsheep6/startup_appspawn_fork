@@ -114,7 +114,6 @@ ohos_static_library("appspawn_server") {
     "${appspawn_path}/adapter/appspawn_adapter.cpp",
     "${appspawn_path}/adapter/appspawn_sandbox.cpp",
     "${appspawn_path}/adapter/appspawn_nweb.cpp",
-    "${appspawn_path}/adapter/nwebspawn_lancher.cpp",
     "${appspawn_path}/common/appspawn_server.c",
     "${appspawn_path}/interfaces/innerkits/src/appspawn_mount_permission.cpp",
     "${appspawn_path}/standard/appspawn_process.c",
