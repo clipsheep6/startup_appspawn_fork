@@ -191,11 +191,30 @@ static void HandleDiedPid(pid_t pid, uid_t uid, int status)
     ReportProcessExitInfo(appInfo->name, pid, uid, status);
 #endif
 
-#ifdef NWEB_SPAWN
+    // delete app info
+    RemoveAppInfo(pid);
+}
+
+static void HandleDiedPidNweb(pid_t pid, uid_t uid, int status)
+{
+    AppInfo *appInfo = GetAppInfo(pid);
+    APPSPAWN_CHECK(appInfo != NULL, return, "Can not find app info for %{public}d", pid);
+    if (WIFSIGNALED(status)) {
+        APPSPAWN_LOGW("%{public}s with pid %{public}d exit with signal:%{public}d",
+            appInfo->name, pid, WTERMSIG(status));
+    }
+    if (WIFEXITED(status)) {
+        APPSPAWN_LOGW("%{public}s with pid %{public}d exit with code:%{public}d",
+            appInfo->name, pid, WEXITSTATUS(status));
+    }
+
+#ifdef REPORT_EVENT
+    ReportProcessExitInfo(appInfo->name, pid, uid, status);
+#endif
+
     // nwebspawn will invoke waitpid and remove appinfo at GetProcessTerminationStatusInner when
     // GetProcessTerminationStatusInner is called before the parent process receives the SIGCHLD signal.
     RecordRenderProcessExitedStatus(pid, status);
-#endif
 
     // delete app info
     RemoveAppInfo(pid);
@@ -210,6 +229,29 @@ APPSPAWN_STATIC void SignalHandler(const struct signalfd_siginfo *siginfo)
             int status;
             while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
                 HandleDiedPid(pid, siginfo->ssi_uid, status);
+            }
+            break;
+        }
+        case SIGTERM: {  // appswapn killed, use kill without parameter
+            OH_HashMapTraverse(g_appSpawnContent->appMap, KillProcess, NULL);
+            LE_StopLoop(LE_GetDefaultLoop());
+            break;
+        }
+        default:
+            APPSPAWN_LOGI("SigHandler, unsupported signal %{public}d.", siginfo->ssi_signo);
+            break;
+    }
+}
+
+APPSPAWN_STATIC void SignalHandlerNweb(const struct signalfd_siginfo *siginfo)
+{
+    APPSPAWN_LOGI("SignalHandler signum %{public}d", siginfo->ssi_signo);
+    switch (siginfo->ssi_signo) {
+        case SIGCHLD: {  // delete pid from app map
+            pid_t pid;
+            int status;
+            while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+                HandleDiedPidNweb(pid, siginfo->ssi_uid, status);
             }
             break;
         }
@@ -420,7 +462,34 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
         return;
     }
 
-#ifdef NWEB_SPAWN
+    APPSPAWN_CHECK(appProperty->property.gidCount <= APP_MAX_GIDS && strlen(appProperty->property.processName) > 0,
+        LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
+        return, "Invalid property %{public}u", appProperty->property.gidCount);
+
+    // special handle bundle name medialibrary and scanner
+    HandleSpecial(appProperty);
+    if (g_appSpawnContent->timer != NULL) {
+        LE_StopTimer(LE_GetDefaultLoop(), g_appSpawnContent->timer);
+        g_appSpawnContent->timer = NULL;
+    }
+    appProperty->pid = 0;
+    CheckColdAppEnabled(appProperty);
+    int ret = HandleMessage(appProperty);
+    if (ret != 0) {
+        LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
+    }
+}
+
+static void OnReceiveRequestNweb(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen)
+{
+    AppSpawnClientExt *appProperty = (AppSpawnClientExt *)LE_GetUserData(taskHandle);
+    APPSPAWN_CHECK(appProperty != NULL, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
+        return, "alloc client Failed");
+
+    if (!ReceiveRequestData(taskHandle, appProperty, buffer, buffLen)) {
+        return;
+    }
+
     // get render process termination status, only nwebspawn need this logic.
     if (appProperty->property.code == GET_RENDER_TERMINATION_STATUS) {
         int ret = GetProcessTerminationStatus(&appProperty->client);
@@ -428,7 +497,6 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
         SendResponse(appProperty, (char *)&ret, sizeof(ret));
         return;
     }
-#endif
 
     APPSPAWN_CHECK(appProperty->property.gidCount <= APP_MAX_GIDS && strlen(appProperty->property.processName) > 0,
         LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
@@ -559,7 +627,14 @@ static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
     AppSpawnContentExt *appSpawnContent = (AppSpawnContentExt *)content;
     APPSPAWN_CHECK(appSpawnContent != NULL, return, "Invalid appspawn content");
 
-    LE_STATUS status = LE_CreateSignalTask(LE_GetDefaultLoop(), &appSpawnContent->sigHandler, SignalHandler);
+    LE_STATUS status;
+
+    if (strcmp(content->longProcName, NWEBSPAWN_SERVER_NAME) == 0) {
+        status = LE_CreateSignalTask(LE_GetDefaultLoop(), &appSpawnContent->sigHandler, SignalHandlerNweb);
+    } else {
+        status = LE_CreateSignalTask(LE_GetDefaultLoop(), &appSpawnContent->sigHandler, SignalHandler);
+    }
+
     if (status == 0) {
         (void)LE_AddSignal(LE_GetDefaultLoop(), appSpawnContent->sigHandler, SIGCHLD);
         (void)LE_AddSignal(LE_GetDefaultLoop(), appSpawnContent->sigHandler, SIGTERM);
