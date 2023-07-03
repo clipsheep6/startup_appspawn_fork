@@ -35,13 +35,11 @@ config("appspawn_config") {
     "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
     "//foundation/arkui/napi",
     "//third_party/libuv/include",
+    "//third_party/selinux/libselinux/include/"
   ]
 
   if (build_selinux) {
     cflags = [ "-DWITH_SELINUX" ]
-    include_dirs += [
-      "//third_party/selinux/libselinux/include/"
-    ]
   }
 }
 
