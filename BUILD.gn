@@ -35,13 +35,11 @@ config("appspawn_config") {
     "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
     "//foundation/arkui/napi",
     "//third_party/libuv/include",
+    "//third_party/selinux/libselinux/include/"
   ]
 
   if (build_selinux) {
     cflags = [ "-DWITH_SELINUX" ]
-    include_dirs += [
-      "//third_party/selinux/libselinux/include/",
-    ]
   }
 }
 
@@ -78,10 +76,10 @@ ohos_executable("appspawn") {
     "hitrace_native:hitrace_meter",
     "init:libbegetutil",
     "resource_management:global_resmgr",
+    "selinux:libselinux"
   ]
   if (build_selinux) {
     external_deps += [ "selinux_adapter:libhap_restorecon" ]
-    external_deps += [ "selinux:libselinux" ]
   }
   install_enable = true
   subsystem_name = "${subsystem_name}"
