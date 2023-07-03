@@ -32,6 +32,7 @@
                 "c_utils",
                 "ipc",
                 "selinux",
+                "selinux_adapter",
                 "hiviewdfx_hilog_native",
                 "init",
                 "ability_runtime",
@@ -44,9 +45,6 @@
                 "hitrace_native",
                 "common_event_service",
                 "hisysevent_native"
-            ],
-            "third_party": [
-                "selinux"
             ]
         },
         "build": {
