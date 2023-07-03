@@ -35,7 +35,7 @@ config("appspawn_config") {
     "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
     "//foundation/arkui/napi",
     "//third_party/libuv/include",
-    "//third_party/selinux/libselinux/include/"
+    "//third_party/selinux/libselinux/include/",
   ]
 
   if (build_selinux) {
@@ -64,7 +64,10 @@ ohos_executable("appspawn") {
     defines = [ "ASAN_DETECTOR" ]
   }
   configs = [ ":appspawn_config" ]
-  deps = [ "${appspawn_path}:appspawn_server" ]
+  deps = [
+    "${appspawn_path}:appspawn_server",
+    "//third_party/selinux:libselinux",
+  ]
   external_deps = [
     "ability_base:want",
     "ability_runtime:app_manager",
@@ -76,13 +79,10 @@ ohos_executable("appspawn") {
     "hilog_native:libhilog",
     "hitrace_native:hitrace_meter",
     "init:libbegetutil",
-    "resource_management:global_resmgr"
+    "resource_management:global_resmgr",
   ]
   if (build_selinux) {
     external_deps += [ "selinux_adapter:libhap_restorecon" ]
-    deps += [
-      "//third_party/selinux:libselinux"
-    ]
   }
   install_enable = true
   subsystem_name = "${subsystem_name}"
@@ -187,8 +187,6 @@ ohos_prebuilt_etc("nwebspawn.rc") {
 group("nweb") {
   deps = []
   if (appspawn_support_nweb) {
-    deps += [
-      ":nwebspawn.rc",
-    ]
+    deps += [ ":nwebspawn.rc" ]
   }
 }
