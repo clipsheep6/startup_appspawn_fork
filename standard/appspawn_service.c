@@ -556,10 +556,57 @@ APPSPAWN_STATIC TaskHandle AcceptClient(const LoopHandle loopHandle, const TaskH
     return stream;
 }
 
+APPSPAWN_STATIC TaskHandle AcceptClientNweb(const LoopHandle loopHandle, const TaskHandle server, uint32_t flags)
+{
+    static uint32_t clientId = 0;
+    TaskHandle stream;
+    LE_StreamInfo info = {};
+    info.baseInfo.flags = TASK_STREAM | TASK_PIPE | TASK_CONNECT;
+    info.baseInfo.flags |= flags;
+    info.baseInfo.close = OnClose;
+    info.baseInfo.userDataSize = sizeof(AppSpawnClientExt);
+    info.disConnectComplete = NULL;
+    info.sendMessageComplete = SendMessageComplete;
+    info.recvMessage = OnReceiveRequestNweb;
+
+    LE_STATUS ret = LE_AcceptStreamClient(loopHandle, server, &stream, &info);
+    APPSPAWN_CHECK(ret == 0, return NULL, "Failed to alloc stream");
+    AppSpawnClientExt *client = (AppSpawnClientExt *)LE_GetUserData(stream);
+    APPSPAWN_CHECK(client != NULL, return NULL, "Failed to alloc stream");
+#ifndef APPSPAWN_CHECK_GID_UID
+    struct ucred cred = {-1, -1, -1};
+    socklen_t credSize  = sizeof(struct ucred);
+    if ((getsockopt(LE_GetSocketFd(stream), SOL_SOCKET, SO_PEERCRED, &cred, &credSize) < 0) ||
+        (cred.uid != DecodeUid("foundation")  && cred.uid != DecodeUid("root"))) {
+        APPSPAWN_LOGE("Failed to check uid %{public}d", cred.uid);
+        LE_CloseStreamTask(LE_GetDefaultLoop(), stream);
+        return NULL;
+    }
+#endif
+
+    client->stream = stream;
+    client->client.id = ++clientId;
+    client->client.flags = 0;
+    client->property.hspList.totalLength = 0;
+    client->property.hspList.savedLength = 0;
+    client->property.hspList.data = NULL;
+    client->property.overlayInfo.totalLength = 0;
+    client->property.overlayInfo.data = NULL;
+    APPSPAWN_LOGI("OnConnection client fd %{public}d Id %{public}d", LE_GetSocketFd(stream), client->client.id);
+    return stream;
+}
+
 static int OnConnection(const LoopHandle loopHandle, const TaskHandle server)
 {
     APPSPAWN_CHECK(server != NULL && loopHandle != NULL, return -1, "Error server");
     (void)AcceptClient(loopHandle, server, 0);
+    return 0;
+}
+
+static int OnConnectionNweb(const LoopHandle loopHandle, const TaskHandle server)
+{
+    APPSPAWN_CHECK(server != NULL && loopHandle != NULL, return -1, "Error server");
+    (void)AcceptClientNweb(loopHandle, server, 0);
     return 0;
 }
 
@@ -684,7 +731,11 @@ static int CreateAppSpawnServer(AppSpawnContentExt *appSpawnContent, const char 
     info.socketId = socketId;
     info.server = path;
     info.baseInfo.close = NULL;
-    info.incommingConnect = OnConnection;
+    if (strcmp(socketName, NWEBSPAWN_SOCKET_NAME) == 0) {
+        info.incommingConnect = OnConnectionNweb;
+    } else {
+        info.incommingConnect = OnConnection;
+    }
 
     ret = LE_CreateStreamServer(LE_GetDefaultLoop(), &appSpawnContent->server, &info);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to create socket for %{public}s", path);
@@ -692,7 +743,11 @@ static int CreateAppSpawnServer(AppSpawnContentExt *appSpawnContent, const char 
     ret = chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to chmod %{public}s, err %{public}d. ", path, errno);
 #ifndef APPSPAWN_CHECK_GID_UID
-    ret = lchown(path, 0, 4000); // 4000 is appspawn gid
+    if (strcmp(socketName, NWEBSPAWN_SOCKET_NAME) == 0) {
+        ret = lchown(path, 3081, 3081); // 3081 is appspawn gid
+    } else {
+        ret = lchown(path, 0, 4000); // 4000 is appspawn gid
+    }
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to lchown %{public}s, err %{public}d. ", path, errno);
 #endif
     APPSPAWN_LOGI("CreateAppSpawnServer path %{public}s fd %{public}d",
