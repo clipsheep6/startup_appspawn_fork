@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -69,6 +69,7 @@ typedef enum AppOperateType_ {
 #define APP_ACCESS_BUNDLE_DIR 0x20
 #define APP_NATIVEDEBUG 0X40
 #define APP_NO_SANDBOX 0x80  // Do not enter sandbox
+#define APP_OVERLAY_FLAG 0x100
 
 #define BITLEN32 32
 #define FDLEN2 2
@@ -80,7 +81,12 @@ typedef struct HspList_ {
     char* data;
 } HspList;
 
-typedef struct DataGroupInfoList_ {
+typedef struct {
+    uint32_t totalLength;
+    char* data;
+} OverlayInfo;
+
+typedef struct {
     uint32_t totalLength;
     char* data;
 } DataGroupInfoList;
@@ -110,6 +116,7 @@ typedef struct AppParameter_ {
     uint8_t reserved2;
 #endif
     HspList hspList; // list of cross-app hsp (Harmony Shared Package) to mount onto app sandbox
+    OverlayInfo overlayInfo; // overlay info
     DataGroupInfoList dataGroupInfoList; // list of the share sandbox path info
 } AppParameter;
 
