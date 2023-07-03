@@ -80,10 +80,8 @@ ohos_executable("appspawn") {
     "resource_management:global_resmgr",
   ]
   if (build_selinux) {
-    external_deps += [
-      "selinux_adapter:libhap_restorecon",
-      "selinux_adapter:libselinux",
-    ]
+    external_deps += [ "selinux_adapter:libhap_restorecon" ]
+    external_deps += [ "selinux_adapter:libselinux" ]
   }
   install_enable = true
   subsystem_name = "${subsystem_name}"
