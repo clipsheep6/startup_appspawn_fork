@@ -81,6 +81,11 @@ typedef struct HspList_ {
     char* data;
 } HspList;
 
+typedef struct DataGroupInfoList_ {
+    uint32_t totalLength;
+    uint32_t savedLength;
+    char* data;
+} DataGroupInfoList;
 typedef struct {
     uint32_t totalLength;
     char* data;
@@ -112,6 +117,7 @@ typedef struct AppParameter_ {
     uint8_t reserved2;
 #endif
     HspList hspList; // list of cross-app hsp (Harmony Shared Package) to mount onto app sandbox
+    DataGroupInfoList dataGroupInfoList; // list of the share sandbox path info
     OverlayInfo overlayInfo; // overlay info
 } AppParameter;
 
