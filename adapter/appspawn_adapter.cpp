@@ -63,15 +63,25 @@ void SetSelinuxCon(struct AppSpawnContent_ *content, AppSpawnClient *client)
 void SetUidGidFilter(struct AppSpawnContent_ *content)
 {
 #ifdef WITH_SECCOMP
-#ifdef NWEB_SPAWN
+    if (!SetSeccompPolicyWithName(INDIVIDUAL, APPSPAWN_NAME)) {
+        APPSPAWN_LOGE("Failed to set APPSPAWN seccomp filter and exit");
+#ifndef APPSPAWN_TEST
+        _exit(0x7f);
+#endif
+    } else {
+        APPSPAWN_LOGI("Success to set APPSPAWN seccomp filter");
+    }
+#endif
+}
+
+void SetUidGidFilterNweb(struct AppSpawnContent_ *content)
+{
+#ifdef WITH_SECCOMP
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
         APPSPAWN_LOGE("Failed to set no new privs");
     }
 
     if (!SetSeccompPolicyWithName(INDIVIDUAL, NWEBSPAWN_NAME)) {
-#else
-    if (!SetSeccompPolicyWithName(INDIVIDUAL, APPSPAWN_NAME)) {
-#endif
         APPSPAWN_LOGE("Failed to set APPSPAWN seccomp filter and exit");
 #ifndef APPSPAWN_TEST
         _exit(0x7f);
@@ -85,13 +95,25 @@ void SetUidGidFilter(struct AppSpawnContent_ *content)
 int SetSeccompFilter(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
 #ifdef WITH_SECCOMP
-#ifdef NWEB_SPAWN
-    const char *appName = RENDERER_NAME;
-    SeccompFilterType type = INDIVIDUAL;
-#else
     const char *appName = APP_NAME;
     SeccompFilterType type = APP;
+    if (!SetSeccompPolicyWithName(type, appName)) {
+        APPSPAWN_LOGE("Failed to set %{public}s seccomp filter and exit", appName);
+#ifndef APPSPAWN_TEST
+        return -EINVAL;
 #endif
+    } else {
+        APPSPAWN_LOGI("Success to set %{public}s seccomp filter", appName);
+    }
+#endif
+    return 0;
+}
+
+int SetSeccompFilterNweb(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+#ifdef WITH_SECCOMP
+    const char *appName = RENDERER_NAME;
+    SeccompFilterType type = INDIVIDUAL;
     if (!SetSeccompPolicyWithName(type, appName)) {
         APPSPAWN_LOGE("Failed to set %{public}s seccomp filter and exit", appName);
 #ifndef APPSPAWN_TEST
