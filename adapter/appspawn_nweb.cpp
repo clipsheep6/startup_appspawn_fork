@@ -175,7 +175,7 @@ void LoadExtendLibNweb(AppSpawnContent *content)
     }
 }
 
-void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
+void RunChildProcessorNweb(AppSpawnContent *content, AppSpawnClient *client)
 {
     AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
     using FuncType = void (*)(const char *cmd);
