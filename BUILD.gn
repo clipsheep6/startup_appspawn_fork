@@ -53,10 +53,10 @@ ohos_executable("appspawn") {
   }
   sources = [
     "${appspawn_path}/adapter/appspawn_ace.cpp",
-    "${appspawn_path}/standard/main.c",
     "${appspawn_path}/adapter/appspawn_nweb.cpp",
     "${appspawn_path}/adapter/nwebspawn_lancher.cpp",
     "${appspawn_path}/interfaces/innerkits/src/appspawn_mount_permission.cpp",
+    "${appspawn_path}/standard/main.c",
     "${appspawn_path}/util/src/json_utils.cpp",
     "${appspawn_path}/util/src/sandbox_utils.cpp",
   ]
@@ -112,8 +112,8 @@ ohos_shared_library("appspawn_helper") {
 ohos_static_library("appspawn_server") {
   sources = [
     "${appspawn_path}/adapter/appspawn_adapter.cpp",
-    "${appspawn_path}/adapter/appspawn_sandbox.cpp",
     "${appspawn_path}/adapter/appspawn_nweb.cpp",
+    "${appspawn_path}/adapter/appspawn_sandbox.cpp",
     "${appspawn_path}/common/appspawn_server.c",
     "${appspawn_path}/interfaces/innerkits/src/appspawn_mount_permission.cpp",
     "${appspawn_path}/standard/appspawn_process.c",
