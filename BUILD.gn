@@ -185,7 +185,4 @@ ohos_prebuilt_etc("nwebspawn.rc") {
 
 group("nweb") {
   deps = []
-  if (appspawn_support_nweb) {
-    deps += [ ":nwebspawn.rc" ]
-  }
 }
