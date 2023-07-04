@@ -671,15 +671,21 @@ void SetContentFunction(AppSpawnContent *content)
     content->setXpmRegion = SetXpmRegion;
     content->setCapabilities = SetCapabilities;
     content->setFileDescriptors = SetFileDescriptors;
-    content->setAppSandbox = SetAppSandboxProperty;
     content->setAppAccessToken = SetAppAccessToken;
     content->coldStartApp = ColdStartApp;
     content->setAsanEnabledEnv = SetAsanEnabledEnv;
 #ifdef ASAN_DETECTOR
     content->getWrapBundleNameValue = GetWrapBundleNameValue;
 #endif
-    content->setSeccompFilter = SetSeccompFilter;
-    content->setUidGidFilter = SetUidGidFilter;
+    if (strcmp(content->longProcName, NWEBSPAWN_SERVER_NAME) == 0) {
+        content->setAppSandbox = SetAppSandboxPropertyNweb;
+        content->setSeccompFilter = SetSeccompFilterNweb;
+        content->setUidGidFilter = SetUidGidFilterNweb;
+    } else {
+        content->setAppSandbox = SetAppSandboxProperty;
+        content->setSeccompFilter = SetSeccompFilter;
+        content->setUidGidFilter = SetUidGidFilter;
+    }
     content->handleInternetPermission = HandleInternetPermission;
     content->waitForDebugger = WaitForDebugger;
 }
