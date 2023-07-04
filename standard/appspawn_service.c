@@ -633,6 +633,8 @@ APPSPAWN_STATIC TaskHandle AcceptClientNweb(const LoopHandle loopHandle, const T
     client->property.hspList.data = NULL;
     client->property.overlayInfo.totalLength = 0;
     client->property.overlayInfo.data = NULL;
+    client->property.dataGroupInfoList.totalLength = 0;
+    client->property.dataGroupInfoList.data = NULL;
     APPSPAWN_LOGI("OnConnection client fd %{public}d Id %{public}d", LE_GetSocketFd(stream), client->client.id);
     return stream;
 }
