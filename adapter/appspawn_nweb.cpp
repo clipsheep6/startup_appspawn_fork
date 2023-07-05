@@ -161,12 +161,22 @@ void LoadExtendLibNweb(AppSpawnContent *content)
     } else {
         APPSPAWN_LOGI("Success to dlopen libweb_engine.so");
     }
-
+    repeat_count = 0;
 #ifdef __MUSL__
     g_nwebHandle = dlopen_ns(&dlns, "libnweb_render.so", RTLD_NOW | RTLD_GLOBAL);
+    while (g_nwebHandle == nullptr && repeat_count < 10) {
+        sleep(1);
+        handle = dlopen_ns(&dlns, "libnweb_render.so", RTLD_NOW | RTLD_GLOBAL);
+        ++repeat_count;
+    }
 #else
     const std::string renderLibDir = loadLibDir + "/libnweb_render.so";
     g_nwebHandle = dlopen(renderLibDir.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    while (g_nwebHandle == nullptr && repeat_count < 10) {
+        sleep(1);
+        handle = dlopen(renderLibDir.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        ++repeat_count;
+    }
 #endif
     if (g_nwebHandle == nullptr) {
         APPSPAWN_LOGE("Fail to dlopen libnweb_render.so, [%{public}s]", dlerror());
