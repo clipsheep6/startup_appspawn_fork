@@ -58,6 +58,7 @@ namespace {
 std::string GetNWebHapLibsPath()
 {
     std::string libPath;
+    sleep(10);
     if (access(NWEB_HAP_PATH.c_str(), F_OK) == 0) {
         libPath = NWEB_HAP_PATH + RELATIVE_PATH_FOR_HAP;
         APPSPAWN_LOGI("get fix path, %{public}s", libPath.c_str());
