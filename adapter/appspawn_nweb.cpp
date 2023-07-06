@@ -24,6 +24,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <selinux/selinux.h>
 
 #ifdef __MUSL__
 #include <dlfcn_ext.h>
@@ -87,6 +88,10 @@ void *LoadWithRelroFile(const std::string &lib, const std::string &nsName,
     if (unlink(nwebRelroPath.c_str()) != 0 && errno != ENOENT) {
         APPSPAWN_LOGI("LoadWithRelroFile unlink failed");
     }
+    char *con = nullptr;
+    getcon(&con);
+    APPSPAWN_LOGE("setcon, error=[%{public}s]", con);
+    freecon(con);
     int relroFd =
         open(nwebRelroPath.c_str(), O_RDWR | O_TRUNC | O_CLOEXEC | O_CREAT,
             S_IRUSR | S_IRGRP | S_IROTH);
@@ -124,6 +129,7 @@ void LoadExtendLibNweb(AppSpawnContent *content)
 {
     const std::string loadLibDir = GetNWebHapLibsPath();
     int repeat_count = 0;
+    sleep(10);
 #ifdef __MUSL__
     Dl_namespace dlns;
     dlns_init(&dlns, "nweb_ns");
