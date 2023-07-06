@@ -74,6 +74,11 @@
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
+                    "src-path" : "/vendor/etc",
+                    "sandbox-path" : "/vendor/etc",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }, {
                     "src-path" : "/data/app/el1/bundle/public/<PackageName>",
                     "sandbox-path" : "/data/storage/el1/bundle",
                     "sandbox-flags" : [ "bind", "rec" ],
