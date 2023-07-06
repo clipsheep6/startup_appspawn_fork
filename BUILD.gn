@@ -178,7 +178,6 @@ ohos_prebuilt_etc("appspawn.rc") {
   part_name = "${part_name}"
 }
 
-
 ohos_prebuilt_etc("nwebspawn.rc") {
   source = "nwebspawn.cfg"
   relative_install_dir = "init"
