@@ -139,6 +139,7 @@ ohos_static_library("appspawn_server") {
   ]
   external_deps = [
     "access_token:libtoken_setproc",
+    "access_token:libtokenid_sdk",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hilog_native:libhilog",
