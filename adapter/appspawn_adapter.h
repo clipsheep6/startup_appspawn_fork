@@ -29,6 +29,7 @@ int32_t SetAppSandboxPropertyNweb(struct AppSpawnContent_ *content, AppSpawnClie
 int SetAppAccessToken(struct AppSpawnContent_ *content, AppSpawnClient *client);
 int SetAppAccessTokenNweb(struct AppSpawnContent_ *content, AppSpawnClient *client);
 void SetSelinuxCon(struct AppSpawnContent_ *content, AppSpawnClient *client);
+void SetSelinuxConNweb(struct AppSpawnContent_ *content, AppSpawnClient *client);
 void LoadExtendLib(AppSpawnContent *content);
 void LoadExtendLibNweb(AppSpawnContent *content);
 void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client);

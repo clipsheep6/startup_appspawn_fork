@@ -157,7 +157,11 @@ static int SetCapabilities(struct AppSpawnContent_ *content, AppSpawnClient *cli
     // set capabilities
     isRet = capset(&cap_header, &cap_data[0]) == -1;
     APPSPAWN_CHECK(!isRet, return -errno, "capset failed: %{public}d", errno);
-    SetSelinuxCon(content, client);
+    if (strcmp(content->longProcName, NWEBSPAWN_SERVER_NAME) == 0){
+        SetSelinuxConNweb(content, client);
+    } else {
+        SetSelinuxCon(content, client);
+    }
     return 0;
 }
 

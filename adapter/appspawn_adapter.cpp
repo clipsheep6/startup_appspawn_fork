@@ -75,8 +75,6 @@ int SetAppAccessTokenNweb(struct AppSpawnContent_ *content, AppSpawnClient *clie
 void SetSelinuxCon(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
 #ifdef WITH_SELINUX
-    setcon("u:r:isolated_render:s0");
-#else
     UNUSED(content);
     AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
     HapContext hapContext;
@@ -94,6 +92,13 @@ void SetSelinuxCon(struct AppSpawnContent_ *content, AppSpawnClient *client)
     } else {
         APPSPAWN_LOGV("AppSpawnServer::Success to hap domain set context, ret = %{public}d", ret);
     }
+#endif
+}
+
+void SetSelinuxConNweb(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+#ifdef WITH_SELINUX
+    setcon("u:r:isolated_render:s0");
 #endif
 }
 
