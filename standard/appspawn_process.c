@@ -671,7 +671,6 @@ void SetContentFunction(AppSpawnContent *content)
     content->setXpmRegion = SetXpmRegion;
     content->setCapabilities = SetCapabilities;
     content->setFileDescriptors = SetFileDescriptors;
-    content->setAppAccessToken = SetAppAccessToken;
     content->coldStartApp = ColdStartApp;
     content->setAsanEnabledEnv = SetAsanEnabledEnv;
 #ifdef ASAN_DETECTOR
@@ -681,7 +680,9 @@ void SetContentFunction(AppSpawnContent *content)
         content->setAppSandbox = SetAppSandboxPropertyNweb;
         content->setSeccompFilter = SetSeccompFilterNweb;
         content->setUidGidFilter = SetUidGidFilterNweb;
+        content->setAppAccessToken = SetAppAccessTokenNweb;
     } else {
+        content->setAppAccessToken = SetAppAccessToken;
         content->setAppSandbox = SetAppSandboxProperty;
         content->setSeccompFilter = SetSeccompFilter;
         content->setUidGidFilter = SetUidGidFilter;

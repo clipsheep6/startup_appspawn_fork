@@ -27,6 +27,7 @@ extern "C" {
 int32_t SetAppSandboxProperty(struct AppSpawnContent_ *content, AppSpawnClient *client);
 int32_t SetAppSandboxPropertyNweb(struct AppSpawnContent_ *content, AppSpawnClient *client);
 int SetAppAccessToken(struct AppSpawnContent_ *content, AppSpawnClient *client);
+int SetAppAccessTokenNweb(struct AppSpawnContent_ *content, AppSpawnClient *client);
 void SetSelinuxCon(struct AppSpawnContent_ *content, AppSpawnClient *client);
 void LoadExtendLib(AppSpawnContent *content);
 void LoadExtendLibNweb(AppSpawnContent *content);
