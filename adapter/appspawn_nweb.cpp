@@ -124,7 +124,6 @@ void LoadExtendLibNweb(AppSpawnContent *content)
 {
     const std::string loadLibDir = GetNWebHapLibsPath();
     int repeat_count = 0;
-    sleep(10);
 #ifdef __MUSL__
     Dl_namespace dlns;
     dlns_init(&dlns, "nweb_ns");

@@ -31,7 +31,6 @@
                 "ability_base",
                 "c_utils",
                 "ipc",
-                "selinux",
                 "selinux_adapter",
                 "hilog",
                 "init",
@@ -56,8 +55,7 @@
                 "libuv",
                 "cjson",
                 "libpng",
-                "selinux",
-                "thirdparty_selinux"
+                "selinux"
 	    ]
         },
         "build": {

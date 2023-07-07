@@ -145,7 +145,6 @@ ohos_static_library("appspawn_server") {
     "config_policy:configpolicy_util",
     "hilog_native:libhilog",
     "init:libbegetutil",
-    "init:libbegetutil",
   ]
 
   if (!defined(global_parts_info) ||
