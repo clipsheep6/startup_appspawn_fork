@@ -157,7 +157,11 @@ static int SetCapabilities(struct AppSpawnContent_ *content, AppSpawnClient *cli
     // set capabilities
     isRet = capset(&cap_header, &cap_data[0]) == -1;
     APPSPAWN_CHECK(!isRet, return -errno, "capset failed: %{public}d", errno);
-    SetSelinuxCon(content, client);
+    if (strcmp(content->longProcName, NWEBSPAWN_SERVER_NAME) == 0){
+        SetSelinuxConNweb(content, client);
+    } else {
+        SetSelinuxCon(content, client);
+    }
     return 0;
 }
 
@@ -671,15 +675,22 @@ void SetContentFunction(AppSpawnContent *content)
     content->setXpmRegion = SetXpmRegion;
     content->setCapabilities = SetCapabilities;
     content->setFileDescriptors = SetFileDescriptors;
-    content->setAppSandbox = SetAppSandboxProperty;
-    content->setAppAccessToken = SetAppAccessToken;
     content->coldStartApp = ColdStartApp;
     content->setAsanEnabledEnv = SetAsanEnabledEnv;
 #ifdef ASAN_DETECTOR
     content->getWrapBundleNameValue = GetWrapBundleNameValue;
 #endif
-    content->setSeccompFilter = SetSeccompFilter;
-    content->setUidGidFilter = SetUidGidFilter;
+    if (strcmp(content->longProcName, NWEBSPAWN_SERVER_NAME) == 0) {
+        content->setAppSandbox = SetAppSandboxPropertyNweb;
+        content->setSeccompFilter = SetSeccompFilterNweb;
+        content->setUidGidFilter = SetUidGidFilterNweb;
+        content->setAppAccessToken = SetAppAccessTokenNweb;
+    } else {
+        content->setAppAccessToken = SetAppAccessToken;
+        content->setAppSandbox = SetAppSandboxProperty;
+        content->setSeccompFilter = SetSeccompFilter;
+        content->setUidGidFilter = SetUidGidFilter;
+    }
     content->handleInternetPermission = HandleInternetPermission;
     content->waitForDebugger = WaitForDebugger;
 }
