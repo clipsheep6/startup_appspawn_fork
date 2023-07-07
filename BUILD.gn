@@ -135,6 +135,7 @@ ohos_static_library("appspawn_server") {
   ldflags = [ "-Wl,--dynamic-linker,/system/bin/linker64z" ]
   deps = [
     ":asan.options",
+    "//third_party/selinux:libselinux",
     "//foundation/communication/netmanager_base/services/netmanagernative/netsys_client:netsys_client",
   ]
   external_deps = [
