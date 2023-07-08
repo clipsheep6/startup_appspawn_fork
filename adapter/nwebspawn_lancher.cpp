@@ -21,7 +21,7 @@
 #define CAP_NUM 2
 
 
-static int SetCapability(unsigned int capsCnt, const unsigned int *caps)
+static void SetCapability(unsigned int capsCnt, const unsigned int *caps)
 {
     struct __user_cap_header_struct capHeader;
     capHeader.version = _LINUX_CAPABILITY_VERSION_3;
@@ -36,15 +36,12 @@ static int SetCapability(unsigned int capsCnt, const unsigned int *caps)
 
     if (capset(&capHeader, capData) != 0) {
         APPSPAWN_LOGE("[nwebspawn] capset failed, err: %d.", errno);
-        return -1;
     }
     for (unsigned int i = 0; i < capsCnt; ++i) {
-        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, caps[i], 0, 0); != 0) {
+        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, caps[i], 0, 0) != 0) {
             APPSPAWN_LOGE("[nwebspawn] SetAmbientCapability failed, err: %d.", errno);
-            return -1;
         }
     }
-    return 0;
 }
 
 pid_t NwebSpawnLanch(){
