@@ -23,7 +23,6 @@
 pid_t NwebSpawnLanch(){
     pid_t ret = fork();
     if (ret == 0) {
-        setcon("u:r:nwebspawn:s0");
         setuid(NWEB_UID);
         setgid(NWEB_GID);
         struct  __user_cap_header_struct capHeader;
@@ -41,6 +40,7 @@ pid_t NwebSpawnLanch(){
         for (int i = 0; i <= CAP_LAST_CAP; ++i) {
             prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, i, 0, 0);
         }
+        setcon("u:r:nwebspawn:s0");
         APPSPAWN_LOGI("nwebspawn fork success");
     }
     return ret;
