@@ -20,16 +20,6 @@
 #define NWEB_GID 3081
 #define CAP_NUM 2
 
-static int SetAmbientCapability(int cap)
-{
-#ifdef __LINUX__
-    if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0)) {
-        printf("[Init] prctl PR_CAP_AMBIENT failed\n");
-        return -1;
-    }
-#endif
-    return 0;
-}
 
 static int SetCapability(unsigned int capsCnt, const unsigned int *caps)
 {
@@ -37,8 +27,7 @@ static int SetCapability(unsigned int capsCnt, const unsigned int *caps)
     capHeader.version = _LINUX_CAPABILITY_VERSION_3;
     capHeader.pid = 0;
 
-    // common user, clear all caps
-    struct __user_cap_data_struct capData[CAP_NUM] = {0};
+    struct __user_cap_data_struct capData[CAP_NUM];
     for (unsigned int i = 0; i < capsCnt; ++i) {
         capData[CAP_TO_INDEX(caps[i])].effective |= CAP_TO_MASK(caps[i]);
         capData[CAP_TO_INDEX(caps[i])].permitted |= CAP_TO_MASK(caps[i]);
@@ -50,7 +39,7 @@ static int SetCapability(unsigned int capsCnt, const unsigned int *caps)
         return -1;
     }
     for (unsigned int i = 0; i < capsCnt; ++i) {
-        if (SetAmbientCapability(caps[i]) != 0) {
+        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, caps[i], 0, 0); != 0) {
             APPSPAWN_LOGE("[nwebspawn] SetAmbientCapability failed, err: %d.", errno);
             return -1;
         }
