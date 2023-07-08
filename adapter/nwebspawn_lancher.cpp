@@ -20,26 +20,55 @@
 #define NWEB_GID 3081
 #define CAP_NUM 2
 
+static int SetAmbientCapability(int cap)
+{
+#ifdef __LINUX__
+    if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0)) {
+        printf("[Init] prctl PR_CAP_AMBIENT failed\n");
+        return -1;
+    }
+#endif
+    return 0;
+}
+
+static int SetCapability(unsigned int capsCnt, const unsigned int *caps)
+{
+    struct __user_cap_header_struct capHeader;
+    capHeader.version = _LINUX_CAPABILITY_VERSION_3;
+    capHeader.pid = 0;
+
+    // common user, clear all caps
+    struct __user_cap_data_struct capData[CAP_NUM] = {0};
+    for (unsigned int i = 0; i < capsCnt; ++i) {
+        capData[CAP_TO_INDEX(caps[i])].effective |= CAP_TO_MASK(caps[i]);
+        capData[CAP_TO_INDEX(caps[i])].permitted |= CAP_TO_MASK(caps[i]);
+        capData[CAP_TO_INDEX(caps[i])].inheritable |= CAP_TO_MASK(caps[i]);
+    }
+
+    if (capset(&capHeader, capData) != 0) {
+        APPSPAWN_LOGE("[nwebspawn] capset failed, err: %d.", errno);
+        return -1;
+    }
+    for (unsigned int i = 0; i < capsCnt; ++i) {
+        if (SetAmbientCapability(caps[i]) != 0) {
+            APPSPAWN_LOGE("[nwebspawn] SetAmbientCapability failed, err: %d.", errno);
+            return -1;
+        }
+    }
+    return 0;
+}
+
 pid_t NwebSpawnLanch(){
     pid_t ret = fork();
     if (ret == 0) {
         setuid(NWEB_UID);
         setgid(NWEB_GID);
-        struct  __user_cap_header_struct capHeader;
-        capHeader.version = _LINUX_CAPABILITY_VERSION_3;
-        capHeader.pid = 0;
-        struct __user_cap_data_struct capData[CAP_NUM] = {};
-        for (int j = 0; j < 38; ++j) {
-            if (j == 1) continue;
-            capData[CAP_TO_INDEX((unsigned int)j)].effective |= CAP_TO_MASK((unsigned int)j);
-            capData[CAP_TO_INDEX((unsigned int)j)].permitted |= CAP_TO_MASK((unsigned int)j);
-            capData[CAP_TO_INDEX((unsigned int)j)].inheritable |= CAP_TO_MASK((unsigned int)j);
+        unsigned int caps[37];
+        caps[0] = (unsigned int)0;
+        for(int i = 2; i < 38; ++i) {
+            caps[i-1] = (unsigned int)i;
         }
-        capset(&capHeader, capData);
-
-        for (int i = 0; i <= CAP_LAST_CAP; ++i) {
-            prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, i, 0, 0);
-        }
+        SetCapability(37, caps);
         setcon("u:r:nwebspawn:s0");
         APPSPAWN_LOGI("nwebspawn fork success");
     }
