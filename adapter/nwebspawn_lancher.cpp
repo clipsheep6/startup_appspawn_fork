@@ -47,15 +47,15 @@ static void SetCapability(unsigned int capsCnt, const unsigned int *caps)
 pid_t NwebSpawnLanch(){
     pid_t ret = fork();
     if (ret == 0) {
-        setuid(NWEB_UID);
-        setgid(NWEB_GID);
-        unsigned int caps[37];
+        setcon("u:r:nwebspawn:s0");
+        unsigned int *caps = (unsigned int *)calloc(1, sizeof(unsigned int) * 37);
         caps[0] = (unsigned int)0;
         for(int i = 2; i < 38; ++i) {
             caps[i-1] = (unsigned int)i;
         }
         SetCapability(37, caps);
-        setcon("u:r:nwebspawn:s0");
+        setuid(NWEB_UID);
+        setgid(NWEB_GID);
         APPSPAWN_LOGI("nwebspawn fork success");
     }
     return ret;

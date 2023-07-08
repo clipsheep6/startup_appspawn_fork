@@ -20,6 +20,7 @@
 #include <sys/prctl.h>
 #include <unistd.h>
 #include <sched.h>
+#include <stdlib.h>
 
 
 #ifdef __cplusplus
