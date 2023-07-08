@@ -19,7 +19,7 @@
 #define NWEB_UID 3081
 #define NWEB_GID 3081
 #define CAP_NUM 2
-
+#define BITLEN32 32
 
 // static void SetCapability(unsigned int capsCnt, const unsigned int *caps)
 // {
@@ -58,11 +58,17 @@ pid_t NwebSpawnLanch(){
         struct  __user_cap_header_struct capHeader;
         capHeader.version = _LINUX_CAPABILITY_VERSION_3;
         capHeader.pid = 0;
+        const uint64_t inheriTable = 0x1fffffffff;
+        const uint64_t permitted = 0x1fffffffff;
+        const uint64_t effective = 0x1fffffffff;
         struct __user_cap_data_struct capData[2] = {};
         for (int j = 0; j < 2; ++j) {
-            capData[j].effective = FULL_CAP;
-            capData[j].permitted = FULL_CAP;
-            capData[j].inheritable = FULL_CAP;
+            capData[0].inheritable = (__u32)(inheriTable);
+            capData[1].inheritable = (__u32)(inheriTable >> BITLEN32);
+            capData[0].permitted = (__u32)(permitted);
+            capData[1].permitted = (__u32)(permitted >> BITLEN32);
+            capData[0].effective = (__u32)(effective);
+            capData[1].effective = (__u32)(effective >> BITLEN32);
         }
         capset(&capHeader, capData);
 
