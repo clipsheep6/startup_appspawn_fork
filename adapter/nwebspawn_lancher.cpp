@@ -18,6 +18,7 @@
 #define FULL_CAP 0xFFFFFFFF
 #define NWEB_UID 3081
 #define NWEB_GID 3081
+#define CAP_NUM 2
 
 pid_t NwebSpawnLanch(){
     pid_t ret = fork();
@@ -28,11 +29,12 @@ pid_t NwebSpawnLanch(){
         struct  __user_cap_header_struct capHeader;
         capHeader.version = _LINUX_CAPABILITY_VERSION_3;
         capHeader.pid = 0;
-        struct __user_cap_data_struct capData[2] = {};
-        for (int j = 0; j < 2; ++j) {
-            capData[j].effective = FULL_CAP;
-            capData[j].permitted = FULL_CAP;
-            capData[j].inheritable = FULL_CAP;
+        struct __user_cap_data_struct capData[CAP_NUM] = {};
+        for (int j = 0; j < 38; ++j) {
+            if (j == 1) continue;
+            capData[CAP_TO_INDEX((unsigned int)j)].effective |= CAP_TO_MASK((unsigned int)j);
+            capData[CAP_TO_INDEX((unsigned int)j)].permitted |= CAP_TO_MASK((unsigned int)j);
+            capData[CAP_TO_INDEX((unsigned int)j)].inheritable |= CAP_TO_MASK((unsigned int)j);
         }
         capset(&capHeader, capData);
 
