@@ -66,7 +66,8 @@ static void SockCreateNweb(){
     APPSPAWN_LOGI("5");
     lchown(addr->sun_path, 3081, 3081);
     APPSPAWN_LOGI("6");
-    fchmodat(AT_FDCWD, addr->sun_path, , AT_SYMLINK_NOFOLLOW);
+    mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+    fchmodat(AT_FDCWD, addr->sun_path, mode, AT_SYMLINK_NOFOLLOW);
     APPSPAWN_LOGI("7");
     char buf[16] = {0};
     sprintf_s(buf, sizeof(buf), "%s", fd);
