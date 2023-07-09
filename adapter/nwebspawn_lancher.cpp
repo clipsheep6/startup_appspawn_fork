@@ -70,7 +70,7 @@ static void SockCreateNweb(){
     fchmodat(AT_FDCWD, addr.sun_path, mode, AT_SYMLINK_NOFOLLOW);
     APPSPAWN_LOGI("7");
     char buf[16] = {0};
-    sprintf_s(buf, sizeof(buf), "%s", fd);
+    snprintf_s(buf, sizeof(buf), sizeof(buf)-1, "%d", fd);
     setenv("OHOS_SOCKET_NWebSpawn", buf , 1);
     APPSPAWN_LOGI("8");
     setsockcreatecon(NULL);
