@@ -57,11 +57,10 @@ static void SockCreateNweb(){
     APPSPAWN_LOGI("2");
     int fd = socket(AF_LOCAL,SOCK_STREAM,0);
     APPSPAWN_LOGI("3");
-    struct sockaddr_un *addr;
+    struct sockaddr_un *addr = nullptr;
     (void)memset_s(addr, sizeof(struct sockaddr_un), 0x0, sizeof(struct sockaddr_un));
     APPSPAWN_LOGI("4");
     addr->sun_family = AF_UNIX;
-    size_t addr_len = sizeof(addr->sun_path);
     strcpy(addr->sun_path, "dev/unix/socket/NWebSpawn");
     bind(fd, (struct sockaddr *)addr, sizeof(*addr));
     APPSPAWN_LOGI("5");
