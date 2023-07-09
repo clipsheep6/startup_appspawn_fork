@@ -114,6 +114,10 @@ ohos_unittest("AppSpawn_ut") {
 
   configs = [ "//base/startup/appspawn/test/unittest:utest_config" ]
 
+  deps = [
+    "//third_party/selinux:libselinux",
+  ]
+
   external_deps = [
     "ability_base:want",
     "ability_runtime:app_manager",
