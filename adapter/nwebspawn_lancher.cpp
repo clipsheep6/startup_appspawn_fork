@@ -14,6 +14,12 @@
  */
 #include "nwebspawn_lancher.h"
 #include "appspawn_server.h"
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/uio.h> 
+#include <sys/un.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #define FULL_CAP 0xFFFFFFFF
 #define NWEB_UID 3081
@@ -44,10 +50,37 @@
 //     }
 // }
 
+static void SockCreateNweb(){
+    APPSPAWN_LOGI("1");
+    setsockcreatecon("u:r:nwebspawn:s0");
+    APPSPAWN_LOGI("2");
+    int fd = socket(AF_LOCAL,SOCK_STREAM,0);
+    APPSPAWN_LOGI("3");
+    struct sockaddr_un *addr;
+    (void)memset_s(addr, sizeof(struct sockaddr_un), 0x0, sizeof(struct sockaddr_un));
+    APPSPAWN_LOGI("4");
+    addr->sun_family = AF_UNIX;
+    size_t addr_len = sizeof(addr->sun_path);
+    strcpy(addr->sun_path, "dev/unix/socket/NWebSpawn");
+    bind(fd, (struct sockaddr *)addr, sizeof(*addr));
+    APPSPAWN_LOGI("5");
+    lchown(addr->sun_path, 3081, 3081);
+    APPSPAWN_LOGI("6");
+    fchmodat(AT_FDCWD, addr->sun_path, , AT_SYMLINK_NOFOLLOW);
+    APPSPAWN_LOGI("7");
+    char buf[16] = {0};
+    sprintf_s(buf, sizeof(buf), "%s", fd);
+    setenv("OHOS_SOCKET_NWebSpawn", buf , 1);
+    APPSPAWN_LOGI("8");
+    setsockcreatecon(NULL);
+    APPSPAWN_LOGI("9");
+}
+
 pid_t NwebSpawnLanch(){
     pid_t ret = fork();
     if (ret == 0) {
         sleep(10);
+        SockCreateNweb();
         setcon("u:r:nwebspawn:s0");
         // unsigned int *caps = (unsigned int *)calloc(1, sizeof(unsigned int) * 37);
         // caps[0] = (unsigned int)0;
