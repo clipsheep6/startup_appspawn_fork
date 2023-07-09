@@ -977,7 +977,8 @@ int32_t SandboxUtils::MountAllGroup(const ClientSocket::AppProperty *appProperty
     if (appProperty->dataGroupInfoList.totalLength == 0 || appProperty->dataGroupInfoList.data == nullptr) {
         return ret;
     }
-
+    APPSPAWN_LOGI("MountAllGroup::dataGroupInfoList.length = %{public}lu",static_cast<unsigned long>(appProperty->dataGroupInfoList.totalLength));
+    APPSPAWN_LOGI("MountAllGroup::dataGroupInfoList.data = %{public}s",appProperty->dataGroupInfoList.data);
     nlohmann::json groups = nlohmann::json::parse(appProperty->dataGroupInfoList.data, nullptr, false);
     APPSPAWN_CHECK(!groups.is_discarded() && groups.contains(g_groupList_key_dataGroupId)
         && groups.contains(g_groupList_key_gid) && groups.contains(g_groupList_key_dir), return -1,

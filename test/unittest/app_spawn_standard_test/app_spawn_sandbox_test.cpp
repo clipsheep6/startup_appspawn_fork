@@ -1085,6 +1085,14 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_33, TestSize.Level0)
     const char *srcPath6 = "/data/serivce/el2/100/hmdfs/non_account/test/ohos.test.bundle6";
     std::string path6 = srcPath6;
     OHOS::AppSpawn::SandboxUtils::CheckAndPrepareSrcPath(m_appProperty, path6);
+
+    const char *srcPath7 = "/data/app/el2/100/group/091a68a9-2cc9-4279-8849-28631b598975";
+    std::string path7 = srcPath7;
+    OHOS::AppSpawn::SandboxUtils::CheckAndPrepareSrcPath(m_appProperty, path7);
+
+    const char *srcPath8 = "/data/app/el2/100/group/ce876162-fe69-45d3-aa8e-411a047af564";
+    std::string path8 = srcPath8;
+    OHOS::AppSpawn::SandboxUtils::CheckAndPrepareSrcPath(m_appProperty, path8);
     SUCCEED();
 }
 
@@ -1376,6 +1384,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_39, TestSize.Level0)
     m_appProperty->gidCount = 1;
     m_appProperty->flags |= 0x100;
     m_appProperty->overlayInfo.totalLength = 55;
+    m_appProperty->dataGroupInfoList.totalLength = 0;
     string overlayInfo = "/data/app/el1/bundle/public/com.ohos.demo/feature.hsp|";
     overlayInfo+="/data/app/el1/bundle/public/com.ohos.demo/feature.hsp|";
     m_appProperty->overlayInfo.data = new char[overlayInfo.length() + 1];
@@ -1411,4 +1420,53 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_39, TestSize.Level0)
 
     GTEST_LOG_(INFO) << "App_Spawn_Sandbox_39 end";
 }
+
+/**
+* @tc.name: App_Spawn_Sandbox_40
+* @tc.desc: load group info config SetAppSandboxProperty
+* @tc.type: FUNC
+* @tc.require:issueI7FUPV
+* @tc.author:
+*/
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_40, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_40 start";
+    ClientSocket::AppProperty *m_appProperty = GetAppProperty();
+    m_appProperty->uid = 1100;
+    m_appProperty->gid = 1100;
+    m_appProperty->gidCount = 2;
+    m_appProperty->flags |= 0x100;
+
+    const char *strl1 = "/mnt/sandbox/testBundle";
+    std::string sandboxPrefix = strl1;
+
+    if (strcpy_s(m_appProperty->bundleName, APP_LEN_BUNDLE_NAME, "testBundle") != 0) {
+        GTEST_LOG_(INFO) << "SetAppSandboxProperty set bundleName" << std::endl;
+    }
+
+    { // totalLength is 0
+        m_appProperty->dataGroupInfoList = {};
+        int ret = OHOS::AppSpawn::SandboxUtils::MountAllGroup(m_appProperty, sandboxPrefix);
+        EXPECT_EQ(0, ret);
+    }
+    { // data is nullptr
+        m_appProperty->dataGroupInfoList = {1, nullptr};
+        int ret = OHOS::AppSpawn::SandboxUtils::MountAllGroup(m_appProperty, sandboxPrefix);
+        EXPECT_EQ(0, ret);
+    }
+    { // success
+        char dataGroupInfoListStr[] = "{ \
+            \"dataGroupId\":[\"1234abcd5678efgh\", \"abcduiop1234\"], \
+            \"dir\":[\"/data/app/el2/100/group/091a68a9-2cc9-4279-8849-28631b598975\", \"/data/app/el2/100/group/ce876162-fe69-45d3-aa8e-411a047af564\"], \
+            \"gid\":[\"20100001\", \"20100002\"] \
+        }";
+        m_appProperty->dataGroupInfoList = {strlen(dataGroupInfoListStr), dataGroupInfoListStr};
+        int ret = OHOS::AppSpawn::SandboxUtils::MountAllGroup(m_appProperty, sandboxPrefix);
+        EXPECT_EQ(0, ret);
+    }
+
+    m_appProperty->dataGroupInfoList = {};
+    GTEST_LOG_(INFO) << "App_Spawn_Sandbox_40 end";
+}
+
 } // namespace OHOS
