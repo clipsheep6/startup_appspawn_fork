@@ -575,6 +575,7 @@ static int GetOverlayInfoFromArg(int argc, char *const argv[], AppSpawnClientExt
 
 static int GetDataGroupListInfoFromArg(int argc, char *const argv[], AppSpawnClientExt *client)
 {
+    APPSPAWN_LOGI("GetDataGroupListInfoFromArg::argc %{public}d, argv %{public}s",argc, argv[DIR_LIST_INDEX]);
     client->property.dataGroupInfoList.totalLength = 0;
     client->property.dataGroupInfoList.data = NULL;
     int ret = 0;
