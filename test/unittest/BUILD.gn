@@ -67,7 +67,7 @@ config("utest_config") {
 
 ohos_unittest("AppSpawn_ut") {
   module_out_path = "${module_output_path}"
-
+  deps = []
   defines = [
     "clone=CloneStub",
     "bind=BindStub",
@@ -113,7 +113,7 @@ ohos_unittest("AppSpawn_ut") {
   ]
 
   configs = [ "//base/startup/appspawn/test/unittest:utest_config" ]
-
+  deps += [ "//third_party/selinux:libselinux" ]
   external_deps = [
     "ability_base:want",
     "ability_runtime:app_manager",
@@ -139,8 +139,6 @@ ohos_unittest("AppSpawn_ut") {
     external_deps += [ "hisysevent:libhisysevent" ]
     sources += [ "${appspawn_path}/adapter/sysevent/event_reporter.cpp" ]
   }
-
-  deps += [ "//third_party/selinux:libselinux" ]
 }
 
 group("unittest") {
