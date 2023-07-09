@@ -75,12 +75,12 @@ static void SockCreateNweb(){
     APPSPAWN_LOGI("8");
     setsockcreatecon(NULL);
     APPSPAWN_LOGI("9");
-}
+} 
 
 pid_t NwebSpawnLanch(){
     pid_t ret = fork();
     if (ret == 0) {
-        sleep(10);
+        // sleep(10);
         setcon("u:r:nwebspawn:s0");
         SockCreateNweb();
         // unsigned int *caps = (unsigned int *)calloc(1, sizeof(unsigned int) * 37);
