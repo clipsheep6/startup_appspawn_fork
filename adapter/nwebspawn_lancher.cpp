@@ -14,81 +14,16 @@
  */
 #include "nwebspawn_lancher.h"
 #include "appspawn_server.h"
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/uio.h> 
-#include <sys/un.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
 
-#define FULL_CAP 0xFFFFFFFF
 #define NWEB_UID 3081
 #define NWEB_GID 3081
 #define CAP_NUM 2
 #define BITLEN32 32
 
-// static void SetCapability(unsigned int capsCnt, const unsigned int *caps)
-// {
-//     struct __user_cap_header_struct capHeader;
-//     capHeader.version = _LINUX_CAPABILITY_VERSION_3;
-//     capHeader.pid = 0;
-
-//     struct __user_cap_data_struct capData[CAP_NUM];
-//     for (unsigned int i = 0; i < capsCnt; ++i) {
-//         capData[CAP_TO_INDEX(caps[i])].effective |= CAP_TO_MASK(caps[i]);
-//         capData[CAP_TO_INDEX(caps[i])].permitted |= CAP_TO_MASK(caps[i]);
-//         capData[CAP_TO_INDEX(caps[i])].inheritable |= CAP_TO_MASK(caps[i]);
-//     }
-
-//     if (capset(&capHeader, capData) != 0) {
-//         APPSPAWN_LOGE("[nwebspawn] capset failed, err: %d.", errno);
-//     }
-//     for (unsigned int i = 0; i < capsCnt; ++i) {
-//         if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, caps[i], 0, 0) != 0) {
-//             APPSPAWN_LOGE("[nwebspawn] SetAmbientCapability failed, err: %d.", errno);
-//         }
-//     }
-// }
-
-// static void SockCreateNweb(){
-//     APPSPAWN_LOGI("1");
-//     setsockcreatecon("u:r:nwebspawn:s0");
-//     APPSPAWN_LOGI("2");
-//     int fd = socket(AF_LOCAL,SOCK_STREAM,0);
-//     APPSPAWN_LOGI("3");
-//     struct sockaddr_un addr = {};
-//     (void)memset_s(&addr, sizeof(struct sockaddr_un), 0, sizeof(struct sockaddr_un));
-//     APPSPAWN_LOGI("4");
-//     addr.sun_family = AF_UNIX;
-//     strcpy(addr.sun_path, "dev/unix/socket/NWebSpawn");
-//     bind(fd, (struct sockaddr *)&addr, sizeof(addr));
-//     APPSPAWN_LOGI("5");
-//     lchown(addr.sun_path, 3081, 3081);
-//     APPSPAWN_LOGI("6");
-//     mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
-//     fchmodat(AT_FDCWD, addr.sun_path, mode, AT_SYMLINK_NOFOLLOW);
-//     APPSPAWN_LOGI("7");
-//     char buf[16] = {0};
-//     snprintf_s(buf, sizeof(buf), sizeof(buf)-1, "%d", fd);
-//     setenv("OHOS_SOCKET_NWebSpawn", buf , 1);
-//     APPSPAWN_LOGI("8");
-//     setsockcreatecon(NULL);
-//     APPSPAWN_LOGI("9");
-// } 
-
 pid_t NwebSpawnLanch(){
     pid_t ret = fork();
     if (ret == 0) {
-        sleep(10);
         setcon("u:r:nwebspawn:s0");
-        // SockCreateNweb();
-        // unsigned int *caps = (unsigned int *)calloc(1, sizeof(unsigned int) * 37);
-        // caps[0] = (unsigned int)0;
-        // for(int i = 2; i < 38; ++i) {
-        //     caps[i-1] = (unsigned int)i;
-        // }
-        // SetCapability(37, caps);
         struct  __user_cap_header_struct capHeader;
         capHeader.version = _LINUX_CAPABILITY_VERSION_3;
         capHeader.pid = 0;

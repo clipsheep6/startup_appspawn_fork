@@ -139,6 +139,8 @@ ohos_unittest("AppSpawn_ut") {
     external_deps += [ "hisysevent:libhisysevent" ]
     sources += [ "${appspawn_path}/adapter/sysevent/event_reporter.cpp" ]
   }
+
+  deps += [ "//third_party/selinux:libselinux" ]
 }
 
 group("unittest") {
