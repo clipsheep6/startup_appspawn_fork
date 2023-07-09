@@ -20,6 +20,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #define FULL_CAP 0xFFFFFFFF
 #define NWEB_UID 3081
