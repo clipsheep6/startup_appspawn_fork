@@ -47,31 +47,6 @@ namespace {
     std::map<int32_t, RenderProcessNode> g_renderProcessMap;
     void *g_nwebHandle = nullptr;
     std::mutex g_mutex;
-#if defined(webview_arm64)
-    const std::string RELATIVE_PATH_FOR_HAP = "NWeb.hap!/libs/arm64-v8a";
-#elif defined(webview_x86_64)
-    const std::string RELATIVE_PATH_FOR_HAP = "NWeb.hap!/libs/x86_64";
-#else
-    const std::string RELATIVE_PATH_FOR_HAP = "NWeb.hap!/libs/armeabi-v7a";
-#endif
-    const std::string NWEB_HAP_PATH = "/system/app/com.ohos.nweb/";
-    const std::string NWEB_HAP_PATH_1 = "/system/app/NWeb/";
-}
-
-std::string GetNWebHapLibsPath()
-{
-    std::string libPath;
-    if (access(NWEB_HAP_PATH.c_str(), F_OK) == 0) {
-        libPath = NWEB_HAP_PATH + RELATIVE_PATH_FOR_HAP;
-        APPSPAWN_LOGI("get fix path, %{public}s", libPath.c_str());
-        return libPath;
-    }
-    if (access(NWEB_HAP_PATH_1.c_str(), F_OK) == 0) {
-        libPath = NWEB_HAP_PATH_1 + RELATIVE_PATH_FOR_HAP;
-        APPSPAWN_LOGI("get fix path, %{public}s", libPath.c_str());
-        return libPath;
-    }
-    return "";
 }
 
 #ifdef __MUSL__
@@ -125,8 +100,23 @@ void *LoadWithRelroFile(const std::string &lib, const std::string &nsName,
 
 void LoadExtendLibNweb(AppSpawnContent *content)
 {
-    const std::string loadLibDir = GetNWebHapLibsPath();
     int repeatCount = 0;
+#if defined(webview_arm64)
+    const std::string loadLibDir = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm64";
+#elif defined(webview_x86_64)
+    const std::string loadLibDir = "/data/app/el1/bundle/public/com.ohos.nweb/libs/x86_64";
+#else
+    const std::string loadLibDir = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm";
+#endif
+    const std::string loadWebLibDir = loadLibDir + "/libweb_engine.so";
+    void *fileHandle = dlopen(loadWebLibDir.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    while (fileHandle == nullptr && repeatCount < 60) {
+        sleep(1);
+        fileHandle = dlopen(loadWebLibDir.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        ++repeatCount;
+    }
+    APPSPAWN_LOGI("repeatCount=%{public}d", repeatCount);
+    repeatCount = 0;
 #ifdef __MUSL__
     Dl_namespace dlns;
     dlns_init(&dlns, "nweb_ns");
