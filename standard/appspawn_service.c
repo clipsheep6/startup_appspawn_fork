@@ -93,13 +93,6 @@ APPSPAWN_STATIC void AddAppInfo(pid_t pid, const char *processName)
     APPSPAWN_LOGI("Add %{public}s, pid=%{public}d success", processName, pid);
 }
 
-APPSPAWN_STATIC void ProcessTimer(const TimerHandle taskHandle, void *context)
-{
-    UNUSED(context);
-    APPSPAWN_LOGI("timeout stop appspawn");
-    LE_StopLoop(LE_GetDefaultLoop());
-}
-
 static AppInfo *GetAppInfo(pid_t pid)
 {
     HashNode *node = OH_HashMapGet(g_appSpawnContent->appMap, (const void *)&pid);
@@ -115,13 +108,6 @@ static void RemoveAppInfo(pid_t pid)
     free(appInfo);
     if ((g_appSpawnContent->flags & FLAGS_ON_DEMAND) != FLAGS_ON_DEMAND) {
         return;
-    }
-
-    if (g_appSpawnContent->timer == NULL && OH_HashMapIsEmpty(g_appSpawnContent->appMap) != 0) {
-        APPSPAWN_LOGI("Start time for appspawn");
-        int ret = LE_CreateTimer(LE_GetDefaultLoop(), &g_appSpawnContent->timer, ProcessTimer, NULL);
-        APPSPAWN_CHECK(ret == 0, return, "Failed to create time");
-        LE_StartTimer(LE_GetDefaultLoop(), g_appSpawnContent->timer, APPSPAWN_EXIT_TIME, 1);  // 60000 60s
     }
 }
 
