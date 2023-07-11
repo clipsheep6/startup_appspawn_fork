@@ -93,13 +93,6 @@ APPSPAWN_STATIC void AddAppInfo(pid_t pid, const char *processName)
     APPSPAWN_LOGI("Add %{public}s, pid=%{public}d success", processName, pid);
 }
 
-APPSPAWN_STATIC void ProcessTimer(const TimerHandle taskHandle, void *context)
-{
-    UNUSED(context);
-    APPSPAWN_LOGI("timeout stop appspawn");
-    LE_StopLoop(LE_GetDefaultLoop());
-}
-
 static AppInfo *GetAppInfo(pid_t pid)
 {
     HashNode *node = OH_HashMapGet(g_appSpawnContent->appMap, (const void *)&pid);
