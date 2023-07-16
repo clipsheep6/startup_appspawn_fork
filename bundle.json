@@ -42,7 +42,9 @@
                 "resource_management",
                 "hitrace",
                 "common_event_service",
-                "hisysevent"
+                "hisysevent",
+                "bundle_framework",
+                "samgr"
             ],
 	    "third_party": [
                 "bounds_checking_function",

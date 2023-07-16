@@ -73,13 +73,17 @@ ohos_executable("appspawn") {
     "ability_runtime:app_manager",
     "ability_runtime:appkit_native",
     "ability_runtime:runtime",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
     "config_policy:configpolicy_util",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
+    "ipc:ipc_core",
     "resource_management:global_resmgr",
+    "samgr:samgr_proxy",
   ]
   if (build_selinux) {
     external_deps += [ "selinux_adapter:libhap_restorecon" ]
@@ -141,10 +145,14 @@ ohos_static_library("appspawn_server") {
   external_deps = [
     "access_token:libtoken_setproc",
     "access_token:libtokenid_sdk",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hilog:libhilog",
     "init:libbegetutil",
+    "ipc:ipc_core",
+    "samgr:samgr_proxy",
   ]
 
   if (!defined(global_parts_info) ||

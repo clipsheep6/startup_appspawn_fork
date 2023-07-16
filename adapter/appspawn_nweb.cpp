@@ -34,6 +34,11 @@
 #include "appspawn_service.h"
 #include "appspawn_adapter.h"
 
+#include "bundle_mgr_proxy.h"
+#include "if_system_ability_manager.h"
+#include "iservice_registry.h"
+#include "system_ability_definition.h"
+
 #define DLOPEN_REPEAT_TIMES 10
 
 struct RenderProcessNode {
@@ -44,34 +49,72 @@ struct RenderProcessNode {
 
 namespace {
     constexpr int32_t RENDER_PROCESS_MAX_NUM = 16;
+    constexpr int32_t RETRY_MAX_TIMES = 60;
     std::map<int32_t, RenderProcessNode> g_renderProcessMap;
     void *g_nwebHandle = nullptr;
     std::mutex g_mutex;
 #if defined(webview_arm64)
-    const std::string RELATIVE_PATH_FOR_HAP = "NWeb.hap!/libs/arm64-v8a";
+    const std::string NWEB_DECOMPRESS_PATH = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm64";
 #elif defined(webview_x86_64)
-    const std::string RELATIVE_PATH_FOR_HAP = "NWeb.hap!/libs/x86_64";
+    const std::string NWEB_DECOMPRESS_PATH = "/data/app/el1/bundle/public/com.ohos.nweb/libs/x86_64";
 #else
-    const std::string RELATIVE_PATH_FOR_HAP = "NWeb.hap!/libs/armeabi-v7a";
+    const std::string NWEB_DECOMPRESS_PATH = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm";
 #endif
-    const std::string NWEB_HAP_PATH = "/system/app/com.ohos.nweb/";
-    const std::string NWEB_HAP_PATH_1 = "/system/app/NWeb/";
+    const std::string NWEB_BUNDLE_NAME = "com.ohos.nweb";
+    const std::string NWEB_PACKAGE = "entry";
+
+OHOS::sptr<OHOS::AppExecFwk::BundleMgrProxy> GetBundleMgrProxy()
+{
+    auto systemAbilityMgr = OHOS::SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (!systemAbilityMgr) {
+        APPSPAWN_LOGW("fail to get system ability mgr.");
+        return nullptr;
+    }
+    auto remoteObject = systemAbilityMgr->GetSystemAbility(OHOS::BUNDLE_MGR_SERVICE_SYS_ABILITY_ID);
+    if (!remoteObject) {
+        APPSPAWN_LOGW("fail to get bundle manager proxy.");
+        return nullptr;
+    }
+    APPSPAWN_LOGI("get bundle manager proxy success.");
+    return OHOS::iface_cast<OHOS::AppExecFwk::BundleMgrProxy>(remoteObject);
 }
 
 std::string GetNWebHapLibsPath()
 {
-    std::string libPath;
-    if (access(NWEB_HAP_PATH.c_str(), F_OK) == 0) {
-        libPath = NWEB_HAP_PATH + RELATIVE_PATH_FOR_HAP;
-        APPSPAWN_LOGI("get fix path, %{public}s", libPath.c_str());
-        return libPath;
+    OHOS::sptr<OHOS::AppExecFwk::BundleMgrProxy> bundleMgrProxy = nullptr;
+    int retryCnt = 0;
+    do {
+        bundleMgrProxy = GetBundleMgrProxy();
+        if (bundleMgrProxy) {
+            break;
+        }
+        retryCnt++;
+        APPSPAWN_LOGI("get bundle manager proxy failed in a loop, retry time = %{public}d.", retryCnt);
+    } while (retryCnt < RETRY_MAX_TIMES);
+
+    if (!bundleMgrProxy) {
+        APPSPAWN_LOGE("get bundle manager proxy failed, retry times = %{public}d.", retryCnt);
+        return "";
     }
-    if (access(NWEB_HAP_PATH_1.c_str(), F_OK) == 0) {
-        libPath = NWEB_HAP_PATH_1 + RELATIVE_PATH_FOR_HAP;
-        APPSPAWN_LOGI("get fix path, %{public}s", libPath.c_str());
-        return libPath;
+
+    OHOS::AppExecFwk::AbilityInfo abilityInfo;
+    OHOS::AppExecFwk::HapModuleInfo nwebHapInfo;
+    abilityInfo.bundleName = NWEB_BUNDLE_NAME;
+    abilityInfo.package = NWEB_PACKAGE;
+    bool ret = bundleMgrProxy->GetHapModuleInfo(abilityInfo, nwebHapInfo);
+    if (!ret) {
+        APPSPAWN_LOGE("get nweb hap info from bundle manager proxy failed.");
+        return "";
     }
-    return "";
+
+    if (!nwebHapInfo.compressNativeLibs) {
+        return NWEB_DECOMPRESS_PATH;
+    }
+
+    std::string libPath = nwebHapInfo.hapPath;
+    libPath += (libPath.back() == '/') ? nwebHapInfo.nativeLibraryPath : "/" + nwebHapInfo.nativeLibraryPath;
+    return libPath;
+}
 }
 
 #ifdef __MUSL__
@@ -126,6 +169,7 @@ void *LoadWithRelroFile(const std::string &lib, const std::string &nsName,
 void LoadExtendLibNweb(AppSpawnContent *content)
 {
     const std::string loadLibDir = GetNWebHapLibsPath();
+    APPSPAWN_LOGI("load nweb lib, path = %{public}s.", loadLibDir.c_str());
     int repeatCount = 0;
 #ifdef __MUSL__
     Dl_namespace dlns;
