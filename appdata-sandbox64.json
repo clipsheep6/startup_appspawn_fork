@@ -19,6 +19,11 @@
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
+                    "src-path" : "/vendor/etc",
+                    "sandbox-path" : "/vendor/etc",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }, {
                     "src-path" : "/vendor/asan/lib64",
                     "sandbox-path" : "/vendor/asan/lib64",
                     "sandbox-flags" : [ "bind", "rec" ],
