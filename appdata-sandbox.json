@@ -533,6 +533,18 @@
                   "sandbox-flags": [ "bind", "rec" ]
                 }
               ]
+            },
+            {
+              "sandbox-switch": "ON",
+              "sandbox-root": "/mnt/sandbox/<PackageName>",
+              "gids": [1008],
+              "mount-paths": [
+                {
+                  "src-path": "/data/app/el2/<currentUserId>/database/com.ohos.medialibrary.medialibrarydata/",
+                  "sandbox-path": "/data/storage/el2/database/share",
+                  "sandbox-flags": [ "bind", "rec" ]
+                }
+              ]
             }
         ]
       }
