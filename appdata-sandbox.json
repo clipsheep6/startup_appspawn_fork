@@ -525,20 +525,13 @@
             {
               "sandbox-switch": "ON",
               "sandbox-root": "/mnt/sandbox/<PackageName>",
-              "gids": [1008],
+              "gids": [1008, 3012],
               "mount-paths": [
                 {
                   "src-path": "/storage/media/<currentUserId>/local/files/.thumbs/Photo",
                   "sandbox-path": "/storage/Share/.thumbs/Photo",
                   "sandbox-flags": [ "bind", "rec" ]
-                }
-              ]
-            },
-            {
-              "sandbox-switch": "ON",
-              "sandbox-root": "/mnt/sandbox/<PackageName>",
-              "gids": [1008],
-              "mount-paths": [
+                },
                 {
                   "src-path": "/data/app/el2/<currentUserId>/database/com.ohos.medialibrary.medialibrarydata/",
                   "sandbox-path": "/data/storage/el2/database/share",
