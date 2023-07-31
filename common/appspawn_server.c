@@ -79,6 +79,54 @@ void exit(int code)
     abort();
 }
 #endif
+#ifndef OHOS_LITE
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include "appspawn_service.h"
+
+static const char *g_extBundleName = "com.example.myapplication";
+static const int FUSE_OPTIONS_MAX_LEN = 128;
+static const int FUSE_FD = 15303;
+int AppFuseMount(const char *bundleName)
+{
+    if (bundleName == NULL) {
+        APPSPAWN_LOGE("bundleName = %p", bundleName);
+        return 0;
+    }
+    static int  g_test_ctl = 0;
+    if (g_test_ctl) {
+        APPSPAWN_LOGE("g_test_ctl = %d", g_test_ctl);
+        return 0;
+    }
+    if (strcmp(g_extBundleName, bundleName) == 0) {
+        APPSPAWN_LOGE("start test flow, uid:%d, gid:%d", getuid(), getgid());
+        mkdir("/mnt/sandbox/com.example.myapplication/system/data/", 0777);
+        mkdir("/mnt/fuse", 0777);
+        int fd = open("/dev/fuse", O_RDWR | O_CLOEXEC);
+        APPSPAWN_CHECK(fd != -1, return 0, ", fd:%d, open /dev/fuse failed, errno is %d", fd, errno);
+        char options[FUSE_OPTIONS_MAX_LEN];
+        snprintf(options, sizeof(options), "fd=%i,rootmode=40000,user_id=%u,group_id=%u",
+            fd, getuid(), getgid());
+        const char *srcTestPath = "appFuse";
+        const char *targetTestPath = "/mnt/fuse";
+        const char *testFstype = "fuse.appFuse";
+        int ret = 0;
+        ret = mount(srcTestPath, targetTestPath, testFstype, 6, options);
+        APPSPAWN_CHECK(ret == 0, return 0, " ext test failed, bind mount %s to %s failed %d",
+            srcTestPath, targetTestPath, errno);
+
+        close(FUSE_FD);
+        ret = dup2(fd, FUSE_FD);
+        APPSPAWN_CHECK_ONLY_LOG(ret != 0 ,"dup fuse fd %d failed, errno is %d", fd, errno);
+        g_test_ctl = 1;
+    }
+    return 0;
+}
+#endif
 
 int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
 {
@@ -87,7 +135,12 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
     if (content->handleInternetPermission != NULL) {
         content->handleInternetPermission(client);
     }
-
+    #ifndef OHOS_LITE
+    AppSpawnClientExt *appProperty = (AppSpawnClientExt *)(client);
+    APPSPAWN_LOGE(", bundleName:%s, processName:%s",
+        appProperty->property.bundleName, appProperty->property.processName);
+    AppFuseMount(appProperty->property.bundleName);
+    #endif
     if (content->setAppSandbox) {
         ret = content->setAppSandbox(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
