@@ -678,7 +678,7 @@ static int CreateAppSpawnServer(AppSpawnContentExt *appSpawnContent, const char 
     info.baseInfo.close = NULL;
     info.incommingConnect = OnConnection;
 
-    MakeDir(SOCKET_DIR, S_IRWXU);
+    mkdir(SOCKET_DIR, S_IRWXU);
     ret = LE_CreateStreamServer(LE_GetDefaultLoop(), &appSpawnContent->server, &info);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to create socket for %{public}s", path);
     // create socket
