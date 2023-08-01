@@ -662,6 +662,27 @@ static int CreateHashForApp(AppSpawnContentExt *appSpawnContent)
     return 0;
 }
 
+int MakeDir(const char *dir, mode_t mode)
+{
+    char subdir[128] = {0};
+
+    for (int i = 0; i < 128; ++i) {
+        subdir[i] = dir[i];
+        if (dir[i] = '\0') break;
+        if (dir[i] = '/') {
+            subdir[i] = '\0';
+            if (strlen(subdir) > 0 && access(subdir, 0) != 0) {
+                if (mkdir(subdir, mode) == -1) {
+                    return -1;
+                }
+            }
+            subdir[i] = '/';
+        }
+    }
+
+    return 0;
+}
+
 static int CreateAppSpawnServer(AppSpawnContentExt *appSpawnContent, const char *socketName)
 {
     char path[128] = {0};  // 128 max path
@@ -678,7 +699,7 @@ static int CreateAppSpawnServer(AppSpawnContentExt *appSpawnContent, const char 
     info.baseInfo.close = NULL;
     info.incommingConnect = OnConnection;
 
-    mkdir(SOCKET_DIR, S_IRWXU);
+    MakeDir(SOCKET_DIR, 0777);
     ret = LE_CreateStreamServer(LE_GetDefaultLoop(), &appSpawnContent->server, &info);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to create socket for %{public}s", path);
     // create socket
