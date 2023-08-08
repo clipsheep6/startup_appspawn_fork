@@ -233,6 +233,18 @@
         }]
     }],
     "individual" : [{
+        "com.huawei.hmos.migrateclient" : [{
+            "sandbox-switch": "ON",
+            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "mount-paths" : [{
+                    "src-path" : "/data/hmos4/update/migrate/",
+                    "sandbox-path" : "/data/update/migrate/",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "true"
+                }
+            ],
+            "symbol-links" : []
+        }],
         "com.huawei.ohos.hiviewx" : [{
             "sandbox-switch": "ON",
             "sandbox-root" : "/mnt/sandbox/<PackageName>",
