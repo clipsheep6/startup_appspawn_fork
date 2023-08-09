@@ -83,7 +83,7 @@ int SetSelinuxCon(struct AppSpawnContent_ *content, AppSpawnClient *client)
         if (ret != 0) {
             APPSPAWN_LOGE("AppSpawnServer::Failed to hap domain set context, errno = %{public}d %{public}s",
                 errno, appProperty->property.apl);
-            return -1;
+            return -10086;
         } else {
             APPSPAWN_LOGV("AppSpawnServer::Success to hap domain set context, ret = %{public}d", ret);
         }
