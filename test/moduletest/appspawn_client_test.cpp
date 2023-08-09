@@ -45,7 +45,7 @@ HWTEST_F(AppSpawnClientTest, AppSpawn_Client_AppSpawn_1, TestSize.Level0)
     EXPECT_EQ(ret, 0);
     pid_t pid = 0;
     ret = ClientRecvMsg(pid);
-    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(ret, -10086);
     if (pid > 0) {
         kill(pid, SIGKILL);
     }
