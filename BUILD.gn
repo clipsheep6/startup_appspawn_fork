@@ -44,7 +44,7 @@ config("appspawn_config") {
 }
 
 ohos_executable("appspawn") {
-  defines = []
+  defines = [ "APPSPAWN_TEST" ]
   if (target_cpu == "arm64") {
     defines += [ "webview_arm64" ]
   }

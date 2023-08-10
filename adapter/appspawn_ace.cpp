@@ -37,6 +37,7 @@ static const bool DEFAULT_PRELOAD_VALUE = true;
 #endif
 static const std::string PRELOAD_JSON_CONFIG("/appspawn_preload.json");
 
+#ifndef APPSPAWN_TEST
 static void GetPreloadModules(const std::string &configName, std::set<std::string> &modules)
 {
     // Preload napi module
@@ -58,10 +59,11 @@ static void GetPreloadModules(const std::string &configName, std::set<std::strin
         }
     }
 }
+#endif
 
+#ifndef APPSPAWN_TEST
 static void PreloadModule(void)
 {
-#ifndef APPSPAWN_TEST
     OHOS::AbilityRuntime::Runtime::Options options;
     options.lang = OHOS::AbilityRuntime::Runtime::Language::JS;
     options.loadAce = true;
@@ -72,7 +74,6 @@ static void PreloadModule(void)
         APPSPAWN_LOGE("LoadExtendLib: Failed to create runtime");
         return;
     }
-#endif
     std::set<std::string> modules = {};
     CfgFiles *files = GetCfgFiles("etc/appspawn");
     if (files == nullptr) {
@@ -91,15 +92,12 @@ static void PreloadModule(void)
     FreeCfgFiles(files);
     for (std::string moduleName : modules) {
         APPSPAWN_LOGI("moduleName %{public}s", moduleName.c_str());
-#ifndef APPSPAWN_TEST
         runtime->PreloadSystemModule(moduleName);
-#endif
     }
-#ifndef APPSPAWN_TEST
     // Save preloaded runtime
     OHOS::AbilityRuntime::Runtime::SavePreloaded(std::move(runtime));
-#endif
 }
+#endif
 
 void LoadExtendLib(AppSpawnContent *content)
 {
