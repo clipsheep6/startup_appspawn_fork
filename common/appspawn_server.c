@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
 #undef _GNU_SOURCE
 #define _GNU_SOURCE
 #include <sched.h>
@@ -89,7 +90,9 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
     }
 
     if (content->setAppSandbox) {
+        time_t start = time(NULL);
         ret = content->setAppSandbox(content, client);
+        APPSPAWN_LOGI("setAppSandbox time  %{public}lld", time(NULL) - start);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to set app sandbox");
     }

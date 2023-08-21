@@ -24,6 +24,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <sched.h>
+#include <time.h>
+
 
 #include "init_hashmap.h"
 #include "init_socket.h"
@@ -505,7 +507,9 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
     }
     appProperty->pid = 0;
     CheckColdAppEnabled(appProperty);
+    time_t start = time(NULL);
     int ret = HandleMessage(appProperty);
+    APPSPAWN_LOGI("HandleMessage time  %{public}lld", time(NULL) - start);
     if (ret != 0) {
         LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
     }
