@@ -437,6 +437,8 @@ APPSPAWN_STATIC bool ReceiveRequestData(const TaskHandle taskHandle, AppSpawnCli
     APPSPAWN_CHECK(buffer != NULL && buffLen > 0, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return false, "ReceiveRequestData: Invalid buff");
 
+    uint32_t initBuffLen = buffLen;
+
     // 1. receive AppParamter
     if (client->property.hspList.totalLength == 0) {
         APPSPAWN_CHECK(buffLen >= sizeof(client->property), LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
@@ -464,6 +466,19 @@ APPSPAWN_STATIC bool ReceiveRequestData(const TaskHandle taskHandle, AppSpawnCli
         APPSPAWN_LOGV("ReceiveRequestData: waiting for hspList");
         return false;
     }
+
+    APPSPAWN_LOGI("ReceiveRequestData: hsp.totalLength=%{public}u", client->property.hspList.totalLength);
+    APPSPAWN_LOGI("ReceiveRequestData: hsp.savedLength=%{public}u", client->property.hspList.savedLength);
+    APPSPAWN_LOGI("ReceiveRequestData: overlay.totalLength=%{public}u", client->property.overlayInfo.totalLength);
+    APPSPAWN_LOGI("ReceiveRequestData: group.totalLength=%{public}u", client->property.dataGroupInfoList.totalLength);
+    APPSPAWN_LOGI("ReceiveRequestData: sizeof(client->property)=%{public}u", sizeof(client->property));
+    uint32_t totalExpectDataSize = client->property.hspList.totalLength - client->property.hspList.savedLength +
+        client->property.overlayInfo.totalLength + client->property.dataGroupInfoList.totalLength;
+    uint32_t totalDataSize = initBuffLen - sizeof(client->property);
+    // check if expected data length equals to real data length
+    APPSPAWN_CHECK(totalExpectDataSize == totalDataSize, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
+        return false, "ReceiveRequestData: Invalid buffLen %{public}u", buffLen);
+
     return ReceiveRequestDataToHspList(taskHandle, client, buffer, buffLen);
 }
 
