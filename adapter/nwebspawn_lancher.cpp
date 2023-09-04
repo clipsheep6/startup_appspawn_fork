@@ -22,6 +22,9 @@
 
 pid_t NwebSpawnLanch()
 {
+    const char *pubName = "OHOS_SOCKET_NWebSocket";
+    const char *val = getenv(pubName);
+    setenv(pubName, val, 1);
     pid_t ret = fork();
     if (ret == 0) {
         setcon("u:r:nwebspawn:s0");
