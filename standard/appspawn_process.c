@@ -593,7 +593,7 @@ void SetContentFunction(AppSpawnContent *content)
     content->setFileDescriptors = SetFileDescriptors;
     content->coldStartApp = ColdStartApp;
     content->setAsanEnabledEnv = SetAsanEnabledEnv;
-    if (content.isNweb) {
+    if (content->isNweb) {
         content->getWrapBundleNameValue = NULL;
     } else {
 #ifdef ASAN_DETECTOR
