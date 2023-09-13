@@ -291,6 +291,11 @@
                     "sandbox-path" : "/mnt/data/<currentUserId>",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
+                }, {
+                    "src-path" : "/mnt/data/external",
+                    "sandbox-path" : "/mnt/data/external",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
                 }
             ],
             "symbol-links" : []
