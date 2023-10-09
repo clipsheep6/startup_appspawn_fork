@@ -18,17 +18,25 @@
 
 #include <string>
 #include <set>
+#include <mutex>
+
 namespace OHOS {
 namespace AppSpawn {
 class AppspawnMountPermission {
 public:
+    static void LoadPermissionNames(void);
     static std::set<std::string> GetMountPermissionList();
     static uint32_t GenPermissionCode(const std::set<std::string> &permissions);
     static bool IsMountPermission(uint32_t code, const std::string permission);
 private:
     static bool g_IsLoad;
+    static std::set<std::string> appSandboxPremission_;
+    static std::string appPermissionPath;
+    static std::string g_permission;
+    static std::mutex g_mutex;
 };
 } // AppSpawn
 } // OHOS
+
 #endif
 
