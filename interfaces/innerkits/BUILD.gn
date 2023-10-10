@@ -38,6 +38,7 @@ ohos_static_library("appspawn_socket_client") {
   deps = []
   external_deps = [
     "c_utils:utils",
+    "config_policy:configpolicy_util",
     "hilog:libhilog",
     "init:libbegetutil",
   ]

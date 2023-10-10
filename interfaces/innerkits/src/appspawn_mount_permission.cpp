@@ -15,47 +15,68 @@
 #include <fstream>
 #include <sstream>
 #include "appspawn_mount_permission.h"
-#include "nlohmann/json.hpp"
-#include "appspawn_server.h"  
+#include "appspawn_server.h"
+#include "config_policy_utils.h"
 
 namespace OHOS {
 namespace AppSpawn {
-std::string AppspawnMountPermission::appPermissionPath("/system/etc/sandbox/appdata-sandbox.json");
-std::string AppspawnMountPermission::g_permission("permission");
+namespace {
+const std::string APP_PERMISSION_PATH("/appdata-sandbox.json");
+const std::string PERMISSION_FIELD("permission");
+}
 std::set<std::string> AppspawnMountPermission::appSandboxPremission_ = {};
-bool AppspawnMountPermission::g_IsLoad = false;
-std::mutex AppspawnMountPermission::g_mutex;
+bool AppspawnMountPermission::isLoad_ = false;
+std::mutex AppspawnMountPermission::mutex_;
+
+void AppspawnMountPermission::GetPermissionFromJson(
+    std::set<std::string> &appSandboxPremissionSet, nlohmann::json &appSandboxPremission)
+{
+    auto item = appSandboxPremission.find(PERMISSION_FIELD);
+    if (item != appSandboxPremission.end()) {
+        for (auto config : appSandboxPremission[PERMISSION_FIELD]) {
+            for (auto it : config.items()) {
+            APPSPAWN_LOGI("LoadPermissionNames %{public}s", it.key().c_str());
+            appSandboxPremissionSet.insert(it.key());
+            }
+        }
+    } else {
+        APPSPAWN_LOGI("permission does not exist");
+    }
+}
 
 void AppspawnMountPermission::LoadPermissionNames(void)
 {
-    std::lock_guard<std::mutex> lock(g_mutex);
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (isLoad_) {
+        return;
+    }
+    appSandboxPremission_.clear();
     nlohmann::json appSandboxPremission;
-    std::string path = appPermissionPath;
-    APPSPAWN_LOGI("LoadPermissionNames %{public}s", path.c_str());
-	std::ifstream jsonFileStream;
-    jsonFileStream.open(path.c_str(), std::ios::in);
-    APPSPAWN_CHECK_ONLY_EXPER(jsonFileStream.is_open(), return);
-    std::ostringstream buf;
-    char ch;
-    while (buf && jsonFileStream.get(ch)) {
-        buf.put(ch);
-    }
-    jsonFileStream.close();
-    appSandboxPremission = nlohmann::json::parse(buf.str(), nullptr, false);
-    APPSPAWN_CHECK(appSandboxPremission.is_structured(), return, "Parse json file into jsonObj failed.");
-    for (auto config : appSandboxPremission[g_permission]) {
-        for (auto it : config.items()) {
-            APPSPAWN_LOGI("LoadPermissionNames %{public}s", it.key().c_str());
-            appSandboxPremission_.insert(it.key());
+    CfgFiles *files = GetCfgFiles("etc/sandbox");
+    for (int i = 0; (files != nullptr) && (i < MAX_CFG_POLICY_DIRS_CNT); ++i) {
+        if (files->paths[i] == nullptr) {
+            continue;
         }
+        std::string path = files->paths[i];
+        path += APP_PERMISSION_PATH;
+        APPSPAWN_LOGI("LoadAppSandboxConfig %{public}s", path.c_str());
+        std::ifstream jsonFileStream;
+        jsonFileStream.open(path.c_str(), std::ios::in);
+        APPSPAWN_CHECK_ONLY_EXPER(jsonFileStream.is_open(), return);
+        std::stringstream buffer;
+        buffer << jsonFileStream.rdbuf();
+        appSandboxPremission = nlohmann::json::parse(buffer.str(), nullptr, false);
+        APPSPAWN_CHECK(appSandboxPremission.is_structured(), return, "Parse json file into jsonObj failed.");
+        GetPermissionFromJson(appSandboxPremission_, appSandboxPremission);
     }
+    FreeCfgFiles(files);
     APPSPAWN_LOGI("LoadPermissionNames size: %{public}lu", static_cast<unsigned long>(appSandboxPremission_.size()));
-    g_IsLoad = true;
+    isLoad_ = true;
 }
 
 std::set<std::string> AppspawnMountPermission::GetMountPermissionList()
 {
-    if(!g_IsLoad){
+    if (!isLoad_) {
         LoadPermissionNames();
         APPSPAWN_LOGI("GetMountPermissionList LoadPermissionNames");
     }
