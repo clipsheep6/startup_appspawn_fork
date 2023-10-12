@@ -73,8 +73,12 @@ int main(int argc, char *const argv[])
         int isRet = memset_s(argv[0], argvSize, 0, (size_t)argvSize) != EOK;
         APPSPAWN_CHECK(!isRet, return -EINVAL, "Failed to memset argv[0]");
         if (pid == 0) {
+            APPSPAWN_CHECK(argvSize > strlen(NWEBSPAWN_SERVER_NAME), return -1, 
+                "The length of NWEBSPAWN_SERVER_NAME: %{public}s exceeds argvSize", NWEBSPAWN_SERVER_NAME);
             isRet = strncpy_s(argv[0], argvSize, NWEBSPAWN_SERVER_NAME, strlen(NWEBSPAWN_SERVER_NAME)) != EOK;
         } else {
+            APPSPAWN_CHECK(argvSize > strlen(APPSPAWN_SERVER_NAME), return -1, 
+                "The length of APPSPAWN_SERVER_NAME: %{public}s exceeds argvSize", APPSPAWN_SERVER_NAME);
             isRet = strncpy_s(argv[0], argvSize, APPSPAWN_SERVER_NAME, strlen(APPSPAWN_SERVER_NAME)) != EOK;
         }
         APPSPAWN_CHECK(!isRet, return -EINVAL, "strncpy_s appspawn server name error: %{public}d", errno);
