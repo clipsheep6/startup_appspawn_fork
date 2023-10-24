@@ -21,14 +21,18 @@
         "ram": "~1843KB",
         "deps": {
             "components": [
-                "hilog_lite",
-                "samgr_lite",
-                "ipc_single",
                 "kv_store",
                 "ability_lite",
-                "ace_engine_lite",
+                "innerkits",
+                "ipc",
+                "kv_store",
+                "samgr",
+                "frameworks",
+                "ui_lite",
+                "graphic_utils_lite",
                 "surface_lite",
-                "ui_lite"
+                "featured",
+                "app_spawn_lite_test"    
             ],
             "third_party": [
                 "cJSON",
