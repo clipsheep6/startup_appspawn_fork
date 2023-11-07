@@ -440,7 +440,7 @@ void SandboxUtils::ConvertSandboxName(const ClientSocket::AppProperty *appProper
                                      std::string &sandboxPath)
 {
     if (sandboxPath.find(std::to_string(appProperty->uid / UID_BASE)) != std::string::npos) {
-        if (section.compare("permission") == 0 && appProperty->mountPermissionFlags == FILE_CROSS_APP_MODE) {
+        if ((section.compare("permission") == 0 || section.compare("individual")) && GetProductDeviceType()) {
             std::string shortName;
             OHOS::AccountSA::OsAccountManager::GetOsAccountShortName(shortName);
             sandboxPath = replace_all(sandboxPath, std::to_string(appProperty->uid / UID_BASE), shortName.c_str());
@@ -1182,7 +1182,7 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
     }
 
     if (GetProductDeviceType()) {
-        appProperty->mountPermissionFlags |= FILE_CROSS_APP_MODE;
+        appProperty->mountPermissionFlags = FILE_CROSS_APP_MODE;
     }
 
     // check app sandbox switch
