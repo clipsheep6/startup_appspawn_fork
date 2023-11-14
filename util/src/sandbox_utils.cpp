@@ -88,6 +88,7 @@ namespace {
     const char *g_commonPrefix = "common";
     const char *g_destMode = "dest-mode";
     const char *g_fsType = "fs-type";
+    const char *g_options = "options";
     const char *g_linkName = "link-name";
     const char *g_mountPrefix = "mount-paths";
     const char *g_gidPrefix = "gids";
@@ -199,14 +200,16 @@ int32_t SandboxUtils::DoAppSandboxMountOnce(const char *originPath, const char *
     int ret = 0;
     // to mount fs and bind mount files or directory
     ret = mount(originPath, destinationPath, fsType, mountFlags, options);
+    APPSPAWN_LOGI("PC-TEST ret is: %{public}d, bind mount %{public}s to %{public}s fstype %{public}s options %{public}s",
+        ret, originPath, destinationPath, fsType, options);
     if (ret != 0) {
         APPSPAWN_LOGI("errno is: %{public}d, bind mount %{public}s to %{public}s", errno, originPath,
                       destinationPath);
         return ret;
     }
-    ret = mount(NULL, destinationPath, NULL, mountSharedFlag, NULL);
-    APPSPAWN_CHECK(ret == 0, return ret,
-        "errno is: %{public}d, private mount to %{public}s failed", errno, destinationPath);
+    // ret = mount(NULL, destinationPath, NULL, mountSharedFlag, NULL);
+    // APPSPAWN_CHECK(ret == 0, return ret,
+    //     "errno is: %{public}d, private mount to %{public}s failed", errno, destinationPath);
 #endif
     return 0;
 }
@@ -471,7 +474,7 @@ int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProper
     nlohmann::json mountPoints = appConfig[g_mountPrefix];
     std::string sandboxRoot = GetSbxPathByConfig(appProperty, appConfig);
     unsigned int mountPointSize = mountPoints.size();
-
+    APPSPAWN_LOGI("PC-TEST: mountPointSize-%{public}u",  mountPointSize);
     for (unsigned int i = 0; i < mountPointSize; i++) {
         nlohmann::json mntPoint = mountPoints[i];
 
@@ -487,12 +490,20 @@ int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProper
         std::string fsType = (mntPoint.find(g_fsType) != mntPoint.end()) ? mntPoint[g_fsType].get<std::string>() : "";
         const char* fsTypePoint = fsType.empty() ? nullptr : fsType.c_str();
         mode_t mountSharedFlag = (mntPoint.find(g_mountSharedFlag) != mntPoint.end()) ? MS_SHARED : MS_SLAVE;
+        std::string options =(mntPoint.find(g_options) != mntPoint.end()) ? mntPoint[g_options].get<std::string>() : "";
+        const char* mountOptions = options.empty() ? nullptr : options.c_str();
 
         /* if app mount failed for special strategy, we need deal with common mount config */
         int ret = HandleSpecialAppMount(appProperty, srcPath, sandboxPath, fsType, mountFlags);
+        APPSPAWN_LOGI("PC-TEST: srcPath-%{public}s, sandboxPath-%{public}s, fsTypePoint-%{public}s, "
+            "mountFlags-%{public}lu, mountSharedFlag-%{public}u ret %{public}d", srcPath.c_str(), sandboxPath.c_str(), fsTypePoint, mountFlags, mountSharedFlag, ret);
         if (ret < 0) {
             ret = DoAppSandboxMountOnce(srcPath.c_str(), sandboxPath.c_str(), fsTypePoint,
-                                        mountFlags, nullptr, mountSharedFlag);
+                                        // mountFlags, nullptr, mountSharedFlag);
+                                        mountFlags, mountOptions, mountSharedFlag);
+            APPSPAWN_LOGI("PC-TEST: srcPath-%{public}s, sandboxPath-%{public}s, fsTypePoint-%{public}s, "
+            "mountFlags-%{public}lu, mountSharedFlag-%{public}u, options-%{public}s. ret %{public}d", srcPath.c_str(), sandboxPath.c_str(),
+                fsTypePoint, mountFlags, mountSharedFlag, mountOptions, ret);
         }
         if (ret) {
             std::string actionStatus = g_statusCheck;
