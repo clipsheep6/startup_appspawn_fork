@@ -72,6 +72,7 @@ typedef struct AppSpawnContent_ {
     void (*notifyResToParent)(struct AppSpawnContent_ *content, AppSpawnClient *client, int result);
     void (*runChildProcessor)(struct AppSpawnContent_ *content, AppSpawnClient *client);
     int (*setAsanEnabledEnv)(struct AppSpawnContent_ *content, AppSpawnClient *client);
+    int (*setGwpAsanEnabled)(struct AppSpawnContent_ *content, AppSpawnClient *client);
     // for cold start
     int (*coldStartApp)(struct AppSpawnContent_ *content, AppSpawnClient *client);
     int (*getWrapBundleNameValue)(struct AppSpawnContent_ *content, AppSpawnClient *client);
