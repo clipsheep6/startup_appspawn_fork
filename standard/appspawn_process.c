@@ -75,6 +75,26 @@ static int SetAsanEnabledEnv(struct AppSpawnContent_ *content, AppSpawnClient *c
     return 0;
 }
 
+// Gwp-Asan
+static int SetGwpAsanEnabled(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+    AppParameter *appProperty = &((AppSpawnClientExt *)client)->property;
+    char Debugvalus[10] = {0};
+    int ret = GetParameter("const.security.developermode.state", "", Debugvalus, sizeof(Debugvalus));
+    if (ret>0 && (strcmp(Debugvalus, "ture") == 0)){
+       if ((appProperty->flags & GWP_ENABLED_FORCE) != 0) {
+
+#if defined (__aarch64__) || defined (__x86_64__)
+        setenv("LD_PRELOAD", "/system/lib64/libclang_rt.scudo.so", 1);
+#else
+        setenv("LD_PRELOAD", "/system/lib/libclang_rt.scudo.so", 1);
+#endif
+        client->flags |= APP_COLD_START;
+       }
+    }
+    return 0;
+}
+
 static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *client,
     char *longProcName, uint32_t longProcNameLen)
 {
@@ -199,6 +219,7 @@ static void ClearEnvironment(AppSpawnContent *content, AppSpawnClient *client)
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
     close(appProperty->fd[0]);
     SetAsanEnabledEnv(content, client);
+    SetGwpAsanEnabled(content, client);
 
     ResetParamSecurityLabel();
     return;
@@ -268,12 +289,16 @@ static int SetUidGid(struct AppSpawnContent_ *content, AppSpawnClient *client)
             "setuid(%{public}u) failed: %{public}d", appProperty->property.uid, errno);
     }
 #endif
-    if ((appProperty->property.flags & APP_DEBUGGABLE) != 0) {
+    char Debugvalus[10] = {0};
+    int ret = GetParameter("const.security.developermode.state", "", Debugvalus, sizeof(Debugvalus));
+    if (ret>0 && (strcmp(Debugvalus, "ture") == 0)){
+       if ((appProperty->property.flags & APP_DEBUGGABLE) != 0) {
         APPSPAWN_LOGV("Debuggable app");
         setenv("HAP_DEBUGGABLE", "true", 1);
         if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) {
             APPSPAWN_LOGE("Failed to set app dumpable: %{public}s", strerror(errno));
         }
+       }
     }
     return 0;
 }
@@ -593,6 +618,7 @@ void SetContentFunction(AppSpawnContent *content)
     content->setFileDescriptors = SetFileDescriptors;
     content->coldStartApp = ColdStartApp;
     content->setAsanEnabledEnv = SetAsanEnabledEnv;
+    content->setGwpAsanEnabled = SetGwpAsanEnabled;
     if (content->isNweb) {
         content->getWrapBundleNameValue = NULL;
     } else {
