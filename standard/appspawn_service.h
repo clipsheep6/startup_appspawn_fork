@@ -32,7 +32,7 @@ extern "C" {
 #else
 #define APPSPAWN_STATIC static
 #endif
-
+extern bool may_init_gwp_asan(bool force_init);
 #define APP_HASH_BUTT 32
 #define FLAGS_ON_DEMAND 0x1
 #define FLAGS_MODE_COLD 0x2
