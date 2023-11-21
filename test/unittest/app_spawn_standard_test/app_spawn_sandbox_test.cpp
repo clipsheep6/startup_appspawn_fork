@@ -198,7 +198,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_10, TestSize.Level0)
         \"common\":[{ \
             \"top-sandbox-switch\": \"ON\", \
             \"app-base\":[{ \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                 \"mount-paths\" : [{ \
                     \"src-path\" : \"/config\", \
                     \"sandbox-path\" : \"/config\", \
@@ -324,7 +324,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_13, TestSize.Level0)
     std::string mJsconfig = "{ \
         \"common\":[{ \
             \"app-base\":[{ \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                 \"mount-paths\" : [{ \
                     \"src-path\" : \"/config\", \
                     \"sandbox-path\" : \"\", \
@@ -431,7 +431,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_15, TestSize.Level0)
     std::string mJsconfig = "{ \
         \"common\":[{ \
             \"app-base\":[{ \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName_index>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName_index>\", \
                 \"mount-paths\" : [{ \
                     \"src-path\" : \"/config\", \
                     \"sandbox-path\" : \"\", \
@@ -485,7 +485,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_16, TestSize.Level0)
     std::string mJsconfig = "{ \
         \"common\":[{ \
             \"app-base\":[{ \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                 \"symbol-links\" : [] \
             }] \
         }], \
@@ -532,7 +532,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_17, TestSize.Level0)
     std::string mJsconfig = "{ \
         \"common\":[{ \
             \"app-base\":[{ \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                 \"symbol-links\" : [] \
             }] \
         }], \
@@ -552,7 +552,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_18, TestSize.Level0)
     GTEST_LOG_(INFO) << "App_Spawn_Sandbox_18 start";
     std::string mJsconfig1 = "{ \
         \"sandbox-switch\": \"ON\", \
-        \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\" \
+        \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\" \
     }";
     nlohmann::json j_config1 = nlohmann::json::parse(mJsconfig1.c_str());
     bool ret = OHOS::AppSpawn::SandboxUtils::GetSbxSwitchStatusByConfig(j_config1);
@@ -560,14 +560,14 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_18, TestSize.Level0)
 
     std::string mJsconfig2 = "{ \
         \"sandbox-switch\": \"OFF\", \
-        \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\" \
+        \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\" \
     }";
     nlohmann::json j_config2 = nlohmann::json::parse(mJsconfig2.c_str());
     ret = OHOS::AppSpawn::SandboxUtils::GetSbxSwitchStatusByConfig(j_config2);
     EXPECT_FALSE(ret);
 
     std::string mJsconfig3 = "{ \
-        \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\" \
+        \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\" \
     }";
     nlohmann::json j_config3 = nlohmann::json::parse(mJsconfig3.c_str());
     ret = OHOS::AppSpawn::SandboxUtils::GetSbxSwitchStatusByConfig(j_config3);
@@ -613,7 +613,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_20, TestSize.Level0)
         \"common\":[{ \
             \"top-sandbox-switch\": \"OFF\", \
             \"app-base\":[{ \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                 \"symbol-links\" : [] \
             }] \
         }], \
@@ -641,14 +641,14 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_20, TestSize.Level0)
     std::string mJsconfig1 = "{ \
         \"common\":[{ \
             \"app-base\":[{ \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                 \"symbol-links\" : [] \
             }] \
         }], \
         \"individual\": [{ \
             \"test.bundle.name\" : [{ \
                 \"sandbox-switch\": \"OFF\", \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\" \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\" \
             }] \
         }] \
     }";
@@ -721,7 +721,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_24, TestSize.Level0)
     std::string mJsconfig1 = "{ \
         \"common\":[{ \
             \"app-base\":[{ \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                 \"symbol-links\" : [{ \
                     \"target-name\" : \"/system/etc\", \
                     \"link-name\" : \"/etc\", \
@@ -733,7 +733,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_24, TestSize.Level0)
                 }] \
             }], \
             \"app-resources\" : [{ \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                 \"mount-paths\" : [], \
                 \"symbol-links\" : [] \
             }] \
@@ -746,7 +746,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_24, TestSize.Level0)
     std::string mJsconfig2 = "{ \
         \"common\":[{ \
             \"app-base\":[{ \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                 \"symbol-links\" : [{ \
                     \"target-name\" : \"/data/test123\", \
                     \"link-name\" : \"/test123\", \
@@ -772,7 +772,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_25, TestSize.Level0)
         \"common\":[{ \
             \"app-resources\" : [{ \
                 \"flags\": \"DLP_MANAGER\", \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                 \"mount-paths\" : [{ \
                     \"src-path\" : \"/data/app/el2/<currentUserId>/base/<PackageName_index>\", \
                     \"sandbox-path\" : \"/data/storage/el2/base\", \
@@ -805,7 +805,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_26, TestSize.Level0)
     std::string mJsconfig2 = "{ \
         \"common\":[{ \
             \"app-base\" : [{ \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                 \"mount-paths\" : [{ \
                     \"src-path\" : \"/data/app/el2/<currentUserId>/base/<PackageName_index>\", \
                     \"sandbox-path\" : \"/data/storage/el2/base\", \
@@ -838,7 +838,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_27, TestSize.Level0)
         \"individual\": [{ \
             \"test.bundle.name\" : [{ \
                 \"sandbox-switch\": \"OFF\", \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\" \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\" \
             }] \
         }] \
     }";
@@ -850,7 +850,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_27, TestSize.Level0)
         \"individual\": [{ \
             \"test.bundle.name\" : [{ \
                 \"flags-point\" : [{ \
-                    \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                    \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                     \"mount-paths\" : [{ \
                         \"src-path\" : \"/data/app/el2/<currentUserId>/base/<PackageName_index>\", \
                         \"sandbox-path\" : \"/data/storage/el2/base\", \
@@ -859,7 +859,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_27, TestSize.Level0)
                     }]\
                 }], \
                 \"sandbox-switch\": \"OFF\", \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\" \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\" \
             }] \
         }] \
     }";
@@ -881,7 +881,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_28, TestSize.Level0)
             \"test.bundle.name\" : [{ \
                 \"flags-point\" : [{ \
                     \"flags\": \"DLP_MANAGER\", \
-                    \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                    \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                     \"mount-paths\" : [{ \
                         \"src-path\" : \"/data/app/el2/<currentUserId>/base/<PackageName_index>\", \
                         \"sandbox-path\" : \"/data/storage/el2/base\", \
@@ -890,7 +890,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_28, TestSize.Level0)
                     }] \
                 }], \
                 \"sandbox-switch\": \"OFF\", \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\" \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\" \
             }] \
         }] \
     }";
@@ -912,7 +912,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_29, TestSize.Level0)
             \"test.bundle.name\" : [{ \
                 \"flags-point\" : [{ \
                     \"flags\": \"DLP_MANAGER\", \
-                    \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+                    \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
                     \"mount-paths\" : [{ \
                         \"src-path\" : \"/data/app/el2/<currentUserId>/base/<PackageName_index>\", \
                         \"sandbox-path\" : \"/data/storage/el2/base\", \
@@ -921,7 +921,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_29, TestSize.Level0)
                     }] \
                 }], \
                 \"sandbox-switch\": \"OFF\", \
-                \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\" \
+                \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\" \
             }] \
         }] \
     }";
@@ -941,7 +941,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_30, TestSize.Level0)
 
     std::string mJsconfig3 = "{ \
         \"flags\": \"DLP_MANAGER\", \
-        \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+        \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
         \"mount-paths\" : [{ \
             \"src-path\" : \"/data/app/el2/<currentUserId>/base/database/<PackageName>\", \
             \"sandbox-path\" : \"/data/storage/el2/base\", \
@@ -962,7 +962,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_30, TestSize.Level0)
 
     std::string mJsconfig4 = "{ \
         \"flags\": \"DLP_MANAGER\", \
-        \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+        \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
         \"mount-paths\" : [{ \
             \"src-path\" : \"/data/app/el2/<currentUserId>/database/<PackageName>\", \
             \"sandbox-path\" : \"/data/storage/el2/base\", \
@@ -984,7 +984,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_31, TestSize.Level0)
     }
     std::string mJsconfig1 = "{ \
         \"flags\": \"DLP_TEST\", \
-        \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+        \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
         \"mount-paths\" : [{ \
             \"src-path\" : \"/data/app/el2/<currentUserId>/base/<PackageName_index>\", \
             \"sandbox-path\" : \"/data/storage/el2/base\", \
@@ -998,7 +998,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_31, TestSize.Level0)
 
     std::string mJsconfig2 = "{ \
         \"flags\": \"DLP_TEST\", \
-        \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\", \
+        \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\", \
         \"mount-paths\" : [{ \
             \"src-path\" : \"/data/app/el2/<currentUserId>/base/<PackageName_index>\", \
             \"sandbox-path\" : \"/data/storage/el2/base\", \
@@ -1289,7 +1289,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_38, TestSize.Level0)
         \"individual\": [ {                  \
             \"com.example.deviceinfo\" : [{   \
             \"sandbox-switch\": \"ON\",     \
-            \"sandbox-root\" : \"/mnt/sandbox/<PackageName>\",  \
+            \"sandbox-root\" : \"/mnt/sandbox/<currentUserId>/<PackageName>\",  \
             \"mount-paths\" : [{    \
                     \"src-path\" : \"/data/app/el1/bundle/public/\",    \
                     \"sandbox-path\" : \"/data/accounts/account_0/applications/2222222\",   \

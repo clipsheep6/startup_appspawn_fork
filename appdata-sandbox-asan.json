@@ -2,7 +2,7 @@
     "common" : [{
         "top-sandbox-switch": "ON",
         "app-base" : [{
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [ {
                     "src-path" : "/system/asan/lib",
                     "sandbox-path" : "/system/asan/lib",
