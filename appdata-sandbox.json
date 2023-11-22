@@ -2,7 +2,7 @@
     "common" : [{
         "top-sandbox-switch": "ON",
         "app-base" : [{
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/config",
                     "sandbox-path" : "/config",
@@ -175,7 +175,7 @@
             ]
         }],
         "app-resources" : [{
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/data/app/el1/bundle/public/com.ohos.nweb",
                     "sandbox-path" : "/data/storage/el1/bundle/nweb",
@@ -210,7 +210,7 @@
             ],
         "flags-point" : [{
                     "flags": "DLP_MANAGER",
-                    "sandbox-root" : "/mnt/sandbox/<PackageName>",
+                    "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
                     "mount-paths" : [{
                         "src-path" : "/data/app/el2/<currentUserId>/base/<PackageName_index>",
                         "sandbox-path" : "/data/storage/el2/base",
@@ -239,7 +239,7 @@
                     }
                     ]}, {
                         "flags": "START_FLAGS_BACKUP",
-                        "sandbox-root" : "/mnt/sandbox/<PackageName>",
+                        "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
                         "mount-paths": [{
                             "src-path": "/data/service/el2/<currentUserId>/backup/bundles/<PackageName>",
                             "sandbox-path": "/data/storage/el2/backup",
@@ -255,7 +255,7 @@
     "individual" : [{
         "com.huawei.ohos.hiviewx" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/data/log/",
                     "sandbox-path" : "/data/log/",
@@ -267,7 +267,7 @@
         }],
         "com.huawei.ohos.betaclub" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/data/log/",
                     "sandbox-path" : "/data/log/",
@@ -279,7 +279,7 @@
         }],
         "com.ohos.medialibrary.medialibrarydata" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/storage/media/<currentUserId>",
                     "sandbox-path" : "/storage/media",
@@ -312,7 +312,7 @@
         }],
         "com.ohos.launcher" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/data/app/el1/bundle/public/",
                     "sandbox-path" : "/data/bundles/",
@@ -324,7 +324,7 @@
         }],
         "com.ohos.systemui" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/data/app/el1/bundle/public/",
                     "sandbox-path" : "/data/app/el1/bundle/public/",
@@ -336,7 +336,7 @@
         }],
         "com.ohos.sceneboard" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/data/app/el1/bundle/public/",
                     "sandbox-path" : "/data/app/el1/bundle/public/",
@@ -348,7 +348,7 @@
         }],
         "com.ohos.permissionmanager" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/data/app/el1/bundle/public/",
                     "sandbox-path" : "/data/bundles/",
@@ -360,7 +360,7 @@
         }],
         "com.ohos.certmanager" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/data/app/el1/bundle/public/",
                     "sandbox-path" : "/data/bundles/",
@@ -372,7 +372,7 @@
         }],
         "com.ohos.amsdialog" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/data/app/el1/bundle/public/",
                     "sandbox-path" : "/data/bundles/",
@@ -384,11 +384,11 @@
         }],
         "ohos.samples.ecg" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [],
             "flags-point" : [{
                     "flags": "NOT_SUPPORTED",
-                    "sandbox-root" : "/mnt/sandbox/<PackageName>",
+                    "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
                     "mount-paths" : [{
                         "src-path" : "/data/app/el1/bundle/public/",
                         "sandbox-path" : "/data/bundles/",
@@ -397,7 +397,7 @@
                         }
                     ]}, {
                     "flags": "START_FLAGS_BACKUP",
-                    "sandbox-root" : "/mnt/sandbox/<PackageName>",
+                    "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
                     "mount-paths" : [{
                         "src-path" : "/data/app/el1/bundle/public/",
                         "sandbox-path" : "/data/bundles/",
@@ -410,7 +410,7 @@
         }],
         "com.ohos.dlpmanager" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "sandbox-shared" : "true",
             "mount-paths" : [{
                     "src-path" : "/mnt/data/<currentUserId>",
@@ -430,7 +430,7 @@
         }],
         "com.ohos.UserFile.ExternalFileManager" : [{
             "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/data/service/el1/public/storage_daemon/share/public",
                     "sandbox-path" : "/data/storage/el1/bundle/storage_daemon",
@@ -447,7 +447,7 @@
             "symbol-links" : []
         }],
         "__internal__.com.ohos.render" : [{
-            "sandbox-root" : "/mnt/sandbox/com.ohos.render/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/com.ohos.render/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/dev",
                     "sandbox-path" : "/dev",
@@ -526,7 +526,7 @@
             ],
             "flags-point" : [{
                 "flags": "DLP_MANAGER",
-                "sandbox-root" : "/mnt/sandbox/com.ohos.render/<PackageName>",
+                "sandbox-root" : "/mnt/sandbox/<currentUserId>/com.ohos.render/<PackageName>",
                 "mount-paths" : [],
                 "symbol-links" : [{}]
             }]
@@ -535,7 +535,7 @@
     "permission":[{
         "ohos.permission.FILE_ACCESS_MANAGER":[{
             "sandbox-switch": "ON",
-            "sandbox-root": "/mnt/sandbox/<PackageName>",
+            "sandbox-root": "/mnt/sandbox/<currentUserId>/<PackageName>",
             "gids": [1006, 1008],
             "mount-paths": [{
                     "src-path": "/data/service/el1/public/storage_daemon/share/public",
@@ -572,7 +572,7 @@
         }],
         "ohos.permission.READ_IMAGEVIDEO":[{
             "sandbox-switch": "ON",
-            "sandbox-root": "/mnt/sandbox/<PackageName>",
+            "sandbox-root": "/mnt/sandbox/<currentUserId>/<PackageName>",
             "gids": [1008],
             "mount-paths": [{
                     "src-path": "/storage/media/<currentUserId>/local/files/.thumbs/Photo",
@@ -583,7 +583,7 @@
         }],
         "ohos.permission.FILE_CROSS_APP":[{
             "sandbox-switch": "ON",
-            "sandbox-root": "/mnt/sandbox/<PackageName>",
+            "sandbox-root": "/mnt/sandbox/<currentUserId>/<PackageName>",
             "gids": [1009],
             "mount-paths": [{
                     "src-path": "/storage/media/<currentUserId>/local/files/Docs",
@@ -629,7 +629,7 @@
         }],
         "ohos.permission.ACTIVATE_THEME_PACKAGE":[{
             "sandbox-switch": "ON",
-            "sandbox-root": "/mnt/sandbox/<PackageName>",
+            "sandbox-root": "/mnt/sandbox/<currentUserId>/<PackageName>",
             "gids": [3817],
             "mount-paths": [{
                     "src-path": "/data/service/el1/public/themes/<currentUserId>/a/system",
@@ -645,7 +645,7 @@
         }],
         "ohos.permission.GET_WALLPAPER":[{
             "sandbox-switch": "ON",
-            "sandbox-root": "/mnt/sandbox/<PackageName>",
+            "sandbox-root": "/mnt/sandbox/<currentUserId>/<PackageName>",
             "gids": [3817],
             "mount-paths": [{
                     "src-path": "/data/service/el1/public/wallpaper/<currentUserId>",
@@ -656,7 +656,7 @@
         }],
 	"ohos.permission.ACCESS_BUNDLE_DIR":[{
             "sandbox-switch": "ON",
-            "sandbox-root": "/mnt/sandbox/<PackageName>",
+            "sandbox-root": "/mnt/sandbox/<currentUserId>/<PackageName>",
             "gids": [1010],
             "mount-paths": [{
                     "src-path": "/data/app/el1/bundle/public",
