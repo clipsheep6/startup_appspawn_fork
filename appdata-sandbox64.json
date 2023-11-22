@@ -2,7 +2,7 @@
     "common" : [{
         "top-sandbox-switch": "ON",
         "app-base" : [{
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/system/lib64",
                     "sandbox-path" : "/system/lib64",
@@ -33,7 +33,7 @@
             ]
         }],
         "app-resources" : [{
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/<PackageName>",
             "mount-paths" : [],
             "flags-point" : [],
             "symbol-links" : []
@@ -41,7 +41,7 @@
     }],
     "individual" : [{
         "__internal__.com.ohos.render" : [{
-            "sandbox-root" : "/mnt/sandbox/com.ohos.render/<PackageName>",
+            "sandbox-root" : "/mnt/sandbox/<currentUserId>/com.ohos.render/<PackageName>",
             "mount-paths" : [{
                     "src-path" : "/system/lib64",
                     "sandbox-path" : "/system/lib64",
@@ -62,7 +62,7 @@
             ],
             "flags-point" : [{
                 "flags": "DLP_MANAGER",
-                "sandbox-root" : "/mnt/sandbox/com.ohos.render/<PackageName>",
+                "sandbox-root" : "/mnt/sandbox/<currentUserId>/com.ohos.render/<PackageName>",
                 "mount-paths" : [],
                 "symbol-links" : [{}]
             }]
