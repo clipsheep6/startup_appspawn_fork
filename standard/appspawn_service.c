@@ -45,6 +45,8 @@
 #endif
 
 static AppSpawnContentExt *g_appSpawnContent = NULL;
+static const uint32_t EXTRAINFO_TOTAL_LENGTH_MAX = 5 * 1024;
+
 static int AppInfoHashNodeCompare(const HashNode *node1, const HashNode *node2)
 {
     AppInfo *testNode1 = HASHMAP_ENTRY(node1, AppInfo, node);
@@ -353,7 +355,7 @@ static bool ReceiveRequestDataToExtraInfo(const TaskHandle taskHandle, AppSpawnC
 {
     if (client->property.extraInfo.totalLength) {
         ExtraInfo *extraInfo = &client->property.extraInfo;
-        if (extraInfo->savedLength == 0) {
+        if (extraInfo->savedLength == 0 && extraInfo->totalLength < EXTRAINFO_TOTAL_LENGTH_MAX) {
             extraInfo->data = (char *)malloc(extraInfo->totalLength);
             APPSPAWN_CHECK(extraInfo->data != NULL, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
                 return false, "ReceiveRequestData: malloc extraInfo failed %{public}u", extraInfo->totalLength);
