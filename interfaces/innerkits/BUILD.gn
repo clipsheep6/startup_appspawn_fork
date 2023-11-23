@@ -20,6 +20,12 @@ config("exported_header_files") {
 }
 
 ohos_static_library("appspawn_socket_client") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
   if (!defined(ohos_lite)) {
     sources = [
       "client/appspawn_socket.cpp",
