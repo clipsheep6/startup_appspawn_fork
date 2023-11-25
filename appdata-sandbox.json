@@ -300,18 +300,6 @@
             ],
             "symbol-links" : []
         }],
-        "com.example.text" : [{
-            "sandbox-switch": "ON",
-            "sandbox-root" : "/mnt/sandbox/<PackageName>",
-            "mount-paths" : [{
-                    "src-path": "/mnt/docs/100",
-                    "sandbox-path": "/storage/Users/currentUser",
-                    "sandbox-flags": [ "bind", "rec" ],
-                    "check-action-status": "false"
-                }
-            ],
-            "symbol-links" : []
-        }],
         "com.ohos.launcher" : [{
             "sandbox-switch": "ON",
             "sandbox-root" : "/mnt/sandbox/<PackageName>",
