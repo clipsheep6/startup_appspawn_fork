@@ -69,6 +69,23 @@ static int SetAsanEnabledEnv(struct AppSpawnContent_ *content, AppSpawnClient *c
     }
     return 0;
 }
+ //GWP-Asan
+static int SetGwpAsanEnabled(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+    AppParameter *appProperty = &((AppSpawnClientExt *)client)->property;
+    char debugValue[10] = {0};
+    int ret = GetParameter("const.security.developermode.state", "", debugValue, sizeof(debugValue));
+    if (ret > 0 && (strcmp(debugValue, "true") == 0)) {
+        if ((appProperty->flags & APP_GWP_ENABLED_FORCE) != 0) {
+            APPSPAWN_LOGI("SetGwpAsanEnabled with APP_GWP_ENABLED_FORCE")
+            may_init_gwp_asan(true);
+            client->flags |= APP_COLD_START;
+        } else if ((appProperty->flags & APP_GWP_ENABLED_NORMAL) != 0) {
+            APPSPAWN_LOGI("SetGwpAsanEnabled with APP_GWP_ENABLED_NORMAL")
+        }
+    }
+    return 0;
+}
 
 static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *client,
     char *longProcName, uint32_t longProcNameLen)
@@ -194,6 +211,7 @@ static void ClearEnvironment(AppSpawnContent *content, AppSpawnClient *client)
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
     close(appProperty->fd[0]);
     SetAsanEnabledEnv(content, client);
+    SetGwpAsanEnabled(content, client);
 
     ResetParamSecurityLabel();
     return;
@@ -245,11 +263,15 @@ static int SetUidGid(struct AppSpawnContent_ *content, AppSpawnClient *client)
     APPSPAWN_CHECK(!isRet, return -errno,
             "setuid(%{public}u) failed: %{public}d", appProperty->property.uid, errno);
 #endif
-    if ((appProperty->property.flags & APP_DEBUGGABLE) != 0) {
-        APPSPAWN_LOGV("Debuggable app");
-        setenv("HAP_DEBUGGABLE", "true", 1);
-        if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) {
-            APPSPAWN_LOGE("Failed to set app dumpable: %{public}s", strerror(errno));
+    char debugValue[10] = {0};
+    int ret = GetParameter("const.security.developermode.state", "", debugValue, sizeof(debugValue));
+    if (ret > 0 && (strcmp(debugValue, "true") == 0)) {
+        if ((appProperty->property.flags & APP_DEBUGGABLE) != 0) {
+            APPSPAWN_LOGV("Debuggable app");
+            setenv("HAP_DEBUGGABLE", "true", 1);
+            if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) {
+                APPSPAWN_LOGE("Failed to set app dumpable: %{public}s", strerror(errno));
+            }
         }
     }
     return 0;
@@ -589,6 +611,7 @@ void SetContentFunction(AppSpawnContent *content)
     content->setFileDescriptors = SetFileDescriptors;
     content->coldStartApp = ColdStartApp;
     content->setAsanEnabledEnv = SetAsanEnabledEnv;
+    content->setGwpAsanEnabled = SetGwpAsanEnabled;
     if (content->isNweb) {
         content->getWrapBundleNameValue = NULL;
     } else {
