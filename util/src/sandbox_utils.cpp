@@ -85,6 +85,7 @@ namespace {
     const char *g_commonPrefix = "common";
     const char *g_destMode = "dest-mode";
     const char *g_fsType = "fs-type";
+    const char *g_options = "options";
     const char *g_linkName = "link-name";
     const char *g_mountPrefix = "mount-paths";
     const char *g_gidPrefix = "gids";
@@ -441,12 +442,14 @@ int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProper
         std::string fsType = (mntPoint.find(g_fsType) != mntPoint.end()) ? mntPoint[g_fsType].get<std::string>() : "";
         const char* fsTypePoint = fsType.empty() ? nullptr : fsType.c_str();
         mode_t mountSharedFlag = (mntPoint.find(g_mountSharedFlag) != mntPoint.end()) ? MS_SHARED : MS_SLAVE;
+        std::string options =(mntPoint.find(g_options) != mntPoint.end()) ? mntPoint[g_options].get<std::string>() : "";
+        const char* mountOptions = options.empty() ? nullptr : options.c_str();
 
         /* if app mount failed for special strategy, we need deal with common mount config */
         int ret = HandleSpecialAppMount(appProperty, srcPath, sandboxPath, fsType, mountFlags);
         if (ret < 0) {
             ret = DoAppSandboxMountOnce(srcPath.c_str(), sandboxPath.c_str(), fsTypePoint,
-                                        mountFlags, nullptr, mountSharedFlag);
+                                        mountFlags, mountOptions, mountSharedFlag);
         }
         if (ret) {
             std::string actionStatus = g_statusCheck;
