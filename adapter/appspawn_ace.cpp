@@ -19,14 +19,23 @@
 #include "appspawn_service.h"
 #include "config_policy_utils.h"
 #include "hitrace_meter.h"
-#include "js_runtime.h"
 #include "parameters.h"
-#include "runtime.h"
 #include "json_utils.h"
-#include "resource_manager.h"
 #include "foundation/ability/ability_runtime/interfaces/kits/native/appkit/app/main_thread.h"
 #include "syspara/parameter.h"
+
+#ifdef ABILITY_RUNTIME_ENABLE
+#include "js_runtime.h"
+#include "runtime.h"
+#endif
+
+#ifdef ACE_ENGINE_ENABLE
 #include "ace_forward_compatibility.h"
+#endif
+
+#ifdef RESOURCE_MANAGEMENT_ENABLE
+#include "resource_manager.h"
+#endif
 
 using namespace OHOS::AppSpawn;
 using namespace OHOS::Global;
@@ -63,16 +72,18 @@ static void GetPreloadModules(const std::string &configName, std::set<std::strin
 static void PreloadModule(void)
 {
 #ifndef APPSPAWN_TEST
-    OHOS::AbilityRuntime::Runtime::Options options;
-    options.lang = OHOS::AbilityRuntime::Runtime::Language::JS;
-    options.loadAce = true;
-    options.preload = true;
+    #ifdef ABILITY_RUNTIME_ENABLE
+        OHOS::AbilityRuntime::Runtime::Options options;
+        options.lang = OHOS::AbilityRuntime::Runtime::Language::JS;
+        options.loadAce = true;
+        options.preload = true;
 
-    auto runtime = OHOS::AbilityRuntime::Runtime::Create(options);
-    if (!runtime) {
-        APPSPAWN_LOGE("LoadExtendLib: Failed to create runtime");
-        return;
-    }
+        auto runtime = OHOS::AbilityRuntime::Runtime::Create(options);
+        if (!runtime) {
+            APPSPAWN_LOGE("LoadExtendLib: Failed to create runtime");
+            return;
+        }
+    #endif
 #endif
     std::set<std::string> modules = {};
     CfgFiles *files = GetCfgFiles("etc/appspawn");
@@ -104,11 +115,13 @@ static void PreloadModule(void)
 
 void LoadExtendLib(AppSpawnContent *content)
 {
+#ifdef ACE_ENGINE_ENABLE
     const char* acelibdir = OHOS::Ace::AceForwardCompatibility::GetAceLibName();
     APPSPAWN_LOGI("LoadExtendLib: Start calling dlopen acelibdir.");
     void *aceAbilityLib = dlopen(acelibdir, RTLD_NOW | RTLD_LOCAL);
     APPSPAWN_CHECK(aceAbilityLib != nullptr, return, "Fail to dlopen %{public}s, [%{public}s]", acelibdir, dlerror());
     APPSPAWN_LOGI("LoadExtendLib: Success to dlopen %{public}s", acelibdir);
+#endif
 
 #ifndef APPSPAWN_TEST
     OHOS::AppExecFwk::MainThread::PreloadExtensionPlugin();
@@ -127,8 +140,10 @@ void LoadExtendLib(AppSpawnContent *content)
 #endif
     SetTraceDisabled(false);
 
+#ifdef RESOURCE_MANAGEMENT_ENABLE
     Resource::ResourceManager *systemResMgr = Resource::GetSystemResourceManagerNoSandBox();
     APPSPAWN_CHECK(systemResMgr != nullptr, return, "Fail to get system resource manager");
+#endif
     APPSPAWN_LOGI("LoadExtendLib: End preload JS VM");
 }
 

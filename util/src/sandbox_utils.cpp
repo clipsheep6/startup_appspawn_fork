@@ -34,7 +34,10 @@
 #include "appspawn_service.h"
 #include "appspawn_mount_permission.h"
 #include "parameter.h"
+
+#ifdef OS_ACCOUNT_ENABLE
 #include "os_account_manager.h"
+#endif
 
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
@@ -265,6 +268,50 @@ string SandboxUtils::ConvertToRealPath(const ClientSocket::AppProperty *appPrope
     }
 
     return path;
+}
+
+std::string SandboxUtils::ConvertToRealPathWithPermission(const ClientSocket::AppProperty *appProperty,
+                                                          std::string sandboxRoot)
+{
+    if (sandboxRoot.find(g_packageNameIndex) != std::string::npos) {
+        std::string bundleNameIndex = appProperty->bundleName;
+        bundleNameIndex = bundleNameIndex + "_" + std::to_string(appProperty->bundleIndex);
+        sandboxRoot = replace_all(sandboxRoot, g_packageNameIndex, bundleNameIndex);
+    }
+
+    if (sandboxRoot.find(g_packageName) != std::string::npos) {
+        sandboxRoot = replace_all(sandboxRoot, g_packageName, appProperty->bundleName);
+    }
+
+    if (sandboxRoot.find(g_userId) != std::string::npos) {
+        #ifdef OS_ACCOUNT_ENABLE
+        if (deviceTypeEnable_) {
+            std::string userName = "";
+            ErrCode errCode = OHOS::AccountSA::OsAccountManager::GetOsAccountShortName(userName);
+            if (errCode != ERR_OK) {
+                APPSPAWN_LOGE("get short name failed, errCode: %{public}d", errCode);
+                return userName;
+            }
+            sandboxRoot = replace_all(sandboxRoot, g_userId, userName.c_str());
+        #endif
+        } else {
+            sandboxRoot = replace_all(sandboxRoot, g_userId, "currentUser");
+        }
+    }
+    return sandboxRoot;
+}
+
+bool SandboxUtils::GetSandboxDacOverrideEnable(nlohmann::json &config)
+{
+    std::string dacOverrideSensitive = "";
+    if (config.find(g_dacOverrideSensitive) == config.end()) {
+        return false;
+    }
+    dacOverrideSensitive = config[g_dacOverrideSensitive].get<std::string>();
+    if (dacOverrideSensitive.compare(g_statusCheck) == 0) {
+        return true;
+    }
+    return false;
 }
 
 std::string SandboxUtils::GetSbxPathByConfig(const ClientSocket::AppProperty *appProperty, nlohmann::json &config)
