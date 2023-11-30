@@ -609,7 +609,7 @@
         "ohos.permission.FILE_CROSS_APP":[{
             "sandbox-switch": "ON",
             "sandbox-root": "/mnt/sandbox/<PackageName>",
-            "gids": [1009],
+            "gids": [1006],
             "mount-paths": [{
                     "src-path": "/storage/media/<currentUserId>/local/files/Docs",
                     "sandbox-path": "/storage/Users/<currentUserId>",
@@ -633,12 +633,16 @@
                 {
                     "src-path": "/data/app/el1/<currentUserId>/base",
                     "sandbox-path": "/storage/Users/<currentUserId>/appdata/el1",
-                    "sandbox-flags": [ "bind", "rec" ]
+                    "sandbox-flags": [ "MS_NODEV", "MS_RDONLY" ],
+                    "fs-type": "sharefs",
+                    "options": "support_pc=1"
                 },
                 {
                     "src-path": "/data/app/el2/<currentUserId>/base",
                     "sandbox-path": "/storage/Users/<currentUserId>/appdata/el2",
-                    "sandbox-flags": [ "bind", "rec" ]
+                    "sandbox-flags": [ "MS_NODEV", "MS_RDONLY" ],
+                    "fs-type": "sharefs",
+                    "options": "support_pc=1"
                 },
                 {
                     "src-path": "/data/service/el1/public/storage_daemon/share/public",
