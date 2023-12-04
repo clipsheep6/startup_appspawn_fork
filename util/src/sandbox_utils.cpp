@@ -96,6 +96,9 @@ namespace {
     const char *g_srcPath = "src-path";
     const char *g_sandBoxPath = "sandbox-path";
     const char *g_sandBoxFlags = "sandbox-flags";
+    const char *g_sandBoxFlagsCustomized = "sandbox-flags-customized";
+    const char *g_sandBoxOptions = "options";
+    const char *g_dacOverrideSensitive = "dac-override-sensitive";
     const char *g_sandBoxShared = "sandbox-shared";
     const char *g_sandBoxSwitchPrefix = "sandbox-switch";
     const char *g_symlinkPrefix = "symbol-links";
@@ -116,6 +119,7 @@ namespace {
 }
 
 std::vector<nlohmann::json> SandboxUtils::appSandboxConfig_ = {};
+bool SandboxUtils::deviceTypeEnable_ = false;
 
 void SandboxUtils::StoreJsonConfig(nlohmann::json &appSandboxConfig)
 {
@@ -437,18 +441,42 @@ static uint32_t ConvertFlagStr(const std::string &flagStr)
     return 0;
 }
 
-void SandboxUtils::ConvertSandboxName(const ClientSocket::AppProperty *appProperty, const std::string &section,
-                                      std::string &sandboxPath)
+unsigned long SandboxUtils::GetSandboxMountFlags(nlohmann::json &config)
 {
-    if (sandboxPath.find(std::to_string(appProperty->uid / UID_BASE)) != std::string::npos) {
-        if (section.compare("permission") == 0 && GetProductDeviceType()) {
-            std::string shortName;
-            OHOS::AccountSA::OsAccountManager::GetOsAccountShortName(shortName);
-            sandboxPath = replace_all(sandboxPath, std::to_string(appProperty->uid / UID_BASE), shortName.c_str());
-        } else {
-            sandboxPath = replace_all(sandboxPath, g_userId, std::to_string(appProperty->uid / UID_BASE));
-        }
+    unsigned long mountFlags;
+    if (GetSandboxDacOverrideEnable(config) && (deviceTypeEnable_ == true) &&
+        (config.find(g_sandBoxFlagsCustomized) != config.end())) {
+        mountFlags = GetMountFlagsFromConfig(config[g_sandBoxFlagsCustomized].get<std::vector<std::string>>());
+    } else {
+        mountFlags = GetMountFlagsFromConfig(config[g_sandBoxFlags].get<std::vector<std::string>>());
     }
+    return mountFlags;
+}
+
+const char *SandboxUtils::GetSandboxFsType(nlohmann::json &config)
+{
+    std::string fsType;
+    if (GetSandboxDacOverrideEnable(config) && (deviceTypeEnable_ == true)
+        && (config.find(g_fsType) != config.end())) {
+        fsType = config[g_fsType].get<std::string>();
+    } else {
+        fsType = "";
+    }
+    const char *fsTypePoint = fsType.empty() ? nullptr : fsType.c_str();
+    return fsTypePoint;
+}
+
+const char *SandboxUtils::GetSandboxOptions(nlohmann::json &config)
+{
+    std::string options;
+    if (GetSandboxDacOverrideEnable(config) && (deviceTypeEnable_ == true) &&
+        (config.find("true") != config.end())) {
+        options = config[g_sandBoxOptions].get<std::string>();
+    } else {
+        options = "";
+    }
+    const char *optionsPoint = options.empty() ? nullptr : options.c_str();
+    return optionsPoint;
 }
 
 int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProperty,
@@ -481,19 +509,24 @@ int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProper
         }
 
         std::string srcPath = ConvertToRealPath(appProperty, mntPoint[g_srcPath].get<std::string>());
-        std::string sandboxPath = sandboxRoot + ConvertToRealPath(appProperty,
-                                                                  mntPoint[g_sandBoxPath].get<std::string>());
-        ConvertSandboxName(appProperty, section, sandboxPath);
-        unsigned long mountFlags = GetMountFlagsFromConfig(mntPoint[g_sandBoxFlags].get<std::vector<std::string>>());
-        std::string fsType = (mntPoint.find(g_fsType) != mntPoint.end()) ? mntPoint[g_fsType].get<std::string>() : "";
-        const char* fsTypePoint = fsType.empty() ? nullptr : fsType.c_str();
+        std::string sandboxPath = "";
+        if (section.compare(g_permissionPrefix) == 0) {
+            sandboxPath = sandboxRoot + ConvertToRealPathWithPermission(appProperty,
+                                                                        mntPoint[g_sandBoxPath].get<std::string>());
+        } else {
+            sandboxPath = sandboxRoot + ConvertToRealPath(appProperty, mntPoint[g_sandBoxPath].get<std::string>());
+        }
+        unsigned long mountFlags = GetSandboxMountFlags(mntPoint);
+        const char *optionsPoint = GetSandboxOptions(mntPoint);
+        const char *fsTypePoint = GetSandboxFsType(mntPoint);
+        std::string fsType = (fsTypePoint != nullptr) ? fsTypePoint : "";
         mode_t mountSharedFlag = (mntPoint.find(g_mountSharedFlag) != mntPoint.end()) ? MS_SHARED : MS_SLAVE;
 
         /* if app mount failed for special strategy, we need deal with common mount config */
         int ret = HandleSpecialAppMount(appProperty, srcPath, sandboxPath, fsType, mountFlags);
         if (ret < 0) {
             ret = DoAppSandboxMountOnce(srcPath.c_str(), sandboxPath.c_str(), fsTypePoint,
-                                        mountFlags, nullptr, mountSharedFlag);
+                                        mountFlags, optionsPoint, mountSharedFlag);
         }
         if (ret) {
             std::string actionStatus = g_statusCheck;
@@ -1147,7 +1180,8 @@ bool SandboxUtils::GetProductDeviceType()
 {
     char value[MAX_VALUE_LENGTH];
     int32_t ret = GetParameter("const.product.devicetype", "0", value, MAX_VALUE_LENGTH);
-    APPSPAWN_CHECK(ret > 0 && (!strcmp(value, "2in1")), return false, "Not device type %{public}s", value);
+    APPSPAWN_CHECK(ret > 0 && (strcmp(value, "2in1") == 0), return false, "Not device type %{public}s", value);
+    deviceTypeEnable_ = true;
     return true;
 }
 
