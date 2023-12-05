@@ -10,6 +10,9 @@
         "application.ExtensionContext",
         "application.AbilityStageContext",
         "application.AbilityStage",
-        "app.ability.ExtensionAbility"
+        "app.ability.ExtensionAbility",
+        "app.ability.AbilityStage",
+        "app.ability.UIAbility",
+        "app.ability.UIExtensionAbility"
     ]
 }
