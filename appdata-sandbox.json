@@ -5,6 +5,11 @@
             "sandbox-root" : "/mnt/sandbox/<PackageName>",
             "sandbox-ns-flags": [ "pid" ],
             "mount-paths" : [{
+                    "src-path" : "/chip_prod/lib64",
+                    "sandbox-path" : "/chip_prod/lib64",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }, {
                     "src-path" : "/config",
                     "sandbox-path" : "/config",
                     "sandbox-flags" : [ "bind", "rec" ],
