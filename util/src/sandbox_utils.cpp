@@ -34,7 +34,10 @@
 #include "appspawn_service.h"
 #include "appspawn_mount_permission.h"
 #include "parameter.h"
+
+#ifdef OS_ACCOUNT_ENABLE
 #include "os_account_manager.h"
+#endif
 
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
@@ -286,6 +289,7 @@ std::string SandboxUtils::ConvertToRealPathWithPermission(const ClientSocket::Ap
 
     if (sandboxRoot.find(g_userId) != std::string::npos) {
         if (deviceTypeEnable_) {
+        #ifdef OS_ACCOUNT_ENABLE
             std::string userName = "";
             ErrCode errCode = OHOS::AccountSA::OsAccountManager::GetOsAccountShortName(userName);
             if (errCode != ERR_OK) {
@@ -293,6 +297,7 @@ std::string SandboxUtils::ConvertToRealPathWithPermission(const ClientSocket::Ap
                 return userName;
             }
             sandboxRoot = replace_all(sandboxRoot, g_userId, userName.c_str());
+        #endif
         } else {
             sandboxRoot = replace_all(sandboxRoot, g_userId, "currentUser");
         }
