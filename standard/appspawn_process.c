@@ -432,6 +432,10 @@ static int EncodeAppClient(AppSpawnClient *client, char *param, int32_t originLe
     if (appProperty->soPath[0] == '\0') {
         strcpy_s(appProperty->soPath, sizeof(appProperty->soPath), "NULL");
     }
+    // ownerid
+    if (appProperty->ownerId[0] == '\0') {
+        strcpy_s(appProperty->ownerId, sizeof(appProperty->ownerId), "NULL");
+    }
     len = sprintf_s(param + startLen, originLen - startLen, ":%s:%s:%s:%u:%s:%s:%s:%u:%" PRIu64 "",
         appProperty->processName, appProperty->bundleName, appProperty->soPath,
         appProperty->accessTokenId, appProperty->apl, appProperty->renderCmd, appProperty->ownerId,
