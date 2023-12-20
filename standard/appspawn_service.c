@@ -267,16 +267,17 @@ void MakeDirRec(const char *path)
 
 static void MountAppEl2Dir(const AppSpawnClient* client)
 {
+    const int userIdBase = 200000;
     const char rootPath[] = "/mnt/sandbox/";
     const char el2Path[] = "/data/storage/el2";
     AppParameter *appProperty = &((AppSpawnClientExt *)client)->property;
     if (IsUnlockStatus(appProperty->uid)) {
         return;
     }
-    size_t allPathSize = strlen(rootPath) + strlen(el2Path) + strlen(appProperty->bundleName) + 1;
+    size_t allPathSize = strlen(rootPath) + strlen(el2Path) + strlen(appProperty->bundleName) + 11;
     char *path = malloc(sizeof(char) * (allPathSize));
     APPSPAWN_CHECK(path != NULL, return, "Failed to malloc path");
-    size_t len = sprintf_s(path, allPathSize, "%s%s%s", rootPath,
+    size_t len = sprintf_s(path, allPathSize, "%s%d/%s%s", rootPath, (appProperty->uid / userIdBase),
         appProperty->bundleName, el2Path);
     APPSPAWN_CHECK(len > 0 && (len < allPathSize), return, "Failed to get el2 path");
 
