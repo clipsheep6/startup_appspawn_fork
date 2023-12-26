@@ -108,9 +108,9 @@ namespace {
     const char *g_sandBoxNsFlags = "sandbox-ns-flags";
     const char* g_fileSeparator = "/";
     const char* g_overlayDecollator = "|";
-    const std::string g_sandBoxRootDir = "/mnt/sandbox/";
+    const std::string g_sandBoxRootDir = "/mnt/sandbox/<currentUserId>/";
     const std::string g_ohosRender = "__internal__.com.ohos.render";
-    const std::string g_sandBoxRootDirNweb = "/mnt/sandbox/com.ohos.render/";
+    const std::string g_sandBoxRootDirNweb = "/mnt/sandbox/<currentUserId>/com.ohos.render/";
     constexpr int MAX_VALUE_LENGTH = PARAM_CONST_VALUE_LEN_MAX;
     const std::string FILE_CROSS_APP_MODE = "ohos.permission.FILE_CROSS_APP";
 }
@@ -314,7 +314,7 @@ std::string SandboxUtils::GetSbxPathByConfig(const ClientSocket::AppProperty *ap
         sandboxRoot = config[g_sandboxRootPrefix].get<std::string>();
         sandboxRoot = ConvertToRealPath(appProperty, sandboxRoot);
     } else {
-        sandboxRoot = g_sandBoxDir + appProperty->bundleName;
+        sandboxRoot = g_sandBoxDir + std::to_string(appProperty->uid / UID_BASE) + "/" + appProperty->bundleName;
         APPSPAWN_LOGE("read sandbox-root config failed, set sandbox-root to default root"
             "app name is %{public}s", appProperty->bundleName);
     }
@@ -978,7 +978,7 @@ int32_t SandboxUtils::DoSandboxRootFolderCreateAdapt(std::string &sandboxPackage
 #endif
     MakeDirRecursive(sandboxPackagePath, FILE_MODE);
 
-    // bind mount "/" to /mnt/sandbox/<packageName> path
+    // bind mount "/" to /mnt/sandbox/<currentUserId>/<packageName> path
     // rootfs: to do more resources bind mount here to get more strict resources constraints
 #ifndef APPSPAWN_TEST
     rc = mount("/", sandboxPackagePath.c_str(), NULL, BASIC_MOUNT_FLAGS, NULL);
@@ -1272,6 +1272,7 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
         return -1;
     }
     std::string sandboxPackagePath = g_sandBoxRootDir;
+    sandboxPackagePath = replace_all(sandboxPackagePath, g_userId, std::to_string(appProperty->uid / UID_BASE));
     const std::string bundleName = appProperty->bundleName;
     bool sandboxSharedStatus = GetSandboxPrivateSharedStatus(bundleName);
     sandboxPackagePath += bundleName;
@@ -1312,6 +1313,7 @@ int32_t SandboxUtils::SetAppSandboxPropertyNweb(AppSpawnClient *client)
         return -1;
     }
     std::string sandboxPackagePath = g_sandBoxRootDirNweb;
+    sandboxPackagePath = replace_all(sandboxPackagePath, g_userId, std::to_string(appProperty->uid / UID_BASE));
     const std::string bundleName = appProperty->bundleName;
     bool sandboxSharedStatus = GetSandboxPrivateSharedStatus(bundleName);
     sandboxPackagePath += bundleName;
