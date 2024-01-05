@@ -95,6 +95,11 @@
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "true"
                 }, {
+                    "src-path" : "/data/app/el1/bundle/public/service_hsp",
+                    "sandbox-path" : "/data/storage/el1/bundle/service_hsp",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }, {
                     "src-path" : "/mnt/sandbox/<PackageName>/data/storage/el2",
                     "sandbox-path" : "/data/storage/el2",
                     "sandbox-flags" : [ "bind", "rec" ],
