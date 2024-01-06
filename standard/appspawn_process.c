@@ -421,16 +421,21 @@ static int EncodeAppClient(AppSpawnClient *client, char *param, int32_t originLe
     if (appProperty->ownerId[0] == '\0') {
         strcpy_s(appProperty->ownerId, sizeof(appProperty->ownerId), "NULL");
     }
-    len = sprintf_s(param + startLen, originLen - startLen, ":%s:%s:%s:%u:%s:%s:%s:%u:%" PRIu64 "",
+    // ownerId
+    if (appProperty->userName[0] == '\0') {
+        strcpy_s(appProperty->userName, sizeof(appProperty->userName), "NULL");
+    }
+    len = sprintf_s(param + startLen, originLen - startLen, ":%s:%s:%s:%u:%s:%s:%s:%s:%u:%" PRIu64 "",
         appProperty->processName, appProperty->bundleName, appProperty->soPath,
         appProperty->accessTokenId, appProperty->apl, appProperty->renderCmd, appProperty->ownerId,
-        appProperty->hapFlags, appProperty->accessTokenIdEx);
+        appProperty->userName, appProperty->hapFlags, appProperty->accessTokenIdEx);
     APPSPAWN_CHECK(len > 0 && (len < (originLen - startLen)), return -1, "Invalid to format processName");
     return 0;
 }
 
 static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
+    APPSPAWN_LOGI("wfwf 20230106 begin cold start");
     AppParameter *appProperty = &((AppSpawnClientExt *)client)->property;
     APPSPAWN_LOGI("ColdStartApp::appName %{public}s", appProperty->processName);
     char buffer[32] = {0};  // 32 buffer for fd
@@ -470,6 +475,7 @@ static int ColdStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client
 
     if (ret == 0) {
         argv[NULL_INDEX] = NULL;
+        APPSPAWN_LOGI("wfwf 20230106 cold start execv");
 #ifndef APPSPAWN_TEST
         ret = execv(argv[0], argv);
 #else
@@ -550,6 +556,7 @@ int GetAppSpawnClientFromArg(int argc, char *const argv[], AppSpawnClientExt *cl
     ret += GetStringFromArg(NULL, &end, client->property.apl, sizeof(client->property.apl));
     ret += GetStringFromArg(NULL, &end, client->property.renderCmd, sizeof(client->property.renderCmd));
     ret += GetStringFromArg(NULL, &end, client->property.ownerId, sizeof(client->property.ownerId));
+    ret += GetStringFromArg(NULL, &end, client->property.userName, sizeof(client->property.userName));
     ret += GetUInt32FromArg(NULL, &end, &value);
     client->property.hapFlags = value;
     ret += GetUInt64FromArg(NULL, &end, &client->property.accessTokenIdEx);

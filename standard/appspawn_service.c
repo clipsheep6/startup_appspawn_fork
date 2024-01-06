@@ -565,6 +565,7 @@ static int HandleMessage(AppSpawnClientExt *appProperty)
     // mount el2 dir
     MountAppEl2Dir(sandboxArg.client);
 #endif
+    APPSPAWN_LOGI("wfwf 20230106 HandleMessage");
     int result = AppSpawnProcessMsg(&sandboxArg, &appProperty->pid);
     if (result == 0) {  // wait child process result
         result = WaitChild(appProperty->fd[0], appProperty->pid, appProperty);
@@ -584,6 +585,7 @@ static int HandleMessage(AppSpawnClientExt *appProperty)
 
 static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen)
 {
+    APPSPAWN_LOGI("wfwf 20230106 OnReceiveRequest");
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)LE_GetUserData(taskHandle);
     APPSPAWN_CHECK(appProperty != NULL, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "alloc client Failed");
@@ -612,6 +614,7 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
         g_appSpawnContent->timer = NULL;
     }
     appProperty->pid = 0;
+    APPSPAWN_LOGI("wfwf 20230106 OnReceiveRequest CheckColdAppEnabled");
     CheckColdAppEnabled(appProperty);
     int ret = HandleMessage(appProperty);
     if (ret != 0) {
@@ -728,6 +731,7 @@ void AppSpawnColdRun(AppSpawnContent *content, int argc, char *const argv[])
 
 static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
 {
+    APPSPAWN_LOGI("wfwf 20230106 AppSpawnRun");
     APPSPAWN_LOGI("AppSpawnRun");
     AppSpawnContentExt *appSpawnContent = (AppSpawnContentExt *)content;
     APPSPAWN_CHECK(appSpawnContent != NULL, return, "Invalid appspawn content");
@@ -745,6 +749,7 @@ static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
         (void)LE_AddSignal(LE_GetDefaultLoop(), appSpawnContent->sigHandler, SIGTERM);
     }
 
+    APPSPAWN_LOGI("wfwf 20230106 AppSpawnRun run looper");
     LE_RunLoop(LE_GetDefaultLoop());
     APPSPAWN_LOGI("AppSpawnRun exit ");
     if (appSpawnContent->timer != NULL) {
