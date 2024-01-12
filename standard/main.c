@@ -27,6 +27,7 @@
 static void CheckPreload(char *const argv[])
 {
     char *preload = getenv("LD_PRELOAD");
+    APPSPAWN_LOGI("wfwf 20230106 CheckPreload preload: %{public}s", preload);
     if (preload && strstr(preload, APPSPAWN_PRELOAD)) {
         return;
     }
@@ -35,6 +36,7 @@ static void CheckPreload(char *const argv[])
         int len = sprintf_s(buf, sizeof(buf), "%s:" APPSPAWN_PRELOAD, preload);
         APPSPAWN_CHECK(len > 0, return, "preload too long: %{public}s", preload);
     }
+    APPSPAWN_LOGI("wfwf 20230106 CheckPreload buf: %{public}s", buf);
     int ret = setenv("LD_PRELOAD", buf, true);
     APPSPAWN_CHECK(ret == 0, return, "setenv fail: %{public}s", buf);
     ssize_t nread = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
@@ -57,6 +59,7 @@ int main(int argc, char *const argv[])
     int mode = 0;
     pid_t pid = 1;
     if ((argc > PARAM_INDEX) && (strcmp(argv[START_INDEX], "cold-start") == 0)) {
+        APPSPAWN_LOGI("wfwf 20230106 main start cold-start mode");
         argvSize = APP_LEN_PROC_NAME;
         mode = 1;
     } else {
@@ -110,6 +113,7 @@ int main(int argc, char *const argv[])
             AddNwebInfo(pid, NWEBSPAWN_SERVER_NAME);
             SystemSetParameter("bootevent.appspawn.started", "true");
         }
+        APPSPAWN_LOGI("wfwf 20230106 main run");
         content->runAppSpawn(content, argc, argv);
     }
 

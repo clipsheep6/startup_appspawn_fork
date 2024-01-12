@@ -96,6 +96,7 @@ typedef struct AppParameter_ {
     char apl[APP_APL_MAX_LEN];
     char renderCmd[APP_RENDER_CMD_MAX_LEN];
     char ownerId[APP_OWNER_ID_LEN];  // app identifier id
+    char userName[APP_OWNER_ID_LEN];  // app identifier id
     uint32_t accessTokenId;
     int32_t bundleIndex;
     uint64_t accessTokenIdEx;
