@@ -423,7 +423,8 @@ static int EncodeAppClient(AppSpawnClient *client, char *param, int32_t originLe
     }
     len = sprintf_s(param + startLen, originLen - startLen, ":%s:%s:%s:%u:%s:%s:%s:%u:%" PRIu64 "",
         appProperty->processName, appProperty->bundleName, appProperty->soPath,
-        appProperty->accessTokenId, appProperty->apl, appProperty->renderCmd, appProperty->ownerId,
+        appProperty->accessTokenId, appProperty->apl, appProperty->renderCmd,
+        (appProperty->ownerId[0] == '\0') ? "NULL" : appProperty->ownerId,
         appProperty->hapFlags, appProperty->accessTokenIdEx);
     APPSPAWN_CHECK(len > 0 && (len < (originLen - startLen)), return -1, "Invalid to format processName");
     return 0;
