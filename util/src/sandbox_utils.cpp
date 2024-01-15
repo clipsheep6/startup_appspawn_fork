@@ -286,7 +286,7 @@ std::string SandboxUtils::ConvertToRealPathWithPermission(const ClientSocket::Ap
 
     if (sandboxRoot.find(g_userId) != std::string::npos) {
         if (deviceTypeEnable_) {
-            sandboxRoot = replace_all(sandboxRoot, g_userId, "currentUser");
+            sandboxRoot = replace_all(sandboxRoot, g_userId, appProperty->userName);
         } else {
             sandboxRoot = replace_all(sandboxRoot, g_userId, "currentUser");
         }
