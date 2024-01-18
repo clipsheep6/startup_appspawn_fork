@@ -252,6 +252,26 @@ unsigned long SandboxUtils::GetMountFlagsFromConfig(const std::vector<std::strin
     return mountFlags;
 }
 
+string SandboxUtils::SrcPathConvertToRealPath(const ClientSocket::AppProperty *appProperty, std::string path)
+{
+    if (path.find(g_packageNameIndex) != std::string::npos) {
+        std::string bundleNameIndex = appProperty->bundleName;
+        bundleNameIndex = std::to_string(appProperty->bundleIndex) + "_" + bundleNameIndex;
+        path = replace_all(path, g_packageNameIndex, bundleNameIndex);
+    }
+
+    if (path.find(g_packageName) != std::string::npos) {
+        std::string bundleName = appProperty->bundleName;
+        path = replace_all(path, g_packageName, bundleName);
+    }
+
+    if (path.find(g_userId) != std::string::npos) {
+        path = replace_all(path, g_userId, std::to_string(appProperty->uid / UID_BASE));
+    }
+
+    return path;
+}
+
 string SandboxUtils::ConvertToRealPath(const ClientSocket::AppProperty *appProperty, std::string path)
 {
     if (path.find(g_packageNameIndex) != std::string::npos) {
@@ -261,7 +281,11 @@ string SandboxUtils::ConvertToRealPath(const ClientSocket::AppProperty *appPrope
     }
 
     if (path.find(g_packageName) != std::string::npos) {
-        path = replace_all(path, g_packageName, appProperty->bundleName);
+        std::string bundleName = appProperty->bundleName;
+        if (appProperty->bundleIndex != 0) {
+            bundleName = std::to_string(appProperty->bundleIndex) + "_" + appProperty->bundleName;
+        }
+        path = replace_all(path, g_packageName, bundleName);
     }
 
     if (path.find(g_userId) != std::string::npos) {
@@ -311,8 +335,11 @@ std::string SandboxUtils::GetSbxPathByConfig(const ClientSocket::AppProperty *ap
 {
     std::string sandboxRoot = "";
     const std::string originSandboxPath = "/mnt/sandbox/<PackageName>";
+    std::string bundleName = appProperty->bundleName;
+    bundleName = appProperty->bundleIndex == 0 ? bundleName : std::to_string(appProperty->bundleIndex) +
+        "_" + bundleName;
     const std::string defaultSandboxRoot = g_sandBoxDir + to_string(appProperty->uid / UID_BASE) +
-        "/" + appProperty->bundleName;
+        "/" + bundleName;
     if (config.find(g_sandboxRootPrefix) != config.end()) {
         sandboxRoot = config[g_sandboxRootPrefix].get<std::string>();
         if (sandboxRoot == originSandboxPath) {
@@ -536,7 +563,7 @@ int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProper
             continue;
         }
 
-        std::string srcPath = ConvertToRealPath(appProperty, mntPoint[g_srcPath].get<std::string>());
+        std::string srcPath = SrcPathConvertToRealPath(appProperty, mntPoint[g_srcPath].get<std::string>());
         std::string sandboxPath = GetSandboxPath(appProperty, mntPoint, section, sandboxRoot);
         SandboxMountConfig mountConfig = {0};
         GetSandboxMountConfig(section, mntPoint, mountConfig);
@@ -604,7 +631,7 @@ int SandboxUtils::DoAllSymlinkPointslink(const ClientSocket::AppProperty *appPro
             continue;
         }
 
-        std::string targetName = ConvertToRealPath(appProperty, symPoint[g_targetName].get<std::string>());
+        std::string targetName = SrcPathConvertToRealPath(appProperty, symPoint[g_targetName].get<std::string>());
         std::string linkName = sandboxRoot + ConvertToRealPath(appProperty, symPoint[g_linkName].get<std::string>());
         APPSPAWN_LOGV("symlink, from %{public}s to %{public}s", targetName.c_str(), linkName.c_str());
 
@@ -1281,7 +1308,11 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
     std::string sandboxPackagePath = g_sandBoxRootDir + to_string(appProperty->uid / UID_BASE) + "/";
     const std::string bundleName = appProperty->bundleName;
     bool sandboxSharedStatus = GetSandboxPrivateSharedStatus(bundleName);
-    sandboxPackagePath += bundleName;
+    if (appProperty->bundleIndex != 0) {
+        sandboxPackagePath += std::to_string(appProperty->bundleIndex) + "_" + bundleName;
+    } else {
+        sandboxPackagePath += bundleName;
+    }
     MakeDirRecursive(sandboxPackagePath.c_str(), FILE_MODE);
 
     // add pid to a new mnt namespace
