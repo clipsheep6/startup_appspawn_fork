@@ -73,6 +73,7 @@ private:
         nlohmann::json &appConfig, const std::string &section = "app-base");
     static int DoAllSymlinkPointslink(const ClientSocket::AppProperty *appProperty, nlohmann::json &appConfig);
     static std::string ConvertToRealPath(const ClientSocket::AppProperty *appProperty, std::string sandboxRoot);
+    static std::string SrcPathConvertToRealPath(const ClientSocket::AppProperty *appProperty, std::string sandboxRoot);
     static std::string ConvertToRealPathWithPermission(const ClientSocket::AppProperty *appProperty,
                                                        std::string sandboxRoot);
     static std::string GetSbxPathByConfig(const ClientSocket::AppProperty *appProperty, nlohmann::json &config);
