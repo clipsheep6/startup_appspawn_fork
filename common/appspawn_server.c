@@ -25,11 +25,56 @@
 #define _GNU_SOURCE
 #include <sched.h>
 #include <time.h>
+#include <dirent.h>
+#include <stdbool.h>
 #ifdef SECURITY_COMPONENT_ENABLE
 #include "sec_comp_enhance_kit_c.h"
 #endif
+#include "syspara/parameter.h"
 
 #define DEFAULT_UMASK 0002
+
+#ifndef APPSPAWN_TEST
+static int GetThreadCount(void)
+{
+    DIR *dir = opendir("/proc/self/task");
+    if (!dir) {
+        APPSPAWN_LOGE("opendir(\"/proc/self/task\"): %{public}s", strerror(errno));
+        return 0;
+    }
+
+    int threadCount = 0;
+    struct dirent *dentry;
+    while ((dentry = readdir(dir)) != NULL) {
+        if (atoi(dentry->d_name)) {
+            ++threadCount;
+        }
+    }
+
+    closedir(dir);
+    return threadCount;
+}
+
+static void EnsureSingleThreadedEnv(void)
+{
+    if (!GetIntParameter("persist.init.debug.checkmultithread", true)) {
+        return;
+    }
+
+    int threadCount = 0;
+    int retryCount = 0;
+    while ((threadCount = GetThreadCount()) > 1 && retryCount < 5) { // check 1.5s at most
+        usleep(++retryCount * 100000); // 100000: 100ms
+    }
+    if (threadCount == 1) {
+        return;
+    }
+    APPSPAWN_LOGF("appspawn must run in single-threaded environment, %{public}d threads detected", threadCount);
+    abort();
+}
+#else
+#define EnsureSingleThreadedEnv()
+#endif
 
 long long DiffTime(struct timespec *startTime)
 {
@@ -126,6 +171,8 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
     }
 
     if (content->setCapabilities) {
+        // SetSelinuxCon must work in single-threaded environment
+        EnsureSingleThreadedEnv();
         ret = content->setCapabilities(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to setCapabilities");
@@ -216,6 +263,9 @@ int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
     APPSPAWN_CHECK(sandbox != NULL && sandbox->content != NULL, return -1, "Invalid content for appspawn");
     APPSPAWN_CHECK(sandbox->client != NULL && childPid != NULL, return -1, "Invalid client for appspawn");
     APPSPAWN_LOGI("AppSpawnProcessMsg id %{public}d 0x%{public}x", sandbox->client->id, sandbox->client->flags);
+
+    // App must be incubated in single-threaded environment
+    EnsureSingleThreadedEnv();
 
     pid_t pid = 0;
     if (sandbox->content->isNweb) {
