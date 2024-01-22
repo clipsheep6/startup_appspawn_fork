@@ -31,6 +31,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <sched.h>
+#include "appspawn_silk.h"
+#include <dlfcn.h>
+#include <syscall_hooks.h>
 
 #include "securec.h"
 #include "parameter.h"
@@ -69,6 +72,43 @@ static int SetAsanEnabledEnv(struct AppSpawnContent_ *content, AppSpawnClient *c
         client->flags |= APP_COLD_START;
     }
     return 0;
+}
+
+static void EnableSilkByPackageName(const char *packageName, size_t len)
+{
+    const char *silkSoPath = "/vendor/lib64/silk/libsilk.so.0.1";
+    int result = 0;
+    void *handle = NULL;
+    int (*enableSilkFunc)(const char *, size_t, void *) = NULL;
+
+    if (IsSilkEnabled(packageName)) {
+        if (access(silkSoPath, F_OK) == 0) {
+            handle = dlopen(silkSoPath, RTLD_NOW);
+            if (!handle) {
+                APPSPAWN_LOGE("silk dlopen %s failed %s\n", silkSoPath, dlerror());
+                return;
+            }
+
+            enableSilkFunc = (int (*)(const char *, size_t, void *))dlsym(handle, "llp_enable_silk");
+            if (!enableSilkFunc) {
+                APPSPAWN_LOGE("silk dlsym failed %s", dlerror());
+                dlclose(handle);
+                return;
+            }
+
+            result = enableSilkFunc(packageName, len, (void *)set_syscall_hooks);
+            APPSPAWN_LOGV("result is %{public}d set_syscall_hooks=%{public}p\n", result, set_syscall_hooks);
+        } else {
+            APPSPAWN_LOGE("%{public}s is not exist\n", silkSoPath);
+        }
+    }
+}
+
+static void EnableSilk(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+    AppSpawnClientExt *appPropertyExt = (AppSpawnClientExt *)client;
+    AppParameter *appProperty = &appPropertyExt->property;
+    EnableSilkByPackageName(appProperty->processName, strlen(appProperty->processName));
 }
 
 static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *client,
@@ -594,6 +634,7 @@ void SetContentFunction(AppSpawnContent *content)
     content->clearEnvironment = ClearEnvironment;
     content->initDebugParams = InitDebugParams;
     content->setProcessName = SetProcessName;
+    content->enableSilk = EnableSilk;
     content->setKeepCapabilities = SetKeepCapabilities;
     content->setUidGid = SetUidGid;
     content->setXpmConfig = SetXpmConfig;

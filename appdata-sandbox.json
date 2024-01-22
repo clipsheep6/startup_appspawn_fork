@@ -193,6 +193,11 @@
                     "sandbox-path" : "/data/storage/el4/database",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
+                }, {
+                    "src-path" : "/vendor/etc/silk",
+                    "sandbox-path" : "/vendor/etc/silk",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
                 }
             ],
             "symbol-links" : [{
