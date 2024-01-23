@@ -200,6 +200,9 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003, TestSize.Level0)
     if (strcpy_s(client->property.ownerId, APP_RENDER_CMD_MAX_LEN, "xxx") != 0) {
         GTEST_LOG_(INFO) << "strcpy_s failed";
     }
+    if (strcpy_s(client->property.userName, APP_USER_NAME, "xxx") != 0) {
+        GTEST_LOG_(INFO) << "strcpy_s failed";
+    }
     client->property.flags = 0;
     char arg1[] = "/system/bin/appspawn";
     char arg2[] = "cold-start";
@@ -232,7 +235,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_1, TestSize.Level0)
     char arg3[] = "1";
     {
         char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
-            "default:671201800:system_core:default:owerid:0:671201800";
+            "default:671201800:system_core:default:owerid:username:0:671201800";
         char arg5[] = "10";
         char arg6[] = "012345678";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5, arg6};
@@ -242,7 +245,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_1, TestSize.Level0)
     }
     { // hsp length is 0
         char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
-            "default:671201800:system_core:default:owerid:0:671201800";
+            "default:671201800:system_core:default:owerid:username:0:671201800";
         char arg5[] = "0";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5, nullptr};
         int argc = sizeof(argv)/sizeof(argv[0]);
@@ -250,7 +253,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_1, TestSize.Level0)
     }
     { // hsp length is nullptr
         char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
-            "default:671201800:system_core:default:owerid:0:671201800";
+            "default:671201800:system_core:default:owerid:username:0:671201800";
         char arg6[] = "0123456789";
         char* argv[] = {arg1, arg2, arg3, arg4, nullptr, arg6};
         int argc = sizeof(argv)/sizeof(argv[0]);
@@ -258,7 +261,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_1, TestSize.Level0)
     }
     { // hsp length is non-zero, but argc is 5
         char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
-            "default:671201800:system_core:default:owerid:0:671201800";
+            "default:671201800:system_core:default:owerid:username:0:671201800";
         char arg5[] = "10";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5};
         int argc = sizeof(argv)/sizeof(argv[0]);
@@ -266,7 +269,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_1, TestSize.Level0)
     }
     { // hsp length is non-zero, but content is nullptr
         char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
-            "default:671201800:system_core:default:owerid:0:671201800";
+            "default:671201800:system_core:default:owerid:username:0:671201800";
         char arg5[] = "10";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5, nullptr};
         int argc = sizeof(argv)/sizeof(argv[0]);
@@ -292,7 +295,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_2, TestSize.Level0)
     char arg3[] = "1";
     { // actual data is shorter than totalLength
         char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
-            "default:671201800:system_core:default:owerid:0:671201800";
+            "default:671201800:system_core:default:owerid:username:0:671201800";
         char arg5[] = "10";
         char arg6[] = "01234";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5, arg6};
@@ -302,7 +305,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_2, TestSize.Level0)
     }
     { // actual data is longer than totalLength
         char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
-            "default:671201800:system_core:default:owerid:0:671201800";
+            "default:671201800:system_core:default:owerid:username:0:671201800";
         char arg5[] = "5";
         char arg6[] = "0123456789";
         char* argv[] = {arg1, arg2, arg3, arg4, arg5, arg6};
@@ -329,7 +332,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_3, TestSize.Level0)
     char arg2[] = "cold-start";
     char arg3[] = "1";
     char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
-            "default:671201800:system_core:default:owerid:0:671201800";
+            "default:671201800:system_core:default:owerid:username:0:671201800";
     char arg5[] = "0";
     char arg6[] = "0";
     {
@@ -381,7 +384,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003_4, TestSize.Level0)
     char arg2[] = "cold-start";
     char arg3[] = "1";
     char arg4[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
-            "default:671201800:system_core:default:owerid:0:671201800";
+            "default:671201800:system_core:default:owerid:username:0:671201800";
     char arg5[] = "0";
     char arg6[] = "0";
     char arg7[] = "0";
@@ -445,7 +448,7 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_004, TestSize.Level0)
     char tmp2[] = "1";
     {
         char tmp3[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
-            "default:671201800:system_core:default:owerid:0:671201800";
+            "default:671201800:system_core:default:owerid:username:0:671201800";
         char * const argv[] = {tmp0, tmp1, tmp2, tmp3};
         AppSpawnColdRun(content, 4, argv);
     }
@@ -551,6 +554,7 @@ static int RunClient(AppSpawnContentExt *content, int flags, AppOperateType code
     (void)strcpy_s(property.renderCmd, sizeof(property.renderCmd), processName.c_str());
     (void)strcpy_s(property.soPath, sizeof(property.soPath), processName.c_str());
     (void)strcpy_s(property.ownerId, sizeof(property.ownerId), processName.c_str());
+    (void)strcpy_s(property.userName, sizeof(property.userName), processName.c_str());
     (void)strcpy_s(property.apl, sizeof(property.apl), "system_core");
     property.flags = flags;
     property.code = code;
