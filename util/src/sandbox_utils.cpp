@@ -290,7 +290,7 @@ std::string SandboxUtils::ConvertToRealPathWithPermission(const ClientSocket::Ap
 
     if (path.find(g_userId) != std::string::npos) {
         if (deviceTypeEnable_) {
-            path = replace_all(path, g_userId, "currentUser");
+            path = replace_all(path, g_userId, appProperty->userName);
         } else {
             path = replace_all(path, g_userId, "currentUser");
         }

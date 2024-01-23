@@ -200,6 +200,9 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003, TestSize.Level0)
     if (strcpy_s(client->property.ownerId, APP_RENDER_CMD_MAX_LEN, "xxx") != 0) {
         GTEST_LOG_(INFO) << "strcpy_s failed";
     }
+    if (strcpy_s(client->property.userName, APP_RENDER_CMD_MAX_LEN, "xxx") != 0) {
+        GTEST_LOG_(INFO) << "strcpy_s failed";
+    }
     client->property.flags = 0;
     char arg1[] = "/system/bin/appspawn";
     char arg2[] = "cold-start";
