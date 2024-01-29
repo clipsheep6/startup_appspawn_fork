@@ -340,6 +340,11 @@
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
+                    "src-path" : "/mnt/hmdfs/<currentUserId>/account/device_view/local/files/Docs",
+                    "sandbox-path" : "/storage/cloud/files/Docs",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }, {
                     "src-path" : "none",
                     "sandbox-path" : "/storage/cloud/epfs",
                     "sandbox-flags" : [ "MS_NODEV" ],
