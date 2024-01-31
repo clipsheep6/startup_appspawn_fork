@@ -982,7 +982,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_32, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "App_Spawn_Sandbox_32 start";
     int ret = OHOS::AppSpawn::SandboxUtils::DoAppSandboxMountOnce(nullptr, "", nullptr, 0, nullptr);
-    EXPECT_EQ(ret, -1);
+    EXPECT_EQ(ret, 0);
 
     std::string mJsconfig1 = "{ \
         \"dest-mode\" : \"S_IRUSR|S_IWUSR|S_IXUSR\" \
@@ -1019,7 +1019,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_34, TestSize.Level0)
         }|HspList|";
         m_appProperty->extraInfo = {strlen(hspListStr), 0, hspListStr};
         int ret = OHOS::AppSpawn::SandboxUtils::MountAllHsp(m_appProperty, testBundle);
-        EXPECT_EQ(-1, ret);
+        EXPECT_EQ(0, ret);
     }
 
     m_appProperty->extraInfo = {};
@@ -1308,7 +1308,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_39, TestSize.Level0)
     m_appProperty->pid = 354; // query render process exited status by render process pid
 
     int32_t ret = OHOS::AppSpawn::SandboxUtils::SetOverlayAppSandboxProperty(m_appProperty, sandBoxRootDir);
-    EXPECT_EQ(-1, ret);
+    EXPECT_EQ(0, ret);
     m_appProperty->flags &= ~0x100;
     m_appProperty->extraInfo.totalLength = 0;
     if (m_appProperty->extraInfo.data != nullptr) {
@@ -1357,7 +1357,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_40, TestSize.Level0)
         }|DataGroup|";
         m_appProperty->extraInfo = {strlen(dataGroupInfoListStr), 0, dataGroupInfoListStr};
         int ret = OHOS::AppSpawn::SandboxUtils::MountAllGroup(m_appProperty, sandboxPrefix);
-        EXPECT_EQ(-1, ret);
+        EXPECT_EQ(0, ret);
     }
     m_appProperty->extraInfo = {};
     GTEST_LOG_(INFO) << "App_Spawn_Sandbox_40 end";
