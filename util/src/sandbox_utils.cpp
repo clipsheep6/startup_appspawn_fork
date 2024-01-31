@@ -148,12 +148,40 @@ static void MakeDirRecursive(const std::string &path, mode_t mode)
     } while (index < size);
 }
 
+static void CheckDirRecursive(const std::string &path)
+{
+    size_t size = path.size();
+    if (size == 0) {
+        return;
+    }
+    size_t index = 0;
+    do {
+        size_t pathIndex = path.find_first_of('/', index);
+        index = pathIndex == std::string::npos ? size : pathIndex + 1;
+        std::string dir = path.substr(0, index);
+#ifndef APPSPAWN_TEST
+        APPSPAWN_CHECK(access(dir.c_str(), F_OK) == 0,
+            return, "check dir %{public}s failed, strerror: %{public}s", dir.c_str(), strerror(errno));
+#endif
+    } while (index < size);
+    return;
+}
+
 int32_t SandboxUtils::DoAppSandboxMountOnce(const char *originPath, const char *destinationPath,
                                             const char *fsType, unsigned long mountFlags,
                                             const char *options, mode_t mountSharedFlag)
 {
     // To make sure destinationPath exist
     MakeDirRecursive(destinationPath, FILE_MODE);
+    if (originPath == nullptr || destinationPath == nullptr || fsType == nullptr || options == nullptr) {
+        APPSPAWN_LOGE("invalid input param");
+        return -1;
+    }
+    std::string originPathStr = originPath;
+    size_t index = originPathStr.find("/data/app/el2/");
+    if (index != std::string::npos) {
+        CheckDirRecursive(originPathStr);
+    }
 #ifndef APPSPAWN_TEST
     int ret = 0;
     // to mount fs and bind mount files or directory
@@ -1309,6 +1337,7 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
     rc = ChangeCurrentDir(sandboxPackagePath, bundleName, sandboxSharedStatus);
     APPSPAWN_CHECK(rc == 0, return rc, "change current dir failed");
 #endif
+    APPSPAWN_LOGI("Set appsandbox property success");
     return 0;
 }
 
