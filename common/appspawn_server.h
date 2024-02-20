@@ -127,6 +127,8 @@ pid_t AppSpawnFork(int (*childFunc)(void *arg), void *args);
 #define APPSPAWN_LOGV(fmt, ...) \
     HILOG_DEBUG(HILOG_MODULE_HIVIEW, "[%s:%d]" fmt,  (FILE_NAME), (__LINE__), ##__VA_ARGS__)
 #define APPSPAWN_LOGW(fmt, ...) \
+    HILOG_WARN(HILOG_MODULE_HIVIEW, "[%s:%d]" fmt,  (FILE_NAME), (__LINE__), ##__VA_ARGS__)
+#define APPSPAWN_LOGF(fmt, ...) \
     HILOG_FATAL(HILOG_MODULE_HIVIEW, "[%s:%d]" fmt,  (FILE_NAME), (__LINE__), ##__VA_ARGS__)
 #endif
 
