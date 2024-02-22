@@ -85,13 +85,14 @@ static void AppInfoHashNodeFree(const HashNode *node, void *context)
     free(testNode);
 }
 
-APPSPAWN_STATIC void AddAppInfo(pid_t pid, const char *processName)
+APPSPAWN_STATIC void AddAppInfo(pid_t pid, const char *processName, AppOperateType code)
 {
     size_t len = strlen(processName) + 1;
     AppInfo *node = (AppInfo *)malloc(sizeof(AppInfo) + len + 1);
     APPSPAWN_CHECK(node != NULL, return, "Failed to malloc for appinfo");
 
     node->pid = pid;
+    node->code = code;
     int ret = strcpy_s(node->name, len, processName);
     APPSPAWN_CHECK(ret == 0, free(node);
         return, "Failed to strcpy process name");
@@ -99,12 +100,12 @@ APPSPAWN_STATIC void AddAppInfo(pid_t pid, const char *processName)
     ret = OH_HashMapAdd(g_appSpawnContent->appMap, &node->node);
     APPSPAWN_CHECK(ret == 0, free(node);
         return, "Failed to add appinfo to hash");
-    APPSPAWN_LOGI("Add %{public}s, pid=%{public}d success", processName, pid);
+    APPSPAWN_LOGI("Add %{public}s, pid = %{public}d code = %{public}d success", processName, pid, code);
 }
 
 void AddNwebInfo(pid_t pid, const char *processName)
 {
-    AddAppInfo(pid, processName);
+    AddAppInfo(pid, processName, DEFAULT);
 }
 
 static AppInfo *GetAppInfo(pid_t pid)
@@ -283,7 +284,8 @@ static void MountAppEl2Dir(const AppSpawnClient* client)
     APPSPAWN_CHECK(path != NULL, return, "Failed to malloc path");
     len = sprintf_s(path, allPathSize, "%s%s/%s%s", rootPath, userId,
         appProperty->bundleName, el2Path);
-    APPSPAWN_CHECK(len > 0 && (len < allPathSize), return, "Failed to get el2 path");
+    APPSPAWN_CHECK(len > 0 && (len < allPathSize), free(path);
+        return, "Failed to get el2 path");
 
     if (access(path, F_OK) == 0) {
         free(path);
@@ -310,8 +312,10 @@ static void MountAppEl2Dir(const AppSpawnClient* client)
 static void HandleDiedPid(pid_t pid, uid_t uid, int status)
 {
     AppInfo *appInfo = GetAppInfo(pid);
-    KillProcessesByCGroup(uid, appInfo);
     APPSPAWN_CHECK(appInfo != NULL, return, "Can not find app info for %{public}d", pid);
+    if (appInfo->code != SPAWN_NATIVE_PROCESS) {
+        KillProcessesByCGroup(uid, appInfo);
+    }
     if (WIFSIGNALED(status)) {
         APPSPAWN_LOGW("%{public}s with pid %{public}d exit with signal:%{public}d",
             appInfo->name, pid, WTERMSIG(status));
@@ -579,7 +583,7 @@ static int HandleMessage(AppSpawnClientExt *appProperty)
     APPSPAWN_LOGI("child process %{public}s %{public}s pid %{public}d",
         appProperty->property.processName, (result == 0) ? "success" : "fail", appProperty->pid);
     if (result == 0) {
-        AddAppInfo(appProperty->pid, appProperty->property.processName);
+        AddAppInfo(appProperty->pid, appProperty->property.processName, appProperty->property.code);
         SendResponse(appProperty, (char *)&appProperty->pid, sizeof(appProperty->pid));
     } else {
         SendResponse(appProperty, (char *)&result, sizeof(result));
