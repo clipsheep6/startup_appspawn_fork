@@ -1,0 +1,23 @@
+[
+    { "name": "AddPreloadHook" },
+    { "name": "AddAppChangeHook" },
+    { "name": "AddAppSpawnHook" },
+    { "name": "GetAppPropertyEx" },
+    { "name": "TestAppPropertyFlags" },
+    { "name": "SetAppPropertyFlags" },
+    { "name": "IsNWebSpawnMode" },
+    { "name": "GetAppPropertyCode" },
+    { "name": "GetBundleName" },
+    { "name": "GetAppProperty" },
+    { "name": "GetProcessName" },
+    { "name": "RegChildLooper" },
+    { "name": "MakeDirRec" },
+    { "name": "SandboxMountPath" },
+    { "name": "IsDeveloperModeOn" },
+    { "name": "AddVariableReplaceHandler" },
+    { "name": "GetAppInfo" },
+    { "name": "DumpNormalProperty" },
+    { "name": "AppSpawnDump" },
+    { "name": "RegisterExpandSandboxCfgHandler" },
+    { "name": "IsColdRunMode" }
+]

@@ -140,24 +140,13 @@ static int Invoke(IServerProxy *iProxy, int funcId, void *origin, IpcIo *req, Ip
 
     APPSPAWN_LOGI("[appspawn] invoke, msg<%s,%s,%d,%d %d>", client.message.bundleName, client.message.identityID,
         client.message.uID, client.message.gID, client.message.capsCnt);
-    /* Clone support only one parameter, so need to package application parameters */
-    AppSandboxArg *sandboxArg = (AppSandboxArg *)malloc(sizeof(AppSandboxArg));
-    if (sandboxArg == NULL) {
-        WriteInt64(reply, INVALID_PID);
-        return EC_FAILURE;
-    }
-    (void)memset_s(sandboxArg, sizeof(AppSandboxArg), 0, sizeof(AppSandboxArg));
-
     pid_t newPid = 0;
-    sandboxArg->content = &g_appSpawnContentLite->content;
-    sandboxArg->client = &client.client;
-    int ret = AppSpawnProcessMsg(sandboxArg, &newPid);
+    int ret = AppSpawnProcessMsg(&g_appSpawnContentLite->content, &client.client, &newPid);
     if (ret != 0) {
         newPid = -1;
     }
     FreeMessageSt(&client.message);
     WriteInt64(reply, newPid);
-    free(sandboxArg);
 
 #ifdef OHOS_DEBUG
     long long diff = DiffTime(&tmStart);

@@ -18,17 +18,33 @@ ohos_executable("AppSpawnTest") {
   sources = [ "${appspawn_path}/test/moduletest/appspawn_test_cmd.cpp" ]
 
   include_dirs = [
+    "${appspawn_path}",
+    "${appspawn_path}/common",
+    "${appspawn_path}/standard",
+    "${appspawn_path}/modules/modulemgr",
+    "${appspawn_path}/modules/ace_adapter",
+    "${appspawn_path}/modules/common",
+    "${appspawn_path}/modules/sandbox",
+    "${appspawn_innerkits_path}/include",
+    "${appspawn_innerkits_path}/client",
+    "${appspawn_innerkits_path}/permission",
+    "${appspawn_innerkits_path}/module_engine/include",
+    "${appspawn_path}/test/mock",
+    "${appspawn_path}/test/unittest",
+    "${appspawn_path}/util/include",
+    "${startup_path}/init/interfaces/innerkits/include",
+    "${startup_path}/init/interfaces/innerkits/include/syspara",
+    "${startup_path}/init/interfaces/innerkits/include/param",
     "//commonlibrary/c_utils/base/include",
-    "//third_party/zlib/contrib/minizip",
-    "//third_party/zlib",
   ]
 
   configs = [ "${appspawn_path}:appspawn_config" ]
 
-  deps = [ "${appspawn_path}/interfaces/innerkits:appspawn_socket_client" ]
+  deps = [ "${appspawn_innerkits_path}/client:appspawn_client" ]
 
   external_deps = [
     "c_utils:utils",
+    "config_policy:configpolicy_util",
     "hilog:libhilog",
     "init:libbegetutil",
   ]
@@ -43,9 +59,24 @@ ohos_moduletest("AppSpawnModuleTest") {
   ]
 
   include_dirs = [
+    "${appspawn_path}",
+    "${appspawn_path}/common",
+    "${appspawn_path}/standard",
+    "${appspawn_path}/modules/modulemgr",
+    "${appspawn_path}/modules/ace_adapter",
+    "${appspawn_path}/modules/common",
+    "${appspawn_path}/modules/sandbox",
+    "${appspawn_innerkits_path}/include",
+    "${appspawn_innerkits_path}/client",
+    "${appspawn_innerkits_path}/permission",
+    "${appspawn_innerkits_path}/module_engine/include",
+    "${appspawn_path}/test/mock",
+    "${appspawn_path}/test/unittest",
+    "${appspawn_path}/util/include",
+    "${startup_path}/init/interfaces/innerkits/include",
+    "${startup_path}/init/interfaces/innerkits/include/syspara",
+    "${startup_path}/init/interfaces/innerkits/include/param",
     "//commonlibrary/c_utils/base/include",
-    "//third_party/zlib/contrib/minizip",
-    "//third_party/zlib",
   ]
 
   configs = [
@@ -55,13 +86,14 @@ ohos_moduletest("AppSpawnModuleTest") {
 
   deps = [
     "${ability_runtime_path}/services/appmgr:libappms",
-    "${appspawn_path}/interfaces/innerkits:appspawn_socket_client",
+    "${appspawn_innerkits_path}/client:appspawn_client",
     "//third_party/googletest:gtest_main",
   ]
 
   external_deps = [
-    "bundle_framework:appexecfwk_base",
+    #"bundle_framework:appexecfwk_base",
     "c_utils:utils",
+    "config_policy:configpolicy_util",
     "hilog:libhilog",
     "init:libbegetutil",
   ]

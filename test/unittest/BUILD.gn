@@ -14,136 +14,147 @@
 import("//base/startup/appspawn/appspawn.gni")
 import("//build/test.gni")
 
-config("utest_config") {
-  cflags = [
-    "-Wno-implicit-fallthrough",
-    "-Wno-unused-function",
-    "-Dprivate=public",
-    "-Dprotected=public",
-  ]
-
-  cflags_cc = [
-    "-Wno-implicit-fallthrough",
-    "-fexceptions",
-  ]
-
-  if (build_selinux) {
-    cflags += [ "-DWITH_SELINUX" ]
-  }
-
-  if (build_seccomp) {
-    cflags += [ "-DWITH_SECCOMP" ]
-  }
-
-  include_dirs = [
-    "${appspawn_path}/test/unittest",
-    "${appspawn_path}/test/mock/include",
-    "${appspawn_path}/common",
-    "${appspawn_path}/standard",
-    "${appspawn_path}/adapter",
-    "${appspawn_path}/adapter/sysevent",
-    "${appspawn_path}/interfaces/innerkits/include",
-    "${appspawn_path}/util/include",
-    "//commonlibrary/c_utils/base/include",
-    "ability_runtime_kits_path/appkit/native/app/include",
-    "${ability_runtime_path}/interfaces/innerkits/app_manager/include/appmgr",
-    "${ability_runtime_path}/interfaces/innerkits/ability_manager/include",
-    "ability_runtime_kits_path/ability/native/include",
-    "${ability_runtime_path}/services/abilitymgr/include",
-    "//base/global/resource_management/interfaces/inner_api/include",
-    "//base/security/access_token/interfaces/innerkits/token_setproc/include",
-    "//base/security/selinux_adapter/interfaces/policycoreutils/include",
-    "//base/startup/init/services/log",
-    "//base/startup/init/services/loopevent/include",
-    "//base/startup/init/services/loopevent/task",
-    "//base/startup/init/services/loopevent/utils",
-    "//third_party/json/include",
-    "//third_party/selinux/libselinux/include",
-  ]
-}
-
 if (!defined(ohos_lite)) {
   ohos_unittest("AppSpawn_ut") {
     module_out_path = "${module_output_path}"
     deps = []
     defines = [
-      "clone=CloneStub",
-      "bind=BindStub",
-      "listen=ListenStub",
-      "lchown=LchownStub",
-      "lchmod=LchmodStub",
-      "getsockopt=GetsockoptStub",
-      "setgroups=SetgroupsStub",
-      "setresuid=SetresuidStub",
-      "setresgid=SetresgidStub",
+      "APPSPAWN_BASE_DIR=\"/data/appspawn_ut\"",
+      "APPSPAWN_LABEL=\"APPSPAWN_UT\"",
+      "APPSPAWN_TEST",
+      "APPSPAWN_DEBUG",
+      "OHOS_DEBUG",
+      "GRAPHIC_PERMISSION_CHECK",
       "capset=CapsetStub",
+      "unshare=unshareStub",
+      "mount=mountStub",
+      "symlink=symlinkStub",
+      "chdir=chdirStub",
+      "chroot=chrootStub",
+      "syscall=syscallStub",
+      "umount2=umount2Stub",
+      "access=AccessStub",
       "dlopen=DlopenStub",
       "dlsym=DlsymStub",
       "dlclose=DlcloseStub",
-      "waitpid=WaitpidStub",
-      "HapContext=HapContextStub",
-      "APPSPAWN_TEST",
-      "OHOS_DEBUG",
-      "GRAPHIC_PERMISSION_CHECK",
+      "execv=execvStub",
+      "getprocpid=getprocpidStub",
+      "setgroups=SetgroupsStub",
+      "setresgid=SetresgidStub",
+      "setresuid=SetresuidStub",
+      "setuid=SetuidStub",
+      "setgid=SetgidStub",
     ]
-
+    include_dirs = [
+      "${appspawn_path}",
+      "${appspawn_path}/common",
+      "${appspawn_path}/standard",
+      "${appspawn_path}/modules/modulemgr",
+      "${appspawn_path}/modules/ace_adapter",
+      "${appspawn_path}/modules/common",
+      "${appspawn_path}/modules/sandbox",
+      "${appspawn_innerkits_path}/include",
+      "${appspawn_innerkits_path}/client",
+      "${appspawn_innerkits_path}/permission",
+      "${appspawn_innerkits_path}/module_engine/include",
+      "${appspawn_path}/test/mock",
+      "${appspawn_path}/test/unittest",
+      "${appspawn_path}/util/include",
+      "${startup_path}/init/interfaces/innerkits/include",
+      "${startup_path}/init/interfaces/innerkits/include/syspara",
+      "${startup_path}/init/interfaces/innerkits/include/param",
+      "${startup_path}/init/interfaces/innerkits/seccomp/include",
+      "${startup_path}/init/services/loopevent/include",
+      "${startup_path}/init/services/loopevent/timer",
+      "${ability_runtime_path}/interfaces/kits/native/appkit/app",
+      "//base/customization/config_policy/interfaces/inner_api/include",
+      "//base/hiviewdfx/hitrace/interfaces/native/innerkits/include/hitrace_meter",
+      "//base/hiviewdfx/hisysevent/interfaces/native/innerkits/hisysevent/include",
+      "//base/security/access_token/interfaces/innerkits/token_setproc/include",
+      "//base/security/selinux_adapter/interfaces/policycoreutils/include",
+      "//base/notification/eventhandler/interfaces/inner_api",
+      "//base/security/access_token/interfaces/innerkits/accesstoken/include",
+      "//commonlibrary/c_utils/base/include",
+      "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
+      "//foundation/arkui/napi",
+      "//third_party/json/include",
+      "//third_party/libuv/include",
+      "//third_party/selinux/libselinux/include/",
+    ]
     sources = [
-      "${appspawn_path}/adapter/appspawn_ace.cpp",
-      "${appspawn_path}/adapter/appspawn_adapter.cpp",
-      "${appspawn_path}/adapter/appspawn_cgroup.c",
-      "${appspawn_path}/adapter/appspawn_nweb.cpp",
-      "${appspawn_path}/adapter/appspawn_sandbox.cpp",
-      "${appspawn_path}/adapter/nwebspawn_lancher.cpp",
       "${appspawn_path}/common/appspawn_server.c",
-      "${appspawn_path}/interfaces/innerkits/client/appspawn_socket.cpp",
-      "${appspawn_path}/interfaces/innerkits/client/client_socket.cpp",
-      "${appspawn_path}/interfaces/innerkits/src/appspawn_mount_permission.cpp",
-      "${appspawn_path}/standard/appspawn_process.c",
+      "${appspawn_path}/modules/modulemgr/appspawn_modulemgr.c",
+      "${appspawn_path}/standard/appspawn_appmgr.c",
       "${appspawn_path}/standard/appspawn_service.c",
-      "${appspawn_path}/util/src/command_lexer.cpp",
-      "${appspawn_path}/util/src/json_utils.cpp",
-      "${appspawn_path}/util/src/param_helper.c",
+      "${appspawn_path}/standard/nwebspawn_launcher.c",
+      "${appspawn_path}/util/src/appspawn_base64.c",
+      "${appspawn_path}/util/src/appspawn_utils.c",
       "${appspawn_path}/util/src/sandbox_utils.cpp",
     ]
 
+    # modules sources
     sources += [
-      "${appspawn_path}/test/unittest/app_spawn_socket_test/app_spawn_socket_test.cpp",
-      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_command_lexer_test.cpp",
-      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_sandbox_test.cpp",
-      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_standard_test.cpp",
-      "${appspawn_path}/test/unittest/app_spawn_stub.cpp",
-      "${appspawn_path}/test/unittest/client_socket_test/client_socket_test.cpp",
+      "${appspawn_path}/modules/ace_adapter/ace_adapter.cpp",
+      "${appspawn_path}/modules/ace_adapter/command_lexer.cpp",
+      "${appspawn_path}/modules/common/appspawn_adapter.cpp",
+      "${appspawn_path}/modules/common/appspawn_cgroup.c",
+      "${appspawn_path}/modules/common/appspawn_common.c",
+      "${appspawn_path}/modules/nweb_adapter/nwebspawn_adapter.cpp",
+      "${appspawn_path}/modules/sandbox/appspawn_permission.c",
+      "${appspawn_path}/modules/sandbox/appspawn_sandbox.c",
+      "${appspawn_path}/modules/sandbox/sandbox_cfgvar.c",
+      "${appspawn_path}/modules/sandbox/sandbox_expand.cpp",
+      "${appspawn_path}/modules/sandbox/sandbox_load.cpp",
+      "${appspawn_path}/modules/sandbox/sandbox_manager.c",
+      "${startup_path}/init/interfaces/innerkits/hookmgr/hookmgr.c",
+      "${startup_path}/init/interfaces/innerkits/modulemgr/modulemgr.c",
     ]
 
-    configs = [ "//base/startup/appspawn/test/unittest:utest_config" ]
+    # client sources
+    sources += [
+      "${appspawn_innerkits_path}/client/appspawn_client.c",
+      "${appspawn_innerkits_path}/client/appspawn_msg.c",
+      "${appspawn_innerkits_path}/permission/appspawn_mount_permission.cpp",
+    ]
+
+    # add stub
+    include_dirs += [ "${appspawn_path}/test/mock" ]
+    sources += [
+      "${appspawn_path}/test/mock/app_spawn_stub.cpp",
+      "${appspawn_path}/test/mock/app_system_stub.c",
+    ]
+
+    # add test
+    include_dirs += [ "${appspawn_path}/test/unittest" ]
+    sources += [
+      "${appspawn_path}/test/unittest/app_spawn_client_test/app_spawn_client_test.cpp",
+      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_cgroup_test.cpp",
+      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_cold_run_test.cpp",
+      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_command_lexer_test.cpp",
+      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_sandbox_test.cpp",
+      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_service_test.cpp",
+      "${appspawn_path}/test/unittest/app_spawn_standard_test/nweb_spawn_service_test.cpp",
+      "${appspawn_path}/test/unittest/app_spawn_test_helper.cpp",
+    ]
+
+    configs = [ "//base/startup/appspawn:appspawn_config" ]
     deps += [ "//third_party/selinux:libselinux" ]
     external_deps = [
-      "ability_base:want",
-      "ability_runtime:app_manager",
-      "ability_runtime:appkit_native",
-      "ability_runtime:runtime",
-      "access_token:libtoken_setproc",
-      "access_token:libtokenid_sdk",
-      "ace_engine:ace_forward_compatibility",
-      "bundle_framework:appexecfwk_base",
-      "bundle_framework:appexecfwk_core",
       "c_utils:utils",
       "config_policy:configpolicy_util",
-      "eventhandler:libeventhandler",
       "hilog:libhilog",
-      "hitrace:hitrace_meter",
       "init:libbegetutil",
-      "init:seccomp",
-      "ipc:ipc_core",
-      "napi:ace_napi",
-      "os_account:os_account_innerkits",
-      "resource_management:global_resmgr",
     ]
+
+    if (asan_detector || is_asan) {
+      defines += [ "ASAN_DETECTOR" ]
+      sources += [ "${appspawn_path}/modules/asan_detector/asan_detector.c" ]
+    }
 
     if (appspawn_report_event) {
       defines += [ "REPORT_EVENT" ]
+      sources += [ "${appspawn_path}/modules/sysevent/event_reporter.cpp" ]
       external_deps += [ "hisysevent:libhisysevent" ]
-      sources += [ "${appspawn_path}/adapter/sysevent/event_reporter.cpp" ]
     }
   }
 }

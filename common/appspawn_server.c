@@ -15,37 +15,17 @@
 
 #include "appspawn_server.h"
 
-#include <stdlib.h>
-#include <errno.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <signal.h>
-#include <malloc.h>
 #undef _GNU_SOURCE
 #define _GNU_SOURCE
 #include <sched.h>
+#include <signal.h>
 #include <time.h>
-#ifdef SECURITY_COMPONENT_ENABLE
-#include "sec_comp_enhance_kit_c.h"
-#endif
 
-#define DEFAULT_UMASK 0002
-
-long long DiffTime(struct timespec *startTime)
-{
-    struct timespec tmEnd = {0};
-    clock_gettime(CLOCK_REALTIME, &tmEnd);
-    long long diff = (long long)((tmEnd.tv_sec - startTime->tv_sec) * 1000000); // 1000000 1000ms
-    if (tmEnd.tv_nsec > startTime->tv_nsec) {
-        diff += (tmEnd.tv_nsec - startTime->tv_nsec) / 1000; // 1000 ms
-    } else {
-        diff -= (startTime->tv_nsec - tmEnd.tv_nsec) / 1000; // 1000 ms
-    }
-    return diff;
-}
+#include "appspawn_utils.h"
 
 static void NotifyResToParent(struct AppSpawnContent_ *content, AppSpawnClient *client, int result)
 {
+    APPSPAWN_LOGI("NotifyResToParent: %{public}d", result);
     if (content->notifyResToParent != NULL) {
         content->notifyResToParent(content, client, result);
     }
@@ -54,10 +34,10 @@ static void NotifyResToParent(struct AppSpawnContent_ *content, AppSpawnClient *
 static void ProcessExit(int code)
 {
     APPSPAWN_LOGI("App exit code: %{public}d", code);
+#ifndef APPSPAWN_TEST
 #ifdef OHOS_LITE
     _exit(0x7f); // 0x7f user exit
 #else
-#ifndef APPSPAWN_TEST
     quick_exit(0);
 #endif
 #endif
@@ -80,153 +60,73 @@ void exit(int code)
 }
 #endif
 
-int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
+static int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
 {
-    int32_t ret = 0;
-    APPSPAWN_LOGV("DoStartApp id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
-    if (content->handleInternetPermission != NULL) {
-        content->handleInternetPermission(client);
-    }
+    APPSPAWN_CHECK(content != NULL && client != NULL, return -1, "Invalid arg for appspawn child");
+    APPSPAWN_LOGI("AppSpawnChild %{public}u flags: 0x%{public}x", client->id, client->flags);
 
-    if (content->setAppSandbox) {
-        ret = content->setAppSandbox(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to set app sandbox");
-    }
+    int ret = AppSpawnHookExecute(HOOK_SPAWN_FIRST, HOOK_STOP_WHEN_ERROR, content, client);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, NotifyResToParent(content, client, ret); return 0);
 
-    (void)umask(DEFAULT_UMASK);
-    if (content->setKeepCapabilities) {
-        ret = content->setKeepCapabilities(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to set KeepCapabilities");
-    }
-
-    if (content->setXpmConfig) {
-        ret = content->setXpmConfig(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to set setXpmConfig");
-    }
-
-    if (content->setProcessName) {
-        ret = content->setProcessName(content, client, content->longProcName, content->longProcNameLen);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to set setProcessName");
-    }
-
-    if (content->setUidGid) {
-        ret = content->setUidGid(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to setUidGid");
-    }
-
-    if (content->setFileDescriptors) {
-        ret = content->setFileDescriptors(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to setFileDescriptors");
-    }
-
-    if (content->setCapabilities) {
-        ret = content->setCapabilities(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to setCapabilities");
-    }
-
-    if (content->waitForDebugger) {
-        ret = content->waitForDebugger(client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to waitForDebugger");
-    }
-
-#ifdef SECURITY_COMPONENT_ENABLE
-    InitSecCompClientEnhance();
-#endif
-
-    // notify success to father process and start app process
-    NotifyResToParent(content, client, 0);
-    return 0;
-}
-
-static int AppSpawnChild(void *arg)
-{
-    APPSPAWN_CHECK(arg != NULL, return -1, "Invalid arg for appspawn child");
-    AppSandboxArg *sandbox = (AppSandboxArg *)arg;
-    struct AppSpawnContent_ *content = sandbox->content;
-    AppSpawnClient *client = sandbox->client;
-    int ret = -1;
-
-    if (content->setProcessName) {
-        ret = content->setProcessName(content, client, content->longProcName, content->longProcNameLen);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to set setProcessName");
-    }
-
-#ifdef OHOS_DEBUG
-    struct timespec tmStart = {0};
-    clock_gettime(CLOCK_REALTIME, &tmStart);
-#endif
-    // close socket id and signal for child
-    if (content->clearEnvironment != NULL) {
-        content->clearEnvironment(content, client);
-    }
-
-    if (content->setAppAccessToken != NULL) {
-        ret = content->setAppAccessToken(content, client);
-        if (ret != 0) {
-            APPSPAWN_LOGE("AppSpawnChild, set app token id failed");
-            return -1;
-        }
-    }
-
-    if ((content->getWrapBundleNameValue != NULL && content->getWrapBundleNameValue(content, client) == 0) ||
-        ((client->flags & APP_COLD_START) != 0)) {
+    if (client->flags & APP_COLD_START) {
         // cold start fail, to start normal
         if (content->coldStartApp != NULL && content->coldStartApp(content, client) == 0) {
             return 0;
         }
     }
-#ifndef OHOS_LITE
-    // enable cache for app process
-    mallopt(M_OHOS_CONFIG, M_TCACHE_PERFORMANCE_MODE);
-    mallopt(M_OHOS_CONFIG, M_ENABLE_OPT_TCACHE);
-    mallopt(M_SET_THREAD_CACHE, M_THREAD_CACHE_ENABLE);
-    mallopt(M_DELAYED_FREE, M_DELAYED_FREE_ENABLE);
-#endif
-    ret = DoStartApp(content, client, content->longProcName, content->longProcNameLen);
-    if (content->initDebugParams != NULL) {
-        content->initDebugParams(content, client);
-    }
-#ifdef OHOS_DEBUG
-    long long diff = DiffTime(&tmStart);
-    APPSPAWN_LOGI("App timeused %{public}d %lld ns.", getpid(), diff);
-#endif
-    if (ret == 0 && content->runChildProcessor != NULL) {
+    ret = AppSpawnHookExecute(HOOK_SPAWN_SECOND, HOOK_STOP_WHEN_ERROR, content, client);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, NotifyResToParent(content, client, ret); return 0);
+
+    // notify success to father process and start app process
+    NotifyResToParent(content, client, 0);
+
+    (void)AppSpawnHookExecute(HOOK_SPAWN_THIRD, 0, content, client);
+    // TODO
+    AppSpawnHookExecute(HOOK_SPAWN_POST, 0, content, client);
+
+    if (content->runChildProcessor != NULL) {
         content->runChildProcessor(content, client);
     }
     return 0;
 }
 
-static int CloneAppSpawn(void *arg)
+APPSPAWN_STATIC int CloneAppSpawn(void *arg)
 {
-    ProcessExit(AppSpawnChild(arg));
+    APPSPAWN_CHECK(arg != NULL, return -1, "Invalid content for appspawn");
+    AppSpawnForkArg *forkArg = (AppSpawnForkArg *)arg;
+    ProcessExit(AppSpawnChild(forkArg->content, forkArg->client));
     return 0;
 }
 
-int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
+int AppSpawnProcessMsg(AppSpawnContent *content, AppSpawnClient *client, pid_t *childPid)
 {
-    APPSPAWN_CHECK(sandbox != NULL && sandbox->content != NULL, return -1, "Invalid content for appspawn");
-    APPSPAWN_CHECK(sandbox->client != NULL && childPid != NULL, return -1, "Invalid client for appspawn");
-    APPSPAWN_LOGI("AppSpawnProcessMsg id %{public}d 0x%{public}x", sandbox->client->id, sandbox->client->flags);
+    APPSPAWN_CHECK(content != NULL, return -1, "Invalid content for appspawn");
+    APPSPAWN_CHECK(client != NULL && childPid != NULL, return -1, "Invalid client for appspawn");
+    APPSPAWN_LOGI("AppSpawnProcessMsg id: %{public}d mode: %{public}d sandboxNsFlags: 0x%{public}x",
+        client->id, content->mode, content->sandboxNsFlags);
+
+    // mount el2 dir
+    // MountAppEl2Dir(property);
+    // TODO getWrapBundleNameValue
+    AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, client);
 
     pid_t pid = 0;
-    if (sandbox->content->isNweb) {
-        pid = clone(CloneAppSpawn, NULL, sandbox->client->cloneFlags | SIGCHLD, (void *)sandbox);
+#ifndef OHOS_LITE
+    if (content->mode == MODE_FOR_NWEBSPAWN) {
+        AppSpawnForkArg arg;
+        arg.client = client;
+        arg.content = content;
+        pid = clone(CloneAppSpawn, NULL, content->sandboxNsFlags | SIGCHLD, (void *)&arg);
     } else {
+#else
+    {
+#endif
         pid = fork();
         if (pid == 0) {
-            ProcessExit(AppSpawnChild((void *)sandbox));
+            ProcessExit(AppSpawnChild(content, client));
         }
     }
-    APPSPAWN_CHECK(pid >= 0, return -errno, "fork child process error: %{public}d", -errno);
+    APPSPAWN_CHECK(pid >= 0, return errno, "fork child process error: %{public}d", errno);
     *childPid = pid;
     return 0;
 }

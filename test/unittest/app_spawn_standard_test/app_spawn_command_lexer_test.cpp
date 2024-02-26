@@ -16,8 +16,8 @@
 #include <cstdarg>
 #include <gtest/gtest.h>
 
+#include "app_spawn_test_helper.h"
 #include "command_lexer.h"
-#include "third_party/externals/harfbuzz/src/hb-unicode.hh"
 
 #define SPACE_STR               " "
 #define SINGLE_QUOTE_STR        "'"
@@ -30,7 +30,7 @@ namespace OHOS {
 namespace AppSpawn {
 namespace {
 
-class CommandLexerTest : public Test {
+class CommandLexerTest : public testing::Test {
 protected:
     static std::string WrapWith(const char *s, const char *appendage)
     {

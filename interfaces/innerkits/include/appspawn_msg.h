@@ -27,18 +27,16 @@ extern "C" {
 #ifndef APPSPAWN_TEST
 #define  SOCKET_DIR "/dev/unix/socket/"
 #else
-#define  SOCKET_DIR "/data/appspawn_ut/dev/unix/socket/"
+#define  SOCKET_DIR APPSPAWN_BASE_DIR "/dev/unix/socket/"
 #endif
 #else
-#define  SOCKET_DIR "/dev/socket/"
+#define  SOCKET_DIR APPSPAWN_BASE_DIR "/dev/socket/"
 #endif
-
 
 #define NWEBSPAWN_SOCKET_NAME "NWebSpawn"
 #define NWEBSPAWN_SERVER_NAME "nwebspawn"
 #define APPSPAWN_SOCKET_NAME "AppSpawn"
 #define APPSPAWN_SERVER_NAME "appspawn"
-
 
 enum AppType {
     APP_TYPE_DEFAULT = 0,  // JavaScript app
@@ -71,8 +69,7 @@ typedef enum AppOperateType_ {
 #define APP_NO_SANDBOX 0x80  // Do not enter sandbox
 #define APP_OVERLAY_FLAG 0x100
 #define GET_BUNDLE_RESOURCES_FLAG 0x200
-#define APP_GWP_ENABLED_FORCE 0x400
-#define APP_GWP_ENABLED_NORMAL 0x800
+
 #define BITLEN32 32
 #define FDLEN2 2
 #define FD_INIT_VALUE 0

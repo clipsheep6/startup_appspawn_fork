@@ -12,11 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <set>
 #include <fstream>
 #include <sstream>
-#include "appspawn_mount_permission.h"
-#include "appspawn_server.h"
+#include "interfaces/innerkits/include/appspawn_mount_permission.h"
 #include "config_policy_utils.h"
+#include "appspawn_utils.h"
 
 namespace OHOS {
 namespace AppSpawn {
@@ -78,7 +80,7 @@ std::set<std::string> AppspawnMountPermission::GetMountPermissionList()
 {
     if (!isLoad_) {
         LoadPermissionNames();
-        APPSPAWN_LOGV("GetMountPermissionList LoadPermissionNames");
+        APPSPAWN_LOGI("GetMountPermissionList LoadPermissionNames");
     }
     return appSandboxPremission_;
 }
@@ -113,3 +115,24 @@ bool AppspawnMountPermission::IsMountPermission(uint32_t code, const std::string
 } // AppSpawn
 } // OHOS
 }
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+int32_t GetMaxPermissionIndex(void)
+{
+    std::set<std::string> list = OHOS::AppSpawn::AppspawnMountPermission::GetMountPermissionList();
+    return list.size();
+}
+
+void DeletePermissions(void)
+{
+}
+
+int32_t GetPermissionIndex(const char *permission)
+{
+    return 0;
+}
+#ifdef __cplusplus
+}
+#endif

@@ -652,7 +652,7 @@
                     "src-path": "/data/service/el1/public/themes/<currentUserId>/a/system",
                     "sandbox-path": "/data/themes/a/system",
                     "sandbox-flags": [ "bind", "rec" ]
-                }, 
+                },
                 {
                     "src-path": "/data/service/el1/public/themes/<currentUserId>/b/system",
                     "sandbox-path": "/data/themes/b/system",
@@ -690,6 +690,28 @@
                     "src-path": "/log/chr",
                     "sandbox-path": "/log/chr",
                     "sandbox-flags": [ "bind", "rec" ]
+                }
+            ]
+        }],
+        "ohos.permission.ACCESS_DATA":[{
+            "sandbox-switch": "ON",
+            "mount-paths": [{
+                    "src-path" : "/mnt/data/<currentUserId>",
+                    "sandbox-path" : "/mnt/data",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "mount-shared-flag" : "true",
+                    "check-action-status": "true"
+                }
+            ]
+        }],
+        "ohos.permission.ACCESS_DEV_FUSE":[{
+            "sandbox-switch": "ON",
+            "mount-paths": [{
+                    "src-path" : "/dev/fuse",
+                    "sandbox-path" : "/mnt/data/fuse",
+                    "sandbox-flags" : [ "MS_NOSUID", "MS_NODEV", "MS_NOEXEC", "MS_NOATIME", "MS_LAZYTIME" ],
+                    "fs-type": "fuse",
+                    "check-action-status": "false"
                 }
             ]
         }]

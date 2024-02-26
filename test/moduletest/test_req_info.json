@@ -1,0 +1,40 @@
+{
+        "msg-type": 0,
+        "msg-flags": [1, 2 ],
+        "process-name" : "com.ohos.dlpmanager",
+        "dac-info" : {
+                "uid" : 1001,
+                "gid" : 1001,
+                "gid-table" : [1001],
+                "user-name" : ""
+        },
+        "access-token" : {
+                "accessTokenId" : 22,
+                "accessTokenIdEx" : 100
+        },
+        "permission" : [
+                "ohos.permission.READ_IMAGEVIDEO",
+                "ohos.permission.FILE_CROSS_APP",
+                "ohos.permission.ACTIVATE_THEME_PACKAGE"
+        ],
+        "internet-permission" : {
+                "set-allow-internet" : 0,
+                "allow-internet" : 0
+        },
+        "owner-id" : "",
+        "render-cmd" : "",
+        "domain-info" : {
+                "hap-flags" : 0,
+                "apl" : "system_core"
+        },
+        "bundle-info" : {
+                "bundle-index" : 0,
+                "bundle-name" : "com.ohos.dlpmanager"
+        },
+        "ext-info" : [
+                {
+                        "name" : "hiplist",
+                        "value" : ""
+                }
+        ]
+}
