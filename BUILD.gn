@@ -123,6 +123,7 @@ if (!defined(ohos_lite)) {
     part_name = "${part_name}"
   }
 
+
   ohos_static_library("appspawn_server") {
     sources = [
       "${appspawn_path}/adapter/appspawn_adapter.cpp",
