@@ -15,9 +15,9 @@
 
 #include <cerrno>
 #include <cstdbool>
+#include <gtest/gtest.h>
 #include <memory>
 #include <string>
-#include <gtest/gtest.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -30,9 +30,9 @@
 #include "nlohmann/json.hpp"
 #include "sandbox_utils.h"
 
+#include "app_spawn_stub.h"
 #include "app_spawn_test_helper.h"
 #include "appspawn_mount_permission.h"
-#include "app_spawn_stub.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -205,64 +205,51 @@ static const std::string g_testConfig = "{ \
 }";
 
 namespace AppSpawn {
-class SandboxLoad {
-public:
-    static int DecodeAppSandboxConfig(AppSpawnSandbox &sandbox, const nlohmann::json &appSandboxConfig);
-};
+    class SandboxLoad {
+    public:
+        static int DecodeAppSandboxConfig(AppSpawnSandbox &sandbox, const nlohmann::json &appSandboxConfig);
+    };
 
-static inline PathMountNode *GetFirstPathNodeInQueue(const SandboxSection *section)
-{
-    ListNode *node = section->front.next;
-    if (node == &section->front) {
-        return NULL;
+    static inline PathMountNode *GetFirstPathNodeInQueue(const SandboxSection *section)
+    {
+        ListNode *node = section->front.next;
+        if (node == &section->front) {
+            return NULL;
+        }
+        SandboxPrivateNode *privateNode = reinterpret_cast<SandboxPrivateNode *>(ListEntry(node, SandboxNode, node));
+        node = privateNode->section.front.next;
+        if (node == &privateNode->section.front) {
+            return NULL;
+        }
+        return reinterpret_cast<PathMountNode *>(ListEntry(node, SandboxNode, node));
     }
-    SandboxPrivateNode *privateNode = reinterpret_cast<SandboxPrivateNode *>(ListEntry(node, SandboxNode, node));
-    node = privateNode->section.front.next;
-    if (node == &privateNode->section.front) {
-        return NULL;
-    }
-    return reinterpret_cast<PathMountNode *>(ListEntry(node, SandboxNode, node));
-}
 
-static inline PathMountNode *GetNextPathNode(const SandboxSection *section, PathMountNode *pathNode)
-{
-    if (pathNode->sandboxNode.node.next == &section->front) {
-        return NULL;
+    static inline PathMountNode *GetNextPathNode(const SandboxSection *section, PathMountNode *pathNode)
+    {
+        if (pathNode->sandboxNode.node.next == &section->front) {
+            return NULL;
+        }
+        return reinterpret_cast<PathMountNode *>(ListEntry(pathNode->sandboxNode.node.next, SandboxNode, node));
     }
-    return reinterpret_cast<PathMountNode *>(ListEntry(pathNode->sandboxNode.node.next, SandboxNode, node));
-}
 
-static inline SandboxNode *GetFirstSectionNode(const SandboxSection *section)
-{
-    ListNode *node = section->front.next;
-    if (node == &section->front) {
-        return NULL;
+    static inline SandboxNode *GetFirstSectionNode(const SandboxSection *section)
+    {
+        ListNode *node = section->front.next;
+        if (node == &section->front) {
+            return NULL;
+        }
+        return reinterpret_cast<SandboxNode *>(ListEntry(node, SandboxNode, node));
     }
-    return reinterpret_cast<SandboxNode *>(ListEntry(node, SandboxNode, node));
-}
-
 }  // namespace AppSpawn
+
+AppSpawnTestHelper g_testHelper;
 class AppSpawnSandboxTest : public testing::Test {
 public:
-    static void SetUpTestCase();
-    static void TearDownTestCase();
-    void SetUp();
-    void TearDown();
-    AppSpawnTestHelper testHelper_;
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
+    void SetUp() {}
+    void TearDown() {}
 };
-
-void AppSpawnSandboxTest::SetUpTestCase()
-{}
-
-void AppSpawnSandboxTest::TearDownTestCase()
-{}
-
-void AppSpawnSandboxTest::SetUp()
-{}
-
-void AppSpawnSandboxTest::TearDown()
-{}
-
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Permission_01, TestSize.Level0)
 {
@@ -310,23 +297,20 @@ static int ProcessTestExpandConfig(const SandboxContext *context, const AppSpawn
 HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_01, TestSize.Level0)
 {
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     AppSpawnSandbox *sandbox = nullptr;
     int ret = -1;
     do {
-
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         LoadAppSandboxConfig(sandbox);
-
-        //add default
+        // add default
         AddDefaultExpandAppSandboxConfigHandle();
-
         // create msg
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
         // add expand info to msg
         const char hspListStr[] = "{ \
@@ -334,42 +318,40 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_01, TestSize.Level0)
             \"modules\":[\"module1\", \"module2\"], \
             \"versions\":[\"v10001\", \"v10002\"] \
         }";
-        ret = AppSpawnReqAddExtInfo(clientHandle, reqHandle, "HspList",
+        ret = AppSpawnReqMsgAddExtInfo( reqHandle, "HspList",
             reinterpret_cast<uint8_t *>(const_cast<char *>(hspListStr)), strlen(hspListStr) + 1);
         APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", hspListStr);
 
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
-        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, ret = -1; break);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         ret = SetSandboxConfigs(sandbox, property, 0);
     } while (0);
     if (sandbox != nullptr) {
         sandbox->extData.freeNode(&sandbox->extData);
     }
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
 
-
 HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_02, TestSize.Level0)
 {
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     AppSpawnSandbox *sandbox = nullptr;
     int ret = -1;
     do {
-
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         LoadAppSandboxConfig(sandbox);
 
-        //add default
+        // add default
         AddDefaultExpandAppSandboxConfigHandle();
         // create msg
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
         // add expand info to msg
         const char dataGroupInfoListStr[] = "{ \
@@ -378,18 +360,18 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_02, TestSize.Level0)
                      \"/data/app/el2/100/group/ce876162-fe69-45d3-aa8e-411a047af564\"], \
             \"gid\":[\"20100001\", \"20100002\"] \
         }";
-        ret = AppSpawnReqAddExtInfo(clientHandle, reqHandle, "DataGroup",
+        ret = AppSpawnReqMsgAddExtInfo(reqHandle, "DataGroup",
             reinterpret_cast<uint8_t *>(const_cast<char *>(dataGroupInfoListStr)), strlen(dataGroupInfoListStr) + 1);
         APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", dataGroupInfoListStr);
 
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
-        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, ret = -1; break);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         ret = SetSandboxConfigs(sandbox, property, 0);
     } while (0);
     if (sandbox != nullptr) {
         sandbox->extData.freeNode(&sandbox->extData);
     }
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
@@ -397,51 +379,49 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_02, TestSize.Level0)
 HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_03, TestSize.Level0)
 {
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     AppSpawnSandbox *sandbox = nullptr;
     int ret = -1;
     do {
-
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         LoadAppSandboxConfig(sandbox);
 
-        //add default
+        // add default
         AddDefaultExpandAppSandboxConfigHandle();
 
         // create msg
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_OVERLAY);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_OVERLAY);
         // add expand info to msg
         const char *overlayInfo = "/data/app/el1/bundle/public/com.ohos.demo/feature.hsp| "
             "/data/app/el1/bundle/public/com.ohos.demo/feature.hsp";
 
-        ret = AppSpawnReqAddExtInfo(clientHandle, reqHandle, "Overlay",
+        ret = AppSpawnReqMsgAddExtInfo(reqHandle, "Overlay",
             reinterpret_cast<uint8_t *>(const_cast<char *>(overlayInfo)), strlen(overlayInfo) + 1);
         APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", overlayInfo);
 
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
-        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, ret = -1; break);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         ret = SetSandboxConfigs(sandbox, property, 0);
     } while (0);
     if (sandbox != nullptr) {
         sandbox->extData.freeNode(&sandbox->extData);
     }
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
 
-
 HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_04, TestSize.Level0)
 {
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     AppSpawnSandbox *sandbox = nullptr;
     int ret = -1;
     do {
@@ -458,7 +438,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_04, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(ret == APPSPAWN_NODE_EXIST, break);
 
         // create msg
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
         // add expand info to msg
         const char *testInfo = "\"app-base\":[{ \
@@ -479,18 +459,18 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_04, TestSize.Level0)
             \"symbol-links\" : [] \
         }]";
 
-        ret = AppSpawnReqAddExtInfo(clientHandle, reqHandle, "test-cfg",
+        ret = AppSpawnReqMsgAddExtInfo(reqHandle, "test-cfg",
             reinterpret_cast<uint8_t *>(const_cast<char *>(testInfo)), strlen(testInfo) + 1);
         APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", testInfo);
 
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
-        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, ret = -1; break);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         ret = SetSandboxConfigs(sandbox, property, 0);
     } while (0);
     if (sandbox != nullptr) {
         sandbox->extData.freeNode(&sandbox->extData);
     }
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
@@ -709,19 +689,19 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_10, TestSize.Level0)
 {
     AppSpawnSandbox *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     StubNode *stub = GetStubNode(STUB_MOUNT);
     ASSERT_NE(stub != nullptr, 0);
     int ret = -1;
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         ret = APPSPAWN_INVALID_ARG;
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         AddDefaultVariable();
@@ -749,7 +729,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_10, TestSize.Level0)
         AppSpawnSandboxFree(&sandbox->extData);
     }
     stub->flags &= ~STUB_NEED_CHECK;
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
@@ -758,19 +738,19 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_11, TestSize.Level0)
 {
     AppSpawnSandbox *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     StubNode *stub = GetStubNode(STUB_MOUNT);
     ASSERT_NE(stub != nullptr, 0);
     int ret = -1;
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         ret = APPSPAWN_INVALID_ARG;
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         AddDefaultVariable();
@@ -800,7 +780,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_11, TestSize.Level0)
         AppSpawnSandboxFree(&sandbox->extData);
     }
     stub->flags &= ~STUB_NEED_CHECK;
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
@@ -809,19 +789,19 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_12, TestSize.Level0)
 {
     AppSpawnSandbox *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     StubNode *stub = GetStubNode(STUB_MOUNT);
     ASSERT_NE(stub != nullptr, 0);
     int ret = -1;
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         ret = APPSPAWN_INVALID_ARG;
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         AddDefaultVariable();
@@ -857,7 +837,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_12, TestSize.Level0)
         AppSpawnSandboxFree(&sandbox->extData);
     }
     stub->flags &= ~STUB_NEED_CHECK;
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
 }
 
@@ -865,19 +845,19 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_13, TestSize.Level0)
 {
     AppSpawnSandbox *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     StubNode *stub = GetStubNode(STUB_MOUNT);
     ASSERT_NE(stub != nullptr, 0);
     int ret = -1;
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         ret = APPSPAWN_INVALID_ARG;
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         AddDefaultVariable();
@@ -905,7 +885,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_13, TestSize.Level0)
         AppSpawnSandboxFree(&sandbox->extData);
     }
     stub->flags &= ~STUB_NEED_CHECK;
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
@@ -914,19 +894,19 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_14, TestSize.Level0)
 {
     AppSpawnSandbox *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     StubNode *stub = GetStubNode(STUB_MOUNT);
     ASSERT_NE(stub != nullptr, 0);
     int ret = -1;
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         ret = APPSPAWN_INVALID_ARG;
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         AddDefaultVariable();
@@ -954,7 +934,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_14, TestSize.Level0)
         AppSpawnSandboxFree(&sandbox->extData);
     }
     stub->flags &= ~STUB_NEED_CHECK;
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
@@ -963,21 +943,21 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_15, TestSize.Level0)
 {
     AppSpawnSandbox *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     StubNode *stub = GetStubNode(STUB_MOUNT);
     ASSERT_NE(stub != nullptr, 0);
     int ret = -1;
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
         // 设置permission
-        AppSpawnReqSeFlags(clientHandle, reqHandle, TLV_PERMISSION, 0x01);
+        AppSpawnReqMsgSetFlags(reqHandle, TLV_PERMISSION, 0x01);
 
         ret = APPSPAWN_INVALID_ARG;
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         AddDefaultVariable();
@@ -1006,7 +986,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_15, TestSize.Level0)
         AppSpawnSandboxFree(&sandbox->extData);
     }
     stub->flags &= ~STUB_NEED_CHECK;
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
@@ -1015,8 +995,8 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_16, TestSize.Level0)
 {
     AppSpawnSandbox *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     StubNode *stub = GetStubNode(STUB_MOUNT);
     ASSERT_NE(stub != nullptr, 0);
     int ret = -1;
@@ -1028,8 +1008,8 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_16, TestSize.Level0)
         reqHandle = testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
         // 设置permission
-        AppSpawnReqSeFlags(clientHandle, reqHandle, TLV_PERMISSION, 0x01);
-        AppSpawnReqSeFlags(clientHandle, reqHandle, TLV_MSG_FLAGS, 0x01);
+        AppSpawnReqMsgSetFlags(reqHandle, TLV_PERMISSION, 0x01);
+        AppSpawnReqMsgSetFlags(reqHandle, TLV_MSG_FLAGS, 0x01);
 
         ret = APPSPAWN_INVALID_ARG;
         property = testHelper.GetAppProperty(clientHandle, reqHandle);
@@ -1060,7 +1040,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_16, TestSize.Level0)
         AppSpawnSandboxFree(&sandbox->extData);
     }
     stub->flags &= ~STUB_NEED_CHECK;
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
@@ -1069,8 +1049,8 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_17, TestSize.Level0)
 {
     AppSpawnSandbox *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     StubNode *stub = GetStubNode(STUB_MOUNT);
     ASSERT_NE(stub != nullptr, 0);
     int ret = -1;
@@ -1083,7 +1063,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_17, TestSize.Level0)
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         property = testHelper.GetAppProperty(clientHandle, reqHandle);
-        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, ret = -1; break);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
@@ -1114,18 +1094,17 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_17, TestSize.Level0)
         AppSpawnSandboxFree(&sandbox->extData);
     }
     stub->flags &= ~STUB_NEED_CHECK;
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
-
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_18, TestSize.Level0)
 {
     AppSpawnSandbox *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     StubNode *stub = GetStubNode(STUB_MOUNT);
     ASSERT_NE(stub != nullptr, 0);
     int ret = -1;
@@ -1138,7 +1117,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_18, TestSize.Level0)
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         property = testHelper.GetAppProperty(clientHandle, reqHandle);
-        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, ret = -1; break);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
@@ -1148,8 +1127,9 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_18, TestSize.Level0)
         ret = AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
+        ret = -1;
         PathMountNode *pathNode = reinterpret_cast<PathMountNode *>(GetFirstSectionNode(&sandbox->section));
-        APPSPAWN_CHECK_ONLY_EXPER(pathNode != nullptr, ret = -1; break);
+        APPSPAWN_CHECK_ONLY_EXPER(pathNode != nullptr, break);
         pathNode->checkErrorFlag = 1;
 
         // set check point
@@ -1168,7 +1148,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_18, TestSize.Level0)
     ASSERT_NE(ret, 0);  // do not check result
     ASSERT_NE(stub->result, 0);
     stub->flags &= ~STUB_NEED_CHECK;
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
 }
 }  // namespace OHOS

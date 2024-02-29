@@ -76,14 +76,15 @@ namespace {
         {"MS_UNBINDABLE", MS_UNBINDABLE}, {"remount", MS_REMOUNT}, {"MS_REMOUNT", MS_REMOUNT},
         {"nosuid", MS_NOSUID}, {"MS_NOSUID", MS_NOSUID}, {"nodev", MS_NODEV}, {"MS_NODEV", MS_NODEV},
         {"noexec", MS_NOEXEC}, {"MS_NOEXEC", MS_NOEXEC}, {"noatime", MS_NOATIME}, {"MS_NOATIME", MS_NOATIME},
-        {"lazytime", MS_LAZYTIME}, {"MS_LAZYTIME", MS_LAZYTIME}};
+        {"lazytime", MS_LAZYTIME}, {"MS_LAZYTIME", MS_LAZYTIME}
+    };
 
     static const std::map<std::string, mode_t> g_modeMap = {
-            {"S_IRUSR", S_IRUSR}, {"S_IWUSR", S_IWUSR}, {"S_IXUSR", S_IXUSR},
-            {"S_IRGRP", S_IRGRP}, {"S_IWGRP", S_IWGRP}, {"S_IXGRP", S_IXGRP},
-            {"S_IROTH", S_IROTH}, {"S_IWOTH", S_IWOTH}, {"S_IXOTH", S_IXOTH},
-            {"S_IRWXU", S_IRWXU}, {"S_IRWXG", S_IRWXG}, {"S_IRWXO", S_IRWXO},
-        };
+        {"S_IRUSR", S_IRUSR}, {"S_IWUSR", S_IWUSR}, {"S_IXUSR", S_IXUSR},
+        {"S_IRGRP", S_IRGRP}, {"S_IWGRP", S_IWGRP}, {"S_IXGRP", S_IXGRP},
+        {"S_IROTH", S_IROTH}, {"S_IWOTH", S_IWOTH}, {"S_IXOTH", S_IXOTH},
+        {"S_IRWXU", S_IRWXU}, {"S_IRWXG", S_IRWXG}, {"S_IRWXO", S_IRWXO}
+    };
 }
 
 namespace OHOS {
@@ -183,7 +184,7 @@ private:
     static uint32_t GetFlagsFromJson(const nlohmann::json &config)
     {
         const std::map<std::string, int> flagsMap = {
-            {"0", 0}, {"START_FLAGS_BACKUP", 1},{"DLP_MANAGER", 2}
+            {"0", 0}, {"START_FLAGS_BACKUP", 1}, {"DLP_MANAGER", 2}
         };
 
         if (config.find(g_flags) != config.end()) {
@@ -322,12 +323,10 @@ private:
     {
         int ret = 0;
         if (configs.find(g_mountPrefix) != configs.end()) { // mount-paths
-            // APPSPAWN_LOGV("Load mount config in '%{public}s'", configName.c_str());
             ret = DecodeMountPathsConfig(sandbox, configs[g_mountPrefix], 0, section);
             APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return -1);
         }
         if (configs.find(g_symlinkPrefix) != configs.end()) { // symbol-links
-            // APPSPAWN_LOGV("Load symbol link config in '%{public}s'", configName.c_str());
             ret = DecodeSymbolLinksConfig(sandbox, configs[g_symlinkPrefix], 0, section);
             APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
         }
@@ -340,7 +339,6 @@ private:
             nlohmann::json config = flagConfigs[i];
             uint32_t flagsPoint = GetFlagsFromJson(config);
             flagsPoint |= APP_FLAGS_SECTION;
-            // APPSPAWN_LOGV("Load flags-point config in '%{public}s' 0x%{public}x", configName.c_str(), flagsPoint);
             SandboxSectionSetRootPath(sandbox, section, config, flagsPoint);
 
             if (config.find(g_mountPrefix) != config.end()) { // mount-paths
@@ -391,8 +389,6 @@ private:
         int ret = 0;
         for (auto it = privateConfigs.begin(); it != privateConfigs.end(); it++) {
             nlohmann::json config = it.value()[0];
-            // APPSPAWN_LOGV("Load private config '%{public}s' ", it.key().c_str());
-
             SandboxPrivateNode *node = CreateSandboxPrivateNode(it.key().c_str());
             APPSPAWN_CHECK_ONLY_EXPER(node != NULL, return -1);
 
@@ -419,7 +415,6 @@ private:
         int ret = 0;
         for (auto it = permissionConfigs.begin(); it != permissionConfigs.end(); it++) {
             nlohmann::json config = it.value()[0];
-            // APPSPAWN_LOGV("Load permission config %{public}s ", it.key().c_str());
             uint32_t gidCount = 0;
             ret = GetGidsFromJson(config, gidCount, gidTable);
             APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return -1);
@@ -437,8 +432,6 @@ private:
             APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
             // success, insert section
             AddPathNode(&node->sandboxNode, &sandbox.permissionNodeQueue);
-            //APPSPAWN_LOGV("Load permission config %{public}s success gidCount: %{public}u %{public}d ",
-            //    node->name, node->gidCount, node->gidCount > 0 ? node->gidTable[0] : 0);
         }
         return 0;
     }
@@ -476,7 +469,7 @@ public:
             APPSPAWN_LOGW("No sandbox config");
         }
         for (auto config : jsonConfigs) {
-           DecodeAppSandboxConfig(sandbox, config);
+            DecodeAppSandboxConfig(sandbox, config);
         }
         sandbox.pidNamespaceSupport = AppSandboxPidNsIsSupport();
         sandbox.appFullMountEnable = CheckAppFullMountEnable();
@@ -516,7 +509,6 @@ public:
         }
         APPSPAPWN_DUMP("%{public}s[0x%{public}x] %{public}s", info, static_cast<uint32_t>(mode), dump.c_str());
     }
-
 }; // for class
 }
 }
@@ -524,7 +516,8 @@ public:
 #ifdef __cplusplus
 extern "C" {
 #endif
-int LoadAppSandboxConfig(AppSpawnSandbox *sandbox) {
+int LoadAppSandboxConfig(AppSpawnSandbox *sandbox)
+{
     return OHOS::AppSpawn::SandboxLoad::LoadAppSandboxConfig(*sandbox);
 }
 void DumpMountFlags(const char *info, unsigned long mountFlags)

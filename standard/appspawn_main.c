@@ -50,7 +50,7 @@ int main(int argc, char *const argv[])
     if (argc <= 0) {
         return 0;
     }
-    SetDumpFlags(false);
+    SetDumpFlags(0);
     uintptr_t start = (uintptr_t)argv[0];
     uintptr_t end = (uintptr_t)strchr(argv[argc - 1], 0);
     if (end == 0) {
@@ -58,7 +58,7 @@ int main(int argc, char *const argv[])
     }
     uint32_t argvSize = end - start;
     if (argvSize < APP_LEN_PROC_NAME) {
-        //return 0;
+        return 0;
     }
     APPSPAWN_LOGV("Start appspawn ...");
     CheckPreload(argv);

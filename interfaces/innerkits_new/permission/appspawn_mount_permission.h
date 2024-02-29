@@ -22,12 +22,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct PermissionNode_ PermissionNode;
+typedef struct tagPermissionNode PermissionNode;
 int32_t GetPermissionIndex(const char *permission);
 int32_t GetMaxPermissionIndex(void);
 const PermissionNode *GetPermissionNode(const char *permission);
 const PermissionNode *GetPermissionNodeByIndex(int32_t index);
-void DeletePermissions(void);
 
 #ifdef __cplusplus
 }

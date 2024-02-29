@@ -15,15 +15,7 @@
 
 #ifndef APPSPAWN_CLIENT_H
 #define APPSPAWN_CLIENT_H
-
 #include <pthread.h>
-#ifdef __cplusplus
-#include <atomic>
-#define ATOMIC_UINT std::atomic_uint
-#else
-#include <stdatomic.h>
-#define ATOMIC_UINT atomic_uint
-#endif
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -41,24 +33,24 @@ extern "C" {
 #endif
 
 #define ARRAY_LENGTH(array) (uint32_t)(sizeof(array) / sizeof((array)[0]))
-#define SELECT_TIMEOUT 500 * 1000
+#define SELECT_TIMEOUT (500 * 1000)
 #define MAX_RETRY_COUNT_MSG_SEND 10
 #define GID_FILE_ACCESS 1006  // only used for ExternalFileManager.hap
 #define GID_USER_DATA_RW 1008
 #define MAX_DATA_IN_TLV 2
-#define TEST_REQ_NODE_STATE(reqNode, s)  ((uint32_t)atomic_load(&(reqNode)->state) == (s))
+#define TEST_REQ_NODE_STATE(reqNode, s) ((uint32_t)atomic_load(&(reqNode)->state) == (s))
 
-#define APPSPAWN_SOCKET_RETRY 100 // 100ms
-#define APPSPAWN_SOCKET_CLOSE  60 * 10 * 1000 // 10m
-#define CLIENT_SEND_KEEP  60 * 10 // 60 * 10s
+#define APPSPAWN_SOCKET_RETRY 100               // 100ms
+#define APPSPAWN_SOCKET_CLOSE (60 * 10 * 1000)  // 10m
+#define CLIENT_SEND_KEEP (60 * 10)              // 60 * 10s
 #ifndef APPSPAWN_TEST
-#define KEEK_LIVE_TIMEOUT 2 // 2s
+#define KEEK_LIVE_TIMEOUT 2
 #else
-#define KEEK_LIVE_TIMEOUT 1 // 2s
+#define KEEK_LIVE_TIMEOUT 1
 #endif
 
-struct AppSpawnReqNode_;
-typedef enum ClientType_ {
+struct tagAppSpawnReqMsgNode;
+typedef enum {
     CLIENT_FOR_APPSPAWN,
     CLIENT_FOR_NWEBSPAWN,
     CLIENT_NAX
@@ -80,50 +72,33 @@ typedef struct {
     uint8_t buffer[0];
 } AppSpawnMsgBlock;
 
-typedef struct AppSpawnReqMgr_ {
+typedef struct tagAppSpawnReqMsgMgr {
     AppSpawnClientType type;
-    uint32_t keepTimeout;
-    struct timespec keepStartTm;
-    ATOMIC_UINT threadExit;
-    pthread_t msgThread;
-    struct ListNode msgQueue;
-    struct ListNode sendQueue;
-    struct ListNode waitingQueue;
-    pthread_mutex_t mutex;
-    pthread_cond_t notifyMsg;  // 等待回复
+    uint32_t maxRetryCount;
     uint32_t msgId;
-    struct AppSpawnReqNode_ *keepMsg;
-    AppSpawnMsgBlock recvBlock;
-} AppSpawnReqMgr;
-
-typedef struct AppSpawnReqNode_ {
-    struct ListNode node;
+    int socketId;
     pthread_mutex_t mutex;
-    pthread_cond_t cond;
-    ATOMIC_UINT state;
-    uint32_t retryCount;
+    AppSpawnMsgBlock recvBlock;
+} AppSpawnReqMsgMgr;
 
+typedef struct tagAppSpawnReqMsgNode {
+    struct ListNode node;
+    uint32_t reqId;
+    uint32_t state;
+    uint32_t retryCount;
     AppSpawnMsgFlags *msgFlags;
     AppSpawnMsgFlags *permissionFlags;
     AppSpawnMsg *msg;
-    AppSpawnResult result;
     struct ListNode msgBlocks;  // 保存实际的消息数据
-} AppSpawnReqNode;
+} AppSpawnReqMsgNode;
 
+#define DATA_TYPE_STRING 1
 typedef struct {
     uint8_t *data;
     uint16_t dataLen;
+    uint16_t dataType;
 } AppSpawnAppData;
 
-void *ClientProcessMsg(void *args);
-AppSpawnReqNode *CreateAppSpawnReq(AppSpawnReqMgr *client, uint32_t msgType, const char *bundleName);
-void DeleteAppSpawnReq(AppSpawnReqMgr *client, AppSpawnReqNode *reqNode);
-void SafePushReqNode(AppSpawnReqMgr *client, AppSpawnReqNode *reqNode, struct ListNode *queue, uint32_t state);
-void SafeRemoveReqNode(AppSpawnReqMgr *client, AppSpawnReqNode *reqNode);
-
-AppSpawnReqNode *FindReqNodeByMsgId(AppSpawnReqMgr *client, uint32_t msgId, const ListNode *queue);
-int GetMsgSerialNo(AppSpawnReqMgr *client);
-int ClientSendMsg(AppSpawnReqMgr *client, AppSpawnReqNode *reqNode, uint32_t timeout, AppSpawnResult *result);
 #ifdef __cplusplus
 }
 #endif

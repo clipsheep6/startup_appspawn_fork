@@ -24,11 +24,12 @@ ohos_shared_library("appspawn_common") {
     ".",
     "${appspawn_path}/common",
     "${appspawn_path}/standard",
-    "//base/security/access_token/interfaces/innerkits/accesstoken/include",
   ]
   cflags = []
-  deps =
-      [ "${appspawn_innerkits_path}/module_engine:libappspawn_module_engine" ]
+  deps = [
+    "${appspawn_innerkits_path}/module_engine:libappspawn_module_engine",
+    "//third_party/json:nlohmann_json_static",
+  ]
   defines = [ "GRAPHIC_PERMISSION_CHECK" ]
   external_deps = [
     "access_token:libtoken_setproc",

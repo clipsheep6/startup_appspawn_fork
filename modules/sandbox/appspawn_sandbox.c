@@ -71,7 +71,7 @@ static inline const char *GetRootPathForSandbox(const AppSpawnSandbox *sandbox,
     return section->rootPath == NULL ? NULL : section->rootPath;
 }
 
-static inline const char *GetPackagePath(const SandboxContext *sandboxContext)
+static const char *GetPackagePath(const SandboxContext *sandboxContext)
 {
     if (sandboxContext->nwebspawn) {
         size_t len = sprintf_s(sandboxContext->buffer[0], sandboxContext->bufferLen,
@@ -91,7 +91,7 @@ static inline const char *GetPackagePath(const SandboxContext *sandboxContext)
     return sandboxContext->buffer[0];
 }
 
-static inline void DumpSandboxContext(const SandboxContext *context)
+static void DumpSandboxContext(const SandboxContext *context)
 {
     APPSPAWN_LOGV("Sandbox context bundle name: %{public}s", context->bundleName);
     APPSPAWN_LOGV("Sandbox context real root path: %{public}s", context->realRootPath);
@@ -106,7 +106,7 @@ static inline void DumpSandboxContext(const SandboxContext *context)
         context->appFullMountEnable, context->permissionCfg);
 }
 
-static int AppendPermissionGid(const AppSpawnSandbox *sandbox, AppProperty *property)
+static int AppendPermissionGid(const AppSpawnSandbox *sandbox, AppSpawningCtx *property)
 {
     // 根据permission列表，获取gid，加入到gidTable
     AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
@@ -130,7 +130,7 @@ static int AppendPermissionGid(const AppSpawnSandbox *sandbox, AppProperty *prop
         if ((permissionNode->gidCount + dacInfo->gidCount) > APP_MAX_GIDS) {
             APPSPAWN_LOGW("More gid for %{public}s msg count %{public}u permission %{public}u",
                 GetProcessName(property), dacInfo->gidCount, permissionNode->gidCount);
-             copyLen = APP_MAX_GIDS - dacInfo->gidCount;
+            copyLen = APP_MAX_GIDS - dacInfo->gidCount;
         }
         int ret = memcpy_s(&dacInfo->gidTable[dacInfo->gidCount], sizeof(gid_t) * copyLen,
             permissionNode->gidTable, sizeof(gid_t) * copyLen);
@@ -164,16 +164,10 @@ static int32_t DoDlpAppMountStrategy(const SandboxContext *context, const MountA
 
     // To make sure destinationPath exist
     MakeDirRecursive(args->destinationPath, FILE_MODE);
-    MountArg mountArg = {
-            args->originPath,
-            args->destinationPath,
-            args->fsType,
-            args->mountFlags,
-            options,
-            MS_SHARED
-        };
+    MountArg mountArg = { args->originPath, args->destinationPath, args->fsType, args->mountFlags, options, MS_SHARED};
     int ret = SandboxMountPath(&mountArg);
-    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, close(fd); return -1);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, close(fd);
+        return -1);
 
     /* close DLP_FUSE_FD and dup FD to it */
     close(DLP_FUSE_FD);
@@ -206,7 +200,7 @@ static int GetMountArgs(const SandboxContext *context, const PathMountNode *sand
 static int CheckSandboxMountNode(const SandboxContext *context,
     const SandboxSection *section, const PathMountNode *sandboxNode)
 {
-   if (sandboxNode->source == NULL || sandboxNode->target == NULL) {
+    if (sandboxNode->source == NULL || sandboxNode->target == NULL) {
         APPSPAWN_LOGW("Invalid mount config section %{public}s", context->sandboxSectionName);
         return 0;
     }
@@ -242,11 +236,9 @@ static int CheckSandboxMountNode(const SandboxContext *context,
     return 1;
 }
 
-static int DoSandboxMountNode(const SandboxContext *context, const SandboxSection *section, const PathMountNode *sandboxNode)
+static int DoSandboxMountNode(const SandboxContext *context,
+    const SandboxSection *section, const PathMountNode *sandboxNode)
 {
-#ifdef APPSPAWN_DEBUG
-    //DumpSandboxNode((ListNode *)&sandboxNode->sandboxNode.node, NULL);
-#endif
     if (CheckSandboxMountNode(context, section, sandboxNode) == 0) {
         return 0;
     }
@@ -344,7 +336,7 @@ static int DoSandboxPathConfigs(const SandboxContext *context, const SandboxSect
 
 static int BuildRootPath(SandboxContext *context, const char *rootPath, const char *cfgRoot)
 {
-    if (context->realRootPath){
+    if (context->realRootPath) {
         free(context->realRootPath);
         context->realRootPath = NULL;
     }
@@ -391,14 +383,7 @@ static int SetSandboxCommConfig(const SandboxContext *context, const AppSpawnSan
         // need permission check for system app here
         const char *destBundlesPath = GetSandboxRealVar(context, 0, "/data/bundles/", context->sandboxPackagePath, 0);
         MakeDirRecursive(destBundlesPath, FILE_MODE);
-        MountArg mountArg = {
-                PHYSICAL_APP_INSTALL_PATH,
-                destBundlesPath,
-                NULL,
-                MS_REC | MS_BIND,
-                NULL,
-                MS_SLAVE
-            };
+        MountArg mountArg = { PHYSICAL_APP_INSTALL_PATH, destBundlesPath, NULL, MS_REC | MS_BIND, NULL, MS_SLAVE };
         ret = SandboxMountPath(&mountArg);
         APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %{public}d", ret);
     }
@@ -438,6 +423,7 @@ static int SetSandboxPermissionConfig(const SandboxContext *context, const AppSp
             GetRootPathForSandbox(sandbox, &permissionNode->section, 0), permissionNode->name);
         APPSPAWN_CHECK(ret == 0,
             return -1, "Failed to create root path app: %{public}s", context->bundleName);
+        APPSPAWN_LOGV("SetSandboxPermissionConfig permission %{public}s", permissionNode->name);
         ret = DoSandboxPathConfigs(context, &permissionNode->section, false);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
         node = node->next;
@@ -481,13 +467,8 @@ static int SetBundleResourceSandboxConfig(const SandboxContext *sandboxContext, 
         0, "/data/storage/bundle_resources/", sandboxContext->sandboxPackagePath, 0);
     MakeDirRecursive(destPath, FILE_MODE);
     MountArg mountArg = {
-            "/data/service/el1/public/bms/bundle_resources/",
-            destPath,
-            NULL,
-            MS_REC | MS_BIND,
-            NULL,
-            MS_SLAVE
-        };
+        "/data/service/el1/public/bms/bundle_resources/", destPath, NULL, MS_REC | MS_BIND, NULL, MS_SLAVE
+    };
     int ret = SandboxMountPath(&mountArg);
     return ret;
 }
@@ -531,17 +512,12 @@ static int SandboxRootFolderCreate(const SandboxContext *context, const AppSpawn
         ret = mount("/", context->sandboxPackagePath, NULL, BASIC_MOUNT_FLAGS, NULL);
         APPSPAWN_CHECK(ret == 0, return ret,
             "mount bind / failed, app: %{public}s errno: %{public}d", context->sandboxPackagePath, errno);
-    } else if (!context->sandboxShared){
+    } else if (!context->sandboxShared) {
         ret = mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL);
         APPSPAWN_CHECK(ret == 0, return ret,
             "set propagation slave failed, app: %{public}s errno: %{public}d", context->sandboxPackagePath, errno);
         MountArg arg = {
-            context->sandboxPackagePath,
-            context->sandboxPackagePath,
-            NULL,
-            BASIC_MOUNT_FLAGS,
-            NULL,
-            MS_SLAVE
+            context->sandboxPackagePath, context->sandboxPackagePath, NULL, BASIC_MOUNT_FLAGS, NULL, MS_SLAVE
         };
         ret = SandboxMountPath(&arg);
         APPSPAWN_CHECK(ret == 0, return ret,
@@ -593,7 +569,7 @@ static int SetSandboxConfig(SandboxContext *context, const AppSpawnSandbox *sand
 }
 
 static int SetDefaultSandboxContext(
-    const AppProperty *property, const AppSpawnSandbox *sandbox, SandboxContext *context)
+    const AppSpawningCtx *property, const AppSpawnSandbox *sandbox, SandboxContext *context)
 {
     AppSpawnMsgFlags *msgFlags = (AppSpawnMsgFlags *)GetAppProperty(property, TLV_MSG_FLAGS);
     APPSPAWN_CHECK(msgFlags != NULL, return APPSPAWN_NO_TLV,
@@ -650,13 +626,13 @@ static void FreeSandboxContext(SandboxContext *context)
         free(context->defaultRootPath);
         context->defaultRootPath = NULL;
     }
-    if (context->realRootPath){
+    if (context->realRootPath) {
         free(context->realRootPath);
         context->realRootPath = NULL;
     }
 }
 
-int PrepareSandbox(AppSpawnContentExt *content, AppProperty *property)
+int PrepareSandbox(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Prepare sandbox config %{public}s", GetProcessName(property));
     AppSpawnSandbox *sandbox = GetAppSpawnSandbox(content);
@@ -672,7 +648,7 @@ int PrepareSandbox(AppSpawnContentExt *content, AppProperty *property)
     return AppendPermissionGid(sandbox, property);
 }
 
-int SetSandboxConfigs(const AppSpawnSandbox *sandbox, AppProperty *property, int nwebspawn)
+int SetSandboxConfigs(const AppSpawnSandbox *sandbox, AppSpawningCtx *property, int nwebspawn)
 {
     APPSPAWN_LOGV("Set sandbox config %{public}s", GetProcessName(property));
     APPSPAWN_CHECK(sandbox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));

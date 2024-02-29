@@ -27,9 +27,9 @@
 extern "C" {
 #endif
 
-typedef struct AppSpawnContent_ AppSpawnContent;
-typedef struct AppSpawnClient_ AppSpawnClient;
-typedef struct AppSpawnAppInfo_ AppSpawnAppInfo;
+typedef struct tagAppSpawnContent AppSpawnContent;
+typedef struct tagAppSpawnClient AppSpawnClient;
+typedef struct tagAppSpawnedProcess AppSpawnedProcess;
 typedef enum {
     MODULE_DEFAULT,
     MODULE_APPSPAWN,
@@ -53,11 +53,11 @@ void DeleteAppSpawnHookMgr(void);
 int PreloadHookExecute(AppSpawnContent *content);
 
 typedef struct {
-    const struct AppSpawnContent_ *content;
-    const AppSpawnAppInfo *appInfo;
+    const struct tagAppSpawnContent *content;
+    const AppSpawnedProcess *appInfo;
 } AppSpawnAppArg;
 
-int AppChangeHookExecute(int stage, const AppSpawnContent *content, const AppSpawnAppInfo *appInfo);
+int AppChangeHookExecute(int stage, const AppSpawnContent *content, const AppSpawnedProcess *appInfo);
 
 #ifdef __cplusplus
 }

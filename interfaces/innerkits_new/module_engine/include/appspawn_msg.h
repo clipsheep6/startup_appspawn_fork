@@ -31,11 +31,11 @@ extern "C" {
 #define KEEPALIVE_NAME "keepalive"
 
 #define APPSPAWN_ALIGN(len) (((len) + 0x03) & (~0x03))
-#define APPSPAWN_TLV_NAME_LEN 62
-#define MAX_MSG_BLOCK_LEN 4 * 1024
+#define APPSPAWN_TLV_NAME_LEN 32
+#define MAX_MSG_BLOCK_LEN (4 * 1024)
 #define RECV_BLOCK_LEN 1024
-#define MAX_MSG_TOTAL_LENGTH 64 * 1024
-#define EXTRAINFO_TOTAL_LENGTH_MAX 32 * 1024
+#define MAX_MSG_TOTAL_LENGTH (64 * 1024)
+#define EXTRAINFO_TOTAL_LENGTH_MAX (32 * 1024)
 #define MAX_TLV_COUNT 128
 #define APPSPAWN_MSG_MAGIC 0xEF201234
 
@@ -48,7 +48,6 @@ typedef enum {
     TLV_ACCESS_TOKEN_INFO,
     TLV_PERMISSION,
     TLV_INTERNET_INFO,
-    TLV_RENDER_CMD,
     TLV_RENDER_TERMINATION_INFO,
     TLV_MAX
 } AppSpawnMsgTlvType;
@@ -64,6 +63,8 @@ typedef enum {
 #endif
 
 #pragma pack(4)
+typedef AppDacInfo AppSpawnMsgDacInfo;
+
 typedef struct {
     uint16_t tlvLen;
     uint16_t tlvType;
@@ -73,6 +74,7 @@ typedef struct {
     uint16_t tlvLen;  // 对齐后的长度
     uint16_t tlvType;
     uint16_t dataLen;  // 数据的长度
+    uint16_t dataType;
     char tlvName[APPSPAWN_TLV_NAME_LEN];
 } AppSpawnTlvEx;
 
@@ -82,12 +84,18 @@ typedef struct {
 } AppSpawnMsgFlags;
 
 typedef struct {
-    char renderCmd[0];
-} AppSpawnMsgRenderCmd;
+    uint32_t accessTokenId; // 这个字段目前没有使用，是否删除
+    uint64_t accessTokenIdEx;
+} AppSpawnMsgAccessToken;
 
 typedef struct {
     char ownerId[0];  // app identifier id
 } AppSpawnMsgOwnerId;
+
+typedef struct {
+    uint8_t setAllowInternet;
+    uint8_t allowInternet; // hap sockect allowed
+} AppSpawnMsgInternetInfo;
 
 typedef struct {
     uint32_t hapFlags;
@@ -99,7 +107,7 @@ typedef struct {
     char bundleName[0];  // process name
 } AppSpawnMsgBundleInfo;
 
-typedef struct AppSpawnMsg_ {
+typedef struct tagAppSpawnMsg {
     uint32_t magic;
     uint32_t msgType;
     uint32_t msgLen;

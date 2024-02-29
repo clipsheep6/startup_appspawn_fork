@@ -15,15 +15,15 @@
 
 #include "appspawn_socket.h"
 
-#include <sys/socket.h>
-#include <linux/tcp.h>
-#include <linux/in.h>
 #include <cerrno>
+#include <linux/in.h>
+#include <linux/tcp.h>
+#include <sys/socket.h>
 
 #ifdef APPSPAWN_NEW_CLIENT
+#include "appspawn_msg.h"
 #include "interfaces/innerkits_new/include/appspawn.h"
 #include "interfaces/innerkits_new/module_engine/include/appspawn_msg.h"
-#include "appspawn_msg.h"
 #else
 #include "pubdef.h"
 #endif
@@ -84,7 +84,7 @@ int AppSpawnSocket::PackSocketAddr()
 
 int AppSpawnSocket::CreateSocket()
 {
-    int socketFd = socket(AF_UNIX, SOCK_STREAM, 0); // SOCK_SEQPACKET
+    int socketFd = socket(AF_UNIX, SOCK_STREAM, 0);  // SOCK_SEQPACKET
     APPSPAWN_CHECK(socketFd >= 0, return -errno, "Failed to create socket: %{public}d", errno);
 
     int flag = 1;
@@ -117,8 +117,6 @@ int AppSpawnSocket::ReadSocketMessage(int socketFd, void *buf, int len)
     while ((rLen < 0) && (errno == EAGAIN)) {
         rLen = TEMP_FAILURE_RETRY(read(socketFd, buf, len));
     }
-    APPSPAWN_LOGV("ReadSocketMessage socket %{public}d, rLen %{public}d, errno: %d  %u", socketFd, rLen, errno, *((uint32_t *)buf));
-
     APPSPAWN_CHECK(rLen >= 0, return -EFAULT,
         "Read message from fd %{public}d error %{public}zd: %{public}d", socketFd, rLen, errno);
     return rLen;
@@ -153,12 +151,9 @@ static std::string GetExtraInfoByType(const AppParameter *parameter, const std::
     return extraInfoStr.substr(0, secondPos);
 }
 
-static int AddBaseTlv(AppSpawnClientHandle clientHandle, const AppParameter *parameter, AppSpawnReqHandle reqHandle)
+static int AddBaseTlv(AppSpawnClientHandle clientHandle, const AppParameter *parameter, AppSpawnReqMsgHandle reqHandle)
 {
-    AppBundleInfo info;
-    info.bundleIndex = parameter->bundleIndex;
-    (void)strcpy_s(info.bundleName, sizeof(info.bundleName), parameter->bundleName);
-    int ret = AppSpawnReqSetBundleInfo(clientHandle, reqHandle, &info);
+    int ret = AppSpawnReqMsgSetBundleInfo(reqHandle, parameter->bundleIndex, parameter->bundleName);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to add bundle info");
 
     AppDacInfo dacInfo;
@@ -166,48 +161,32 @@ static int AddBaseTlv(AppSpawnClientHandle clientHandle, const AppParameter *par
     dacInfo.gid = parameter->gid;
     dacInfo.gidCount = parameter->gidCount;
     (void)memcpy_s(dacInfo.gidTable, sizeof(dacInfo.gidTable), parameter->gidTable, sizeof(dacInfo.gidTable));
-    ret = AppSpawnReqSetAppDacInfo(clientHandle, reqHandle, &dacInfo);
+    ret = AppSpawnReqMsgSetAppDacInfo(reqHandle, &dacInfo);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to add dac info ");
 
-    APPSPAWN_LOGV("AddBaseTlv flags 0x%{public}x", parameter->flags);
-    for (uint32_t i = 0; i < 32; i++) { // 32 bits
+    for (uint32_t i = 0; i < 32; i++) {  // 32 bits
         if (((parameter->flags >> i) & 0x1) == 1) {
             APPSPAWN_LOGV("AddBaseTlv flags %{public}d", i);
-            AppSpawnReqSetAppFlag(clientHandle, reqHandle, i);
+            AppSpawnReqMsgSetAppFlag(reqHandle, i);
         }
     }
 
-    AppDomainInfo domainInfo = {};
-    domainInfo.hapFlags = parameter->hapFlags;
-    (void)strcpy_s(domainInfo.apl, sizeof(domainInfo.apl), parameter->apl);
-    ret = AppSpawnReqSetAppDomainInfo(clientHandle, reqHandle, &domainInfo);
+    ret = AppSpawnReqMsgSetAppDomainInfo(reqHandle, parameter->hapFlags, parameter->apl);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to add domain info ");
 
-    AppInternetPermissionInfo interPermission = {};
-    interPermission.setAllowInternet = parameter->setAllowInternet;
-    interPermission.allowInternet = parameter->allowInternet;
-    ret = AppSpawnReqSetAppInternetPermissionInfo(clientHandle, reqHandle, &interPermission);
+    ret = AppSpawnReqMsgSetAppInternetPermissionInfo(reqHandle, parameter->allowInternet, parameter->setAllowInternet);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to add interPermission ");
 
     if (strlen(parameter->ownerId) > 0) {
-        AppOwnerId ownerId = {};
-        (void)strcpy_s(ownerId.ownerId, sizeof(ownerId.ownerId), parameter->ownerId);
-        ret = AppSpawnReqSetAppOwnerId(clientHandle, reqHandle, &ownerId);
+        ret = AppSpawnReqMsgSetAppOwnerId(reqHandle, parameter->ownerId);
         APPSPAWN_CHECK(ret == 0, return -1, "Failed to add ownerId info ");
     }
 
     if (strlen(parameter->renderCmd) > 0) {
-        AppRenderCmd renderCmd = {};
-        (void)strcpy_s(renderCmd.renderCmd, sizeof(renderCmd.renderCmd), parameter->renderCmd);
-        ret = AppSpawnReqSetAppRenderCmd(clientHandle, reqHandle, &renderCmd);
-        APPSPAWN_CHECK(ret == 0, return -1, "Failed to add ownerId info ");
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_RENDER_CMD, parameter->renderCmd);
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to add renderCmd ");
     }
-    AppAccessTokenInfo tokenInfo = {};
-    tokenInfo.accessTokenId = parameter->accessTokenId;
-    tokenInfo.accessTokenIdEx = parameter->accessTokenIdEx;
-    APPSPAWN_LOGV("AppSpawnServer::set access token id = %{public}llu, accessTokenId  %{public}u",
-        static_cast<unsigned long long>(parameter->accessTokenIdEx), parameter->accessTokenId);
-    ret = AppSpawnReqSetAppAccessToken(clientHandle, reqHandle, &tokenInfo);
+    ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, parameter->accessTokenId, parameter->accessTokenIdEx);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to add ownerId info");
     return 0;
 }
@@ -220,34 +199,34 @@ int AppSpawnSocket::SendMessage(const uint8_t *buffer, uint32_t bufferLen)
         APPSPAWN_CHECK(ret == 0, return -1, "Failed to create client %{public}s", socketName_.c_str());
     }
     const AppParameter *parameter = reinterpret_cast<const AppParameter *>(buffer);
-    APPSPAWN_LOGV("WriteSocketMessage processName: %{public}s %{public}x",
-        parameter->processName, parameter->mountPermissionFlags);
-    AppSpawnReqHandle reqHandle = 0;
-    ret = AppSpawnReqCreate(clientHandle_, static_cast<uint32_t>(parameter->code), parameter->processName, &reqHandle);
+    AppSpawnReqMsgHandle reqHandle = 0;
+    ret = AppSpawnReqMsgCreate(static_cast<uint32_t>(parameter->code), parameter->processName, &reqHandle);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to create req %{public}s", socketName_.c_str());
     ret = AddBaseTlv(clientHandle_, parameter, reqHandle);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to create req %{public}s", socketName_.c_str());
 
-    ret = AppSpawnReqSeFlags(clientHandle_, reqHandle, TLV_PERMISSION, parameter->mountPermissionFlags);
+    ret = AppSpawnReqMsgSetFlags(reqHandle, TLV_PERMISSION, parameter->mountPermissionFlags);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to add permission flags info req %{public}s", socketName_.c_str());
 
     std::string strExt = GetExtraInfoByType(parameter, "|HspList|");
     if (!strExt.empty()) {
-        ret = AppSpawnReqAddExtInfo(clientHandle_, reqHandle, "HspList",
-            reinterpret_cast<uint8_t *>(const_cast<char *>(strExt.c_str())), strExt.size());
-        APPSPAWN_CHECK(ret == 0, return -1, "Failed to create req %{public}s", socketName_.c_str());
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, "HspList", strExt.c_str());
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to add HspList %{public}s", socketName_.c_str());
     }
     strExt = GetExtraInfoByType(parameter, "|Overlay|");
     if (!strExt.empty()) {
-        ret = AppSpawnReqAddExtInfo(clientHandle_, reqHandle, "Overlay",
-            reinterpret_cast<uint8_t *>(const_cast<char *>(strExt.c_str())), strExt.size());
-        APPSPAWN_CHECK(ret == 0, return -1, "Failed to create req %{public}s", socketName_.c_str());
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, "Overlay", strExt.c_str());
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to add Overlay %{public}s", socketName_.c_str());
     }
     strExt = GetExtraInfoByType(parameter, "|DataGroup|");
     if (!strExt.empty()) {
-        ret = AppSpawnReqAddExtInfo(clientHandle_, reqHandle, "DataGroup",
-            reinterpret_cast<uint8_t *>(const_cast<char *>(strExt.c_str())), strExt.size());
-        APPSPAWN_CHECK(ret == 0, return -1, "Failed to create req %{public}s", socketName_.c_str());
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, "DataGroup", strExt.c_str());
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to add DataGroup %{public}s", socketName_.c_str());
+    }
+    strExt = GetExtraInfoByType(parameter, "|AppEnv|");
+    if (!strExt.empty()) {
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, "AppEnv", strExt.c_str());
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to add AppEnv %{public}s", socketName_.c_str());
     }
     AppSpawnResult result = {};
     ret = AppSpawnClientSendMsg(clientHandle_, reqHandle, &result);
@@ -268,8 +247,8 @@ int AppSpawnSocket::WriteSocketMessage(int socketFd, const void *buf, int len)
         APPSPAWN_LOGE("Invalid args: socket %{public}d, len %{public}d, buf might be nullptr", socketFd, len);
         return -1;
     }
-    int ret = 0;
 #ifdef APPSPAWN_NEW_CLIENT
+    int ret = 0;
     if (currMsgLen_ == 0) {
         const AppParameter *parameter = reinterpret_cast<const AppParameter *>(buf);
         if (parameter->extraInfo.totalLength == 0) {
@@ -283,9 +262,9 @@ int AppSpawnSocket::WriteSocketMessage(int socketFd, const void *buf, int len)
         ret = memcpy_s(message_.data(), message_.size(), buf, len);
         APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy msg: %{public}u recv: %{public}u", currMsgLen_, len);
         currMsgLen_ = len;
-        APPSPAWN_LOGI("WriteSocketMessage total %{public}u", message_.size());
+        APPSPAWN_LOGV("WriteSocketMessage total %{public}u", message_.size());
     } else if ((currMsgLen_ + len) > message_.size()) {
-        APPSPAWN_LOGI("WriteSocketMessage invalid msg: %{public}u recv: %{public}u", currMsgLen_, len);
+        APPSPAWN_LOGE("WriteSocketMessage invalid msg: %{public}u recv: %{public}u", currMsgLen_, len);
         return -1;
     } else {
         ret = memcpy_s(message_.data() + currMsgLen_, message_.size() - currMsgLen_, buf, len);
@@ -298,10 +277,7 @@ int AppSpawnSocket::WriteSocketMessage(int socketFd, const void *buf, int len)
     ret = SendMessage(message_.data(), message_.size());
     message_.clear();
     currMsgLen_ = 0;
-    if (ret == 0) {
-        return len;
-    }
-    return ret;
+    return (ret == 0) ? len : ret;
 #else
     ssize_t written = 0;
     ssize_t remain = static_cast<ssize_t>(len);

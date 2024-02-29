@@ -105,7 +105,7 @@ static int PrivateNodeCompareProc(ListNode *node, ListNode *newNode)
     return strcmp(privateNode->name, newPrivateNode->name);
 }
 
-static int sandboxNodeCompareProc(ListNode *node, ListNode *newNode)
+static int SandboxNodeCompareProc(ListNode *node, ListNode *newNode)
 {
     SandboxNode *sandbox1 = (SandboxNode *)ListEntry(node, SandboxNode, node);
     SandboxNode *sandbox2 = (SandboxNode *)ListEntry(newNode, SandboxNode, node);
@@ -165,7 +165,8 @@ SandboxPrivateNode *CreateSandboxPrivateNode(const char *name)
     node->sandboxNode.type = SANDBOX_TAG_PRIVATE;
     SandboxSectionInit(&node->section, SANDBOX_TAG_PRIVATE_QUEUE);
     int ret = strcpy_s(node->name, len, name);
-    APPSPAWN_CHECK(ret == 0, free(node); return NULL, "Failed to copy name");
+    APPSPAWN_CHECK(ret == 0, free(node);
+        return NULL, "Failed to copy name");
     return node;
 }
 
@@ -234,7 +235,7 @@ int AddPathNode(SandboxNode *node, SandboxSection *queue)
             OH_ListAddWithOrder(&queue->front, &node->node, PrivateNodeCompareProc);
             break;
         default:
-            OH_ListAddWithOrder(&queue->front, &node->node, sandboxNodeCompareProc);
+            OH_ListAddWithOrder(&queue->front, &node->node, SandboxNodeCompareProc);
             break;
     }
     return 0;
@@ -264,14 +265,14 @@ static int AppSpawnExtDataCompareDataId(ListNode *node, void *data)
     return extData->dataId - *(uint32_t *)data;
 }
 
-AppSpawnSandbox *GetAppSpawnSandbox(const AppSpawnContentExt *content)
+AppSpawnSandbox *GetAppSpawnSandbox(const AppSpawnMgr *content)
 {
     uint32_t dataId = EXT_DATA_SANDBOX;
     ListNode *node = OH_ListFind(&content->extData, (void *)&dataId, AppSpawnExtDataCompareDataId);
     if (node == NULL) {
         return NULL;
     }
-    return (AppSpawnSandbox *)ListEntry(node, AppSpawnSandbox, extData);;
+    return (AppSpawnSandbox *)ListEntry(node, AppSpawnSandbox, extData);
 }
 
 static void DumpSandboxSection(const char *info, const SandboxSection *section)
@@ -361,7 +362,7 @@ static int DumpSandboxPermissionNode(ListNode *node, void *data)
     return 0;
 }
 
-static void DumpSandbox(struct AppSpawnExtData_ *data)
+static void DumpSandbox(struct tagAppSpawnExtData *data)
 {
     uint32_t count = 0;
     AppSpawnSandbox *sandbox = (AppSpawnSandbox *)data;
@@ -419,7 +420,7 @@ APPSPAWN_STATIC AppSpawnSandbox *CreateAppSpawnSandbox(void)
     return sandbox;
 }
 
-static int LoadSandbox(AppSpawnContentExt *content)
+static int LoadSandbox(AppSpawnMgr *content)
 {
     AppSpawnSandbox *sandbox = GetAppSpawnSandbox(content);
     APPSPAWN_CHECK(sandbox == NULL, return 0, "Sandbox has been load");
@@ -442,7 +443,7 @@ static int LoadSandbox(AppSpawnContentExt *content)
     return 0;
 }
 
-int RunSandboxConfig(AppSpawnContentExt *content, AppProperty *property)
+int RunSandboxConfig(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     AppSpawnSandbox *appSandBox = GetAppSpawnSandbox(content);
     APPSPAWN_CHECK(appSandBox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));

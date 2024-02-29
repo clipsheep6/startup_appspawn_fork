@@ -23,6 +23,7 @@ ohos_shared_library("event_reporter") {
   external_deps = [
     "hilog:libhilog",
     "hisysevent:libhisysevent",
+    "init:libbegetutil",
   ]
   deps =
       [ "${appspawn_innerkits_path}/module_engine:libappspawn_module_engine" ]

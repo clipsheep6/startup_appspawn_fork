@@ -47,7 +47,8 @@ SandboxPermissionNode *CreateSandboxPermissionNode(const char *name, uint32_t gi
     }
 #endif
     int ret = strcpy_s(node->name, len, name);
-    APPSPAWN_CHECK(ret == 0, free(node); return NULL, "Failed to copy name");
+    APPSPAWN_CHECK(ret == 0, free(node);
+        return NULL, "Failed to copy name");
     return node;
 }
 
@@ -58,7 +59,8 @@ int32_t PermissionRenumber(SandboxSection *queue)
     while (node != &queue->front) {
         SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)ListEntry(node, SandboxNode, node);
         permissionNode->permissionIndex = ++index;
-        APPSPAWN_LOGV("Permission index %{public}d name %{public}s", permissionNode->permissionIndex, permissionNode->name);
+        APPSPAWN_LOGV("Permission index %{public}d name %{public}s",
+            permissionNode->permissionIndex, permissionNode->name);
         node = node->next;
     }
     return index + 1;

@@ -99,7 +99,8 @@ int AddVariableReplaceHandler(const char *name, ReplaceVarHandler ReplaceVarHand
     OH_ListInit(&node->node);
     node->replaceVar = ReplaceVarHandler;
     int ret = strcpy_s(node->name, len, name);
-    APPSPAWN_CHECK(ret == 0, free(node); return -1, "Failed to copy name %{public}s", name);
+    APPSPAWN_CHECK(ret == 0, free(node);
+        return -1, "Failed to copy name %{public}s", name);
     OH_ListAddTail(&g_sandboxVarList, &node->node);
     return 0;
 }
@@ -107,7 +108,7 @@ int AddVariableReplaceHandler(const char *name, ReplaceVarHandler ReplaceVarHand
 const char *GetSandboxRealVar(const SandboxContext *sandboxContext,
     uint32_t index, const char *source, const char *prefix, int permission)
 {
-    if (index >= sizeof(sandboxContext->buffer) / sizeof(sandboxContext->buffer[0])) {
+    if (index >= 2) { // max buffer count
         return NULL;
     }
     uint32_t destIndex = 0;

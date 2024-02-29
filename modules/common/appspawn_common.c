@@ -60,7 +60,7 @@
 #define PID_NS_INIT_UID 100000  // reserved for pid_ns_init process, avoid app, render proc, etc.
 #define PID_NS_INIT_GID 100000
 
-static int SetProcessName(const AppSpawnContentExt *content, const AppProperty *property)
+static int SetProcessName(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Process step %{public}s processName:  %{public}s", "SetProcessName", GetProcessName(property));
     const char *processName = GetProcessName(property);
@@ -94,7 +94,7 @@ static int SetProcessName(const AppSpawnContentExt *content, const AppProperty *
     return 0;
 }
 
-static int SetKeepCapabilities(const AppSpawnContentExt *content, const AppProperty *property)
+static int SetKeepCapabilities(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Process step %{public}s processName:  %{public}s", "SetKeepCapabilities", GetProcessName(property));
     AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
@@ -109,7 +109,7 @@ static int SetKeepCapabilities(const AppSpawnContentExt *content, const AppPrope
     return 0;
 }
 
-static int SetCapabilities(const AppSpawnContentExt *content, const AppProperty *property)
+static int SetCapabilities(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Process step %{public}s processName:  %{public}s", "SetCapabilities", GetProcessName(property));
     // init cap
@@ -149,10 +149,10 @@ static int SetCapabilities(const AppSpawnContentExt *content, const AppProperty 
     return 0;
 }
 
-static void InitDebugParams(const AppSpawnContentExt *content, const AppProperty *property)
+static void InitDebugParams(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Process step %{public}s processName:  %{public}s", "InitDebugParams", GetProcessName(property));
-#if defined (__aarch64__) || defined (__x86_64__)
+#if defined(__aarch64__) || defined(__x86_64__)
     const char *debugSoPath = "/system/lib64/libhidebug.so";
 #else
     const char *debugSoPath = "/system/lib/libhidebug.so";
@@ -173,10 +173,9 @@ static void InitDebugParams(const AppSpawnContentExt *content, const AppProperty
         return, "Failed to dlsym errno: %{public}s", dlerror());
     (*initParam)(processName);
     dlclose(handle);
-    APPSPAWN_LOGV("Process step %{public}s processName: %{public}s finish", "InitDebugParams", GetProcessName(property));
 }
 
-static void ClearEnvironment(const AppSpawnContentExt *content, const AppProperty *property)
+static void ClearEnvironment(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Process step %{public}s processName:  %{public}s", "ClearEnvironment", GetProcessName(property));
     sigset_t mask;
@@ -185,11 +184,11 @@ static void ClearEnvironment(const AppSpawnContentExt *content, const AppPropert
     sigaddset(&mask, SIGTERM);
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
     // close child fd
-    close(property->fd[0]);
+    close(property->forkCtx.fd[0]);
     return;
 }
 
-static int SetXpmConfig(const AppSpawnContentExt *content, const AppProperty *property)
+static int SetXpmConfig(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Process step %{public}s processName:  %{public}s", "SetXpmConfig", GetProcessName(property));
 #ifdef CODE_SIGNATURE_ENABLE
@@ -213,7 +212,7 @@ static int SetXpmConfig(const AppSpawnContentExt *content, const AppProperty *pr
     return 0;
 }
 
-static int SetUidGid(const AppSpawnContentExt *content, const AppProperty *property)
+static int SetUidGid(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Process step %{public}s processName:  %{public}s", "SetUidGid", GetProcessName(property));
     AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
@@ -238,7 +237,7 @@ static int SetUidGid(const AppSpawnContentExt *content, const AppProperty *prope
      */
     ret = setresuid(dacInfo->uid, dacInfo->uid, dacInfo->uid);
     APPSPAWN_CHECK(ret == 0, return errno,
-            "setuid(%{public}u) failed: %{public}d", dacInfo->uid, errno);
+        "setuid(%{public}u) failed: %{public}d", dacInfo->uid, errno);
 
     if (TestAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE) && IsDeveloperModeOn(property)) {
         setenv("HAP_DEBUGGABLE", "true", 1);
@@ -249,7 +248,7 @@ static int SetUidGid(const AppSpawnContentExt *content, const AppProperty *prope
     return 0;
 }
 
-static int32_t SetFileDescriptors(const AppSpawnContentExt *content, const AppProperty *property)
+static int32_t SetFileDescriptors(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Process step %{public}s processName:  %{public}s", "SetFileDescriptors", GetProcessName(property));
 #ifndef APPSPAWN_TEST
@@ -258,25 +257,25 @@ static int32_t SetFileDescriptors(const AppSpawnContentExt *content, const AppPr
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
     // redirect to /dev/null
-    int dev_null_fd = open(DEVICE_NULL_STR, O_RDWR);
-    if (dev_null_fd == -1) {
+    int devNullFd = open(DEVICE_NULL_STR, O_RDWR);
+    if (devNullFd == -1) {
         APPSPAWN_LOGE("open dev_null error: %{public}d", errno);
         return (-errno);
     }
 
     // stdin
-    if (dup2(dev_null_fd, STDIN_FILENO) == -1) {
+    if (dup2(devNullFd, STDIN_FILENO) == -1) {
         APPSPAWN_LOGE("dup2 STDIN error: %{public}d", errno);
         return (-errno);
     };
 
     // stdout
-    if (dup2(dev_null_fd, STDOUT_FILENO) == -1) {
+    if (dup2(devNullFd, STDOUT_FILENO) == -1) {
         APPSPAWN_LOGE("dup2 STDOUT error: %{public}d", errno);
         return (-errno);
     };
     // stderr
-    if (dup2(dev_null_fd, STDERR_FILENO) == -1) {
+    if (dup2(devNullFd, STDERR_FILENO) == -1) {
         APPSPAWN_LOGE("dup2 STDERR error: %{public}d", errno);
         return (-errno);
     };
@@ -309,7 +308,7 @@ static int32_t CheckTraceStatus(void)
     return -1;
 }
 
-static int32_t WaitForDebugger(const AppProperty *property)
+static int32_t WaitForDebugger(const AppSpawningCtx *property)
 {
     // wait for debugger only debugging is required and process is debuggable
     if (TestAppMsgFlagsSet(property, APP_FLAGS_NATIVEDEBUG) &&
@@ -346,7 +345,8 @@ static bool IsUnlockStatus(uint32_t uid)
     char *path = (char *)malloc(sizeof(char) * allPathSize);
     APPSPAWN_CHECK(path != NULL, return true, "Failed to malloc path");
     size_t len = sprintf_s(path, allPathSize, "%s%u%s", rootPath, uid, basePath);
-    APPSPAWN_CHECK(len > 0 && (len < allPathSize), free(path); return true, "Failed to get base path");
+    APPSPAWN_CHECK(len > 0 && (len < allPathSize), free(path);
+        return true, "Failed to get base path");
     APPSPAWN_LOGV("IsUnlockStatus %{public}s uid: %{public}u", path, uid);
     if (access(path, F_OK) == 0) {
         free(path);
@@ -357,7 +357,7 @@ static bool IsUnlockStatus(uint32_t uid)
     return false;
 }
 
-static int MountAppEl2Dir(const AppProperty *property)
+static int MountAppEl2Dir(const AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Process step %{public}s processName:  %{public}s", "MountAppEl2Dir", GetProcessName(property));
     const char rootPath[] = APPSPAWN_BASE_DIR "/mnt/sandbox/";
@@ -373,7 +373,8 @@ static int MountAppEl2Dir(const AppProperty *property)
     char *path = (char *)malloc(sizeof(char) * (allPathSize));
     APPSPAWN_CHECK(path != NULL, return -1, "Failed to malloc path");
     size_t len = sprintf_s(path, allPathSize, "%s%u/%s%s", rootPath, dacInfo->uid / UID_BASE, bundleName, el2Path);
-    APPSPAWN_CHECK(len > 0 && (len < allPathSize), free(path); return -1, "Failed to get el2 path");
+    APPSPAWN_CHECK(len > 0 && (len < allPathSize), free(path);
+        return -1, "Failed to get el2 path");
     APPSPAWN_LOGV("MountAppEl2Dir %{public}s processName:  %{public}s", path, GetProcessName(property));
     if (access(path, F_OK) == 0) {
         free(path);
@@ -381,14 +382,13 @@ static int MountAppEl2Dir(const AppProperty *property)
     }
 
     int ret = MakeDirRecursive(path, DEFAULT_DIR_MODE);
-    // APPSPAWN_CHECK(ret == 0, free(path); return ret, "Failed to mkdir %{public}s errno: %{public}d", path, ret);
     MountArg arg = {path, path, NULL, MS_BIND | MS_REC, NULL, MS_SHARED};
     ret = SandboxMountPath(&arg);
     free(path);
     return ret;
 }
 
-static int AppSpawnSpawnPrepare(AppSpawnContentExt *content, AppProperty *property)
+static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("AppSpawnSpawnPrepare clear env");
     int ret = SetProcessName(content, property);
@@ -397,13 +397,13 @@ static int AppSpawnSpawnPrepare(AppSpawnContentExt *content, AppProperty *proper
     ClearEnvironment(content, property);
 
     ResetParamSecurityLabel();
-    // TODO 确定这个token是否影响asan
+
     ret = SetAppAccessToken(content, property);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
     return 0;
 }
 
-static int AppSpawnSpawnStep1(AppSpawnContentExt *content, AppProperty *property)
+static int AppSpawnSpawnStep1(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("AppSpawnSpawnStep1 mallopt");
     // enable cache for app process
@@ -417,7 +417,7 @@ static int AppSpawnSpawnStep1(AppSpawnContentExt *content, AppProperty *property
     return ret;
 }
 
-static int AppSpawnSpawnStep6(AppSpawnContentExt *content, AppProperty *property)
+static int AppSpawnSpawnStep6(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     (void)umask(DEFAULT_UMASK);
     int ret = SetKeepCapabilities(content, property);
@@ -442,6 +442,9 @@ static int AppSpawnSpawnStep6(AppSpawnContentExt *content, AppProperty *property
     ret = SetSelinuxCon(content, property) == -1;
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
 
+    ret = SetEnvInfo(content, property);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
+
     ret = WaitForDebugger(property);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
 
@@ -451,7 +454,7 @@ static int AppSpawnSpawnStep6(AppSpawnContentExt *content, AppProperty *property
     return 0;
 }
 
-static int AppSpawnCommPreload(AppSpawnContentExt *content)
+static int AppSpawnCommPreload(AppSpawnMgr *content)
 {
     // set uid gid filetr
     int ret = SetUidGidFilter(content);
@@ -459,22 +462,22 @@ static int AppSpawnCommPreload(AppSpawnContentExt *content)
     return ret;
 }
 
-static int AppSpawnSpawnAfter(AppSpawnContentExt *content, AppProperty *property)
+static int AppSpawnSpawnAfter(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     InitDebugParams(content, property);
-	return 0;
+    return 0;
 }
 
 static int CheckEnabled(const char *param, const char *value)
 {
-    char tmp[32] = {0}; // 32 max
+    char tmp[32] = {0};  // 32 max
     int ret = GetParameter(param, "", tmp, sizeof(tmp));
     APPSPAWN_LOGV("IsParameterEnabled key %{public}s ret %{public}d result: %{public}s", param, ret, tmp);
     int enabled = (ret > 0 && strcmp(tmp, value) == 0);
     return enabled;
 }
 
-static int AppSpawnPreSpawn(AppSpawnContentExt *content, AppProperty *property)
+static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Prepare spawn app %{public}s", GetProcessName(property));
     if (TestAppMsgFlagsSet(property, APP_FLAGS_COLD_BOOT)) {
@@ -487,7 +490,7 @@ static int AppSpawnPreSpawn(AppSpawnContentExt *content, AppProperty *property)
     return 0;
 }
 
-static int EnablePidNs(AppSpawnContentExt *content)
+static int EnablePidNs(AppSpawnMgr *content)
 {
     if (IsNWebSpawnMode(content) || IsColdRunMode(content)) {
         return 0;
@@ -506,7 +509,7 @@ static int EnablePidNs(AppSpawnContentExt *content)
 #ifdef WITH_SELINUX
         setcon("u:r:pid_ns_init:s0");
 #endif
-        char* argv[] = {"/system/bin/pid_ns_init", NULL};
+        char *argv[] = {"/system/bin/pid_ns_init", NULL};
         execve("/system/bin/pid_ns_init", argv, NULL);
         _exit(0x7f);
     }

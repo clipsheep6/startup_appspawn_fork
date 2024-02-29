@@ -21,11 +21,11 @@
 #include "appspawn.h"
 #include "appspawn_msg.h"
 #include "appspawn_utils.h"
-#include "securec.h"
-#include "thread_manager.h"
+#include "command_lexer.h"
 #include "nlohmann/json.hpp"
 #include "sandbox_utils.h"
-#include "command_lexer.h"
+#include "securec.h"
+#include "thread_manager.h"
 
 #include "app_spawn_stub.h"
 
@@ -38,45 +38,46 @@ typedef struct ThreadContext_ {
 namespace OHOS {
 namespace AppSpawnModuleTest {
 static const std::string g_defaultAppInfo = "{ \
-        \"msg-type\": 0, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.ohos.dlpmanager\", \
-        \"dac-info\" : { \
-                \"uid\" : 1001, \
-                \"gid\" : 1001,\
-                \"gid-table\" : [1001],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenId\" : 22,\
-                \"accessTokenIdEx\" : 100\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.ohos.dlpmanager\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"hiplist\",\
-                        \"value\" : \"\"\
-                }\
-        ]\
-    }";
+    \"msg-type\": 0, \
+    \"msg-flags\": [1, 2 ], \
+    \"process-name\" : \"com.ohos.dlpmanager\", \
+    \"dac-info\" : { \
+            \"uid\" : 1001, \
+            \"gid\" : 1001,\
+            \"gid-table\" : [1001],\
+            \"user-name\" : \"\" \
+    },\
+    \"access-token\" : {\
+            \"accessTokenId\" : 22,\
+            \"accessTokenIdEx\" : 100\
+    },\
+    \"permission\" : [\
+            \"ohos.permission.READ_IMAGEVIDEO\",\
+            \"ohos.permission.FILE_CROSS_APP\",\
+            \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+    ],\
+    \"internet-permission\" : {\
+            \"set-allow-internet\" : 0,\
+            \"allow-internet\" : 0\
+    },\
+    \"bundle-info\" : {\
+            \"bundle-index\" : 0,\
+            \"bundle-name\" : \"com.ohos.dlpmanager\" \
+    },\
+    \"owner-id\" : \"\",\
+    \"render-cmd\" : \"1234567890\",\
+    \"domain-info\" : {\
+            \"hap-flags\" : 0,\
+            \"apl\" : \"system_core\"\
+    },\
+    \"ext-info\" : [\
+            {\
+                    \"name\" : \"hiplist\",\
+                    \"value\" : \"1333333333333345\"\
+            }\
+    ]\
+}";
+
 class AppSpawnTestCommander : public ThreadContext {
 public:
     AppSpawnTestCommander()
@@ -92,18 +93,17 @@ public:
     int Run();
 
 private:
-    AppSpawnReqHandle CreateMsg();
+    AppSpawnReqMsgHandle CreateMsg();
     int StartSendMsg();
     int SendMsg();
 
-    int BuildMsgFromJson (const nlohmann::json &appInfoConfig, AppSpawnReqHandle reqHandle, const char *processName);
-    int GetBundleInfoFromJson(const nlohmann::json &appInfoConfig, AppBundleInfo &info);
+    int AddExtTlv(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle);
+    int BuildMsgFromJson(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle, const char *processName);
+    int AddBundleInfoFromJson(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle);
     int GetDacInfoFromJson(const nlohmann::json &appInfoConfig, AppDacInfo &info);
-    int GetInternetPermissionInfoFromJson(const nlohmann::json &appInfoConfig, AppInternetPermissionInfo &info);
+    int GetInternetPermissionInfoFromJson(const nlohmann::json &appInfoConfig, AppSpawnMsgInternetInfo &info);
     int GetAccessTokenFromJson(const nlohmann::json &appInfoConfig, AppSpawnMsgAccessToken &info);
-    int GetOwnerIdFromJson(const nlohmann::json &appInfoConfig, AppOwnerId &info);
-    int GetRenderCmdFromJson(const nlohmann::json &appInfoConfig, AppRenderCmd &info);
-    int GetDomainInfoFromJson(const nlohmann::json &appInfoConfig, AppDomainInfo &info);
+    int AddDomainInfoFromJson(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle);
 
     static AppSpawnTestCommander *ConvertTo(const ThreadContext *context)
     {
@@ -116,9 +116,9 @@ private:
     uint32_t exit_ : 1;
     uint32_t appSpawn_ : 1;
     uint32_t coldStart_ : 1;
-    uint32_t maxClient { 1 };
-    std::string testFileName_ {};
-    uint32_t threadCount_  {0};
+    uint32_t maxClient{1};
+    std::string testFileName_{};
+    uint32_t threadCount_{0};
     AppSpawnClientHandle clientHandle_{nullptr};
     ThreadMgr threadMgr_{nullptr};
     ThreadTaskHandle inputHandle_{0};
@@ -143,17 +143,16 @@ int AppSpawnTestCommander::ProcessArgs(int argc, char *const argv[])
     return 0;
 }
 
-int AppSpawnTestCommander::GetBundleInfoFromJson(const nlohmann::json &appInfoConfig, AppBundleInfo &info)
+int AppSpawnTestCommander::AddBundleInfoFromJson(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle)
 {
     if (appInfoConfig.find("bundle-info") == appInfoConfig.end()) {
         return -1;
     }
     nlohmann::json config = appInfoConfig.at("bundle-info");
-    info.bundleIndex = AppSpawn::SandboxUtils::GetIntValueFromJson(config, "bundle-index");
+    uint32_t bundleIndex = AppSpawn::SandboxUtils::GetIntValueFromJson(config, "bundle-index");
     std::string bundleName = AppSpawn::SandboxUtils::GetStringFromJson(config, "bundle-name");
-    if (!bundleName.empty()) {
-        return strcpy_s(info.bundleName, sizeof(info.bundleName), bundleName.c_str());
-    }
+    int ret = AppSpawnReqMsgSetBundleInfo(reqHandle, bundleIndex, bundleName.c_str());
+    APPSPAWN_CHECK(ret == 0, return ret, "Failed to add bundle info req %{public}s", bundleName.c_str());
     return 0;
 }
 
@@ -182,7 +181,7 @@ int AppSpawnTestCommander::GetDacInfoFromJson(const nlohmann::json &appInfoConfi
 }
 
 int AppSpawnTestCommander::GetInternetPermissionInfoFromJson(
-    const nlohmann::json &appInfoConfig, AppInternetPermissionInfo &info)
+    const nlohmann::json &appInfoConfig, AppSpawnMsgInternetInfo &info)
 {
     if (appInfoConfig.find("internet-permission") == appInfoConfig.end()) {
         return -1;
@@ -204,94 +203,93 @@ int AppSpawnTestCommander::GetAccessTokenFromJson(const nlohmann::json &appInfoC
     return 0;
 }
 
-int AppSpawnTestCommander::GetOwnerIdFromJson(const nlohmann::json &appInfoConfig, AppOwnerId &info)
-{
-    std::string ownerId = AppSpawn::SandboxUtils::GetStringFromJson(appInfoConfig, "owner-id");
-    if (!ownerId.empty()) {
-        return strcpy_s(info.ownerId, sizeof(info.ownerId), ownerId.c_str());
-    }
-    return 0;
-}
-
-int AppSpawnTestCommander::GetRenderCmdFromJson(const nlohmann::json &appInfoConfig, AppRenderCmd &info)
-{
-    std::string renderCmd = AppSpawn::SandboxUtils::GetStringFromJson(appInfoConfig, "render-cmd");
-    if (!renderCmd.empty()) {
-        return strcpy_s(info.renderCmd, sizeof(info.renderCmd), renderCmd.c_str());
-    }
-    return 0;
-}
-
-int AppSpawnTestCommander::GetDomainInfoFromJson(const nlohmann::json &appInfoConfig, AppDomainInfo &info)
+int AppSpawnTestCommander::AddDomainInfoFromJson(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle)
 {
     if (appInfoConfig.find("domain-info") == appInfoConfig.end()) {
         return -1;
     }
     nlohmann::json config = appInfoConfig.at("domain-info");
-    info.hapFlags = AppSpawn::SandboxUtils::GetIntValueFromJson(config, "hap-flags");
+    uint32_t hapFlags = AppSpawn::SandboxUtils::GetIntValueFromJson(config, "hap-flags");
     std::string apl = AppSpawn::SandboxUtils::GetStringFromJson(config, "apl");
-    if (!apl.empty()) {
-        return strcpy_s(info.apl, sizeof(info.apl), apl.c_str());
-    }
+    int ret = AppSpawnReqMsgSetAppDomainInfo(reqHandle, hapFlags, apl.c_str());
+    APPSPAWN_CHECK(ret == 0, return ret, "Failed to domain info");
     return 0;
 }
 
-int AppSpawnTestCommander::BuildMsgFromJson (
-    const nlohmann::json &appInfoConfig, AppSpawnReqHandle reqHandle, const char *processName)
+int AppSpawnTestCommander::AddExtTlv(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle)
 {
-    AppBundleInfo info = {};
-    int ret = GetBundleInfoFromJson(appInfoConfig, info);
-    ret = AppSpawnReqSetBundleInfo(clientHandle_, reqHandle, &info);
-    APPSPAWN_CHECK(ret == 0, return ret, "Failed to add bundle info req %{public}s", processName);
+    if (appInfoConfig.find("ext-info") == appInfoConfig.end()) {
+        return 0;
+    }
+    int ret = 0;
+    uint32_t count = appInfoConfig.at("ext-info").size();
+    for (unsigned int j = 0; j < count; j++) {
+        nlohmann::json config = appInfoConfig.at("ext-info")[j];
+        std::string name = AppSpawn::SandboxUtils::GetStringFromJson(config, "name");
+        std::string value = AppSpawn::SandboxUtils::GetStringFromJson(config, "value");
+        APPSPAWN_LOGV("ext-info %{public}s %{public}s", name.c_str(), value.c_str());
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, name.c_str(), value.c_str());
+        APPSPAWN_CHECK(ret == 0, return ret, "Failed to add ext name %{public}s", name.c_str());
+    }
+    ret = AppSpawnReqMsgAddStringInfo(reqHandle, "app-info", appInfoConfig.dump().c_str());
+    APPSPAWN_CHECK(ret == 0, return ret, "Failed to add ext name app-info");
+    return ret;
+}
+
+int AppSpawnTestCommander::BuildMsgFromJson (
+    const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle, const char *processName)
+{
+    int ret = AddBundleInfoFromJson(appInfoConfig, reqHandle);
+    APPSPAWN_CHECK(ret == 0, return ret, "Failed to add dac %{public}s", processName);
+
+    ret = AddDomainInfoFromJson(appInfoConfig, reqHandle);
+    APPSPAWN_CHECK(ret == 0, return ret, "Failed to add dac %{public}s", processName);
 
     AppDacInfo dacInfo = {};
     ret = GetDacInfoFromJson(appInfoConfig, dacInfo);
-    ret = AppSpawnReqSetAppDacInfo(clientHandle_, reqHandle, &dacInfo);
+    ret = AppSpawnReqMsgSetAppDacInfo(reqHandle, &dacInfo);
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to add dac %{public}s", processName);
 
     AppSpawnMsgAccessToken token = {};
     ret = GetAccessTokenFromJson(appInfoConfig, token);
-    ret = AppSpawnReqSetAppAccessToken(clientHandle_, reqHandle, &token);
+    ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, token.accessTokenId, token.accessTokenIdEx);
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to add access token %{public}s", processName);
 
-    std::vector<const char *> permissions = {};
     if (appInfoConfig.find("permission") != appInfoConfig.end()) {
         const auto vec = appInfoConfig.at("permission").get<std::vector<std::string>>();
         for (unsigned int j = 0; j < vec.size(); j++) {
             APPSPAWN_LOGV("permission %{public}s ", vec[j].c_str());
-            permissions.push_back(vec[j].c_str());
+            ret = AppSpawnReqMsgSetPermission(reqHandle, vec[j].c_str());
+            APPSPAWN_CHECK(ret == 0, return ret, "Failed to permission %{public}s", vec[j].c_str());
         }
-        ret = AppSpawnReqSetPermission(clientHandle_, reqHandle, permissions.data(), permissions.size());
-        APPSPAWN_CHECK(ret == 0, return ret, "Failed to permission %{public}s", processName);
     }
-    AppInternetPermissionInfo internetInfo = {};
+    AppSpawnMsgInternetInfo internetInfo = {};
     ret = GetInternetPermissionInfoFromJson(appInfoConfig, internetInfo);
-    ret = AppSpawnReqSetAppInternetPermissionInfo(clientHandle_, reqHandle, &internetInfo);
+    ret = AppSpawnReqMsgSetAppInternetPermissionInfo(reqHandle,
+        internetInfo.allowInternet, internetInfo.setAllowInternet);
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to internet info %{public}s", processName);
 
-    AppOwnerId ownerId = {};
-    ret = GetOwnerIdFromJson(appInfoConfig, ownerId);
-    ret = AppSpawnReqSetAppOwnerId(clientHandle_, reqHandle, &ownerId);
-    APPSPAWN_CHECK(ret == 0, return ret, "Failed to ownerid %{public}s", processName);
+    std::string ownerId = AppSpawn::SandboxUtils::GetStringFromJson(appInfoConfig, "owner-id");
+    if (!ownerId.empty()) {
+        ret = AppSpawnReqMsgSetAppOwnerId(reqHandle, ownerId.c_str());
+        APPSPAWN_CHECK(ret == 0, return ret, "Failed to ownerid %{public}s", processName);
+    }
 
-    AppRenderCmd renderCmd = {};
-    ret = GetRenderCmdFromJson(appInfoConfig, renderCmd);
-    ret = AppSpawnReqSetAppRenderCmd(clientHandle_, reqHandle, &renderCmd);
-    APPSPAWN_CHECK(ret == 0, return ret, "Failed to render cmd %{public}s", processName);
-
-    AppDomainInfo domainInfo = {};
-    ret = GetDomainInfoFromJson(appInfoConfig, domainInfo);
-    ret = AppSpawnReqSetAppDomainInfo(clientHandle_, reqHandle, &domainInfo);
-    APPSPAWN_CHECK(ret == 0, return ret, "Failed to domain info %{public}s", processName);
-    return 0;
+    std::string renderCmd = AppSpawn::SandboxUtils::GetStringFromJson(appInfoConfig, "render-cmd");
+    if (!renderCmd.empty()) {
+        ret = AppSpawnReqMsgAddExtInfo(reqHandle, MSG_EXT_NAME_RENDER_CMD,
+            reinterpret_cast<uint8_t *>(const_cast<char *>(renderCmd.c_str())), renderCmd.size());
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to add renderCmd %{public}s", renderCmd.c_str());
+    }
+    return AddExtTlv(appInfoConfig, reqHandle);
 }
 
-AppSpawnReqHandle AppSpawnTestCommander::CreateMsg()
+AppSpawnReqMsgHandle AppSpawnTestCommander::CreateMsg()
 {
     const char *name = appSpawn_ ? APPSPAWN_SERVER_NAME : NWEBSPAWN_SERVER_NAME;
     if (clientHandle_) {
         int ret = AppSpawnClientInit(name, &clientHandle_);
-        APPSPAWN_CHECK(ret == 0, return -1, "Failed to create client %{public}s", name);
+        APPSPAWN_CHECK(ret == 0, return INVALID_REQ_HANDLE, "Failed to create client %{public}s", name);
     }
     nlohmann::json appInfoConfig;
     if (!testFileName_.empty()) {
@@ -311,18 +309,18 @@ AppSpawnReqHandle AppSpawnTestCommander::CreateMsg()
         processName = "com.ohos.dlpmanager";
     }
     uint32_t msgType = AppSpawn::SandboxUtils::GetIntValueFromJson(appInfoConfig, "msg-type", MSG_APP_SPAWN);
-    AppSpawnReqHandle reqHandle = 0;
-    int ret = AppSpawnReqCreate(clientHandle_, msgType, processName.c_str(), &reqHandle);
+    AppSpawnReqMsgHandle reqHandle = 0;
+    int ret = AppSpawnReqMsgCreate(msgType, processName.c_str(), &reqHandle);
     APPSPAWN_CHECK(ret == 0, return INVALID_REQ_HANDLE, "Failed to create req %{public}s", processName.c_str());
 
     if (appInfoConfig.find("msg-flags") != appInfoConfig.end()) {
         const auto vec = appInfoConfig.at("msg-flags").get<std::vector<uint32_t>>();
         for (unsigned int j = 0; j < vec.size(); j++) {
-            (void)AppSpawnReqSetAppFlag(clientHandle_, reqHandle, vec[j]);
+            (void)AppSpawnReqMsgSetAppFlag(reqHandle, vec[j]);
         }
     }
     ret = BuildMsgFromJson(appInfoConfig, reqHandle, processName.c_str());
-    APPSPAWN_CHECK(ret == 0, AppSpawnReqDestroy(clientHandle_, reqHandle);
+    APPSPAWN_CHECK(ret == 0, AppSpawnReqMsgFree(reqHandle);
         return INVALID_REQ_HANDLE, "Failed to build req %{public}s", processName.c_str());
     return reqHandle;
 }
@@ -330,7 +328,7 @@ AppSpawnReqHandle AppSpawnTestCommander::CreateMsg()
 int AppSpawnTestCommander::SendMsg()
 {
     printf("Send msg to server %s \n", appSpawn_ ? APPSPAWN_SERVER_NAME : NWEBSPAWN_SERVER_NAME);
-    AppSpawnReqHandle reqHandle = CreateMsg();
+    AppSpawnReqMsgHandle reqHandle = CreateMsg();
     AppSpawnResult result = {};
     int ret = AppSpawnClientSendMsg(clientHandle_, reqHandle, &result);
     printf("Process ret %d result: %d pid: %d \n", ret, result.result, result.pid);
@@ -381,7 +379,7 @@ static const char *GetInputFileName(const char *buffer)
 void AppSpawnTestCommander::InputThread(ThreadTaskHandle handle, const ThreadContext *context)
 {
     AppSpawnTestCommander *testCmder = AppSpawnTestCommander::ConvertTo(context);
-    char buf[256] = {0}; // 256 test buffer max len
+    char buf[256] = {0};  // 256 test buffer max len
     fd_set fds;
     while (1) {
         FD_ZERO(&fds);
@@ -404,8 +402,8 @@ void AppSpawnTestCommander::InputThread(ThreadTaskHandle handle, const ThreadCon
             testCmder->exit_ = 1;
             break;
         }
-         if (strncmp("send", buf, 4) == 0) { // 4 strlen("send")
-            const char *str = GetInputFileName(buf + 4); // 4 strlen("send")
+        if (strncmp("send", buf, 4) == 0) {               // 4 strlen("send")
+            const char *str = GetInputFileName(buf + 4);  // 4 strlen("send")
             if (str != nullptr) {
                 testCmder->testFileName_ = str;
             } else {
@@ -434,7 +432,7 @@ int AppSpawnTestCommander::Run()
 
     APPSPAWN_LOGV("Finish send msg \n");
     while (!exit_) {
-        pause();
+        usleep(200000);  // 200000 200ms
     }
     ThreadMgrCancelTask(threadMgr_, inputHandle_);
     DestroyThreadMgr(threadMgr_);
@@ -452,7 +450,7 @@ int main(int argc, char *const argv[])
     if (argc <= 0) {
         return 0;
     }
-    SetDumpFlags(true);
+    SetDumpFlags(1);
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     commander.ProcessArgs(argc, argv);
     commander.Run();

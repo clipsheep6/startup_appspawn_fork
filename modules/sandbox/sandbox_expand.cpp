@@ -33,7 +33,7 @@
 
 using namespace std;
 
-namespace{
+namespace {
 const std::string g_hspList_key_bundles = "bundles";
 const std::string g_hspList_key_modules = "modules";
 const std::string g_hspList_key_versions = "versions";
@@ -63,13 +63,15 @@ public:
         int ret = 0;
         std::string sandboxPackagePath = context.sandboxPackagePath;
         nlohmann::json hsps = nlohmann::json::parse(hspListInfo, nullptr, false);
-        APPSPAWN_CHECK(!hsps.is_discarded() && hsps.contains(g_hspList_key_bundles) && hsps.contains(g_hspList_key_modules)
+        APPSPAWN_CHECK(!hsps.is_discarded() &&
+            hsps.contains(g_hspList_key_bundles) && hsps.contains(g_hspList_key_modules)
             && hsps.contains(g_hspList_key_versions), return -1, "MountAllHsp: json parse failed");
 
         nlohmann::json& bundles = hsps[g_hspList_key_bundles];
         nlohmann::json& modules = hsps[g_hspList_key_modules];
         nlohmann::json& versions = hsps[g_hspList_key_versions];
-        APPSPAWN_CHECK(bundles.is_array() && modules.is_array() && versions.is_array() && bundles.size() == modules.size()
+        APPSPAWN_CHECK(bundles.is_array() && modules.is_array() &&
+            versions.is_array() && bundles.size() == modules.size()
             && bundles.size() == versions.size(), return -1, "MountAllHsp: value is not arrary or sizes are not same");
 
         APPSPAWN_LOGI("MountAllHsp: app = %{public}s, cnt = %{public}lu",
@@ -85,17 +87,13 @@ public:
             APPSPAWN_CHECK(CheckPath(libBundleName) && CheckPath(libModuleName) && CheckPath(libVersion),
                 return -1, "MountAllHsp: path error");
 
-            std::string libPhysicalPath = PHYSICAL_APP_INSTALL_PATH + libBundleName + "/" + libVersion + "/" + libModuleName;
+            std::string libPhysicalPath = PHYSICAL_APP_INSTALL_PATH +
+                libBundleName + "/" + libVersion + "/" + libModuleName;
             std::string mntPath = sandboxPackagePath + g_sandboxHspInstallPath + libBundleName + "/" + libModuleName;
             MakeDirRecursive(mntPath.c_str(), FILE_MODE);
             MountArg mountArg = {
-                    libPhysicalPath.c_str(),
-                    mntPath.c_str(),
-                    NULL,
-                    MS_REC | MS_BIND,
-                    NULL,
-                    MS_SLAVE
-                };
+                libPhysicalPath.c_str(), mntPath.c_str(), nullptr, MS_REC | MS_BIND, nullptr, MS_SLAVE
+            };
             ret = SandboxMountPath(&mountArg);
             APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %{public}d", ret);
         }
@@ -114,8 +112,10 @@ public:
         nlohmann::json& dataGroupIds = groups[g_groupList_key_dataGroupId];
         nlohmann::json& gids = groups[g_groupList_key_gid];
         nlohmann::json& dirs = groups[g_groupList_key_dir];
-        APPSPAWN_CHECK(dataGroupIds.is_array() && gids.is_array() && dirs.is_array() && dataGroupIds.size() == gids.size()
-            && dataGroupIds.size() == dirs.size(), return -1, "MountAllGroup: value is not arrary or sizes are not same");
+        APPSPAWN_CHECK(dataGroupIds.is_array() &&
+            gids.is_array() && dirs.is_array() && dataGroupIds.size() == gids.size()
+            && dataGroupIds.size() == dirs.size(),
+            return -1, "MountAllGroup: value is not arrary or sizes are not same");
         APPSPAWN_LOGI("MountAllGroup: app = %{public}s, cnt = %{public}lu",
             GetBundleName(context.property), static_cast<unsigned long>(dataGroupIds.size()));
         for (uint32_t i = 0; i < dataGroupIds.size(); i++) {
@@ -133,13 +133,8 @@ public:
             std::string mntPath = sandboxPackagePath + g_sandboxGroupPath + dataGroupUuid;
             MakeDirRecursive(mntPath.c_str(), FILE_MODE);
             MountArg mountArg = {
-                    libPhysicalPath.c_str(),
-                    mntPath.c_str(),
-                    NULL,
-                    MS_REC | MS_BIND,
-                    NULL,
-                    MS_SLAVE
-                };
+                libPhysicalPath.c_str(), mntPath.c_str(), nullptr, MS_REC | MS_BIND, nullptr, MS_SLAVE
+            };
             ret = SandboxMountPath(&mountArg);
             APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %{public}d", ret);
         }
@@ -167,13 +162,7 @@ public:
 
             auto bundleNameIndex = srcPath.find_last_of(g_fileSeparator);
             std::string destPath = sandboxOverlayPath + srcPath.substr(bundleNameIndex + 1, srcPath.length());
-            MountArg mountArg = {
-                    srcPath.c_str(), destPath.c_str(),
-                    nullptr,
-                    MS_REC | MS_BIND,
-                    nullptr,
-                    MS_SHARED
-                };
+            MountArg mountArg = { srcPath.c_str(), destPath.c_str(), nullptr, MS_REC | MS_BIND, nullptr, MS_SHARED };
             int retMount = SandboxMountPath(&mountArg);
             if (retMount != 0) {
                 APPSPAWN_LOGE("fail to mount overlay path, src is %{public}s.", hapPath.c_str());
@@ -191,30 +180,33 @@ public:
 static int ProcessHSPListConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name)
 {
     uint32_t size = 0;
-    char *extInfo = (char *)GetAppPropertyEx(context->property, name, &size);
-    if (size == 0 || extInfo == NULL) {
+    char *extInfo = reinterpret_cast<char *>(GetAppPropertyEx(context->property, name, &size));
+    if (size == 0 || extInfo == nullptr) {
         return 0;
     }
+    APPSPAWN_LOGV("ProcessHSPListConfig name %{public}s value %{public}s", name, extInfo);
     return OHOS::AppSpawn::SandboxExpand::MountAllHsp(*context, extInfo);
 }
 
 static int ProcessDataGroupConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name)
 {
     uint32_t size = 0;
-    char *extInfo = (char *)GetAppPropertyEx(context->property, name, &size);
-    if (size == 0 || extInfo == NULL) {
+    char *extInfo = reinterpret_cast<char *>(GetAppPropertyEx(context->property, name, &size));
+    if (size == 0 || extInfo == nullptr) {
         return 0;
     }
+    APPSPAWN_LOGV("ProcessHSPListConfig name %{public}s value %{public}s", name, extInfo);
     return OHOS::AppSpawn::SandboxExpand::MountAllGroup(*context, extInfo);
 }
 
 static int ProcessOverlayAppConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name)
 {
     uint32_t size = 0;
-    char *extInfo = (char *)GetAppPropertyEx(context->property, name, &size);
-    if (size == 0 || extInfo == NULL) {
+    char *extInfo = reinterpret_cast<char *>(GetAppPropertyEx(context->property, name, &size));
+    if (size == 0 || extInfo == nullptr) {
         return 0;
     }
+    APPSPAWN_LOGV("ProcessHSPListConfig name %{public}s value %{public}s", name, extInfo);
     return OHOS::AppSpawn::SandboxExpand::SetOverlayAppSandboxConfig(*context, extInfo);
 }
 
@@ -236,8 +228,8 @@ static const AppSandboxExpandAppCfgNode *GetAppSandboxExpandAppCfg(const char *n
 {
     ListNode *node = OH_ListFind(&g_sandboxExpandCfgList,
         const_cast<void *>(reinterpret_cast<const void *>(name)), AppSandboxExpandAppCfgCompareName);
-    if (node == NULL) {
-        return NULL;
+    if (node == nullptr) {
+        return nullptr;
     }
     return ListEntry(node, AppSandboxExpandAppCfgNode, node);
 }
@@ -250,14 +242,16 @@ int RegisterExpandSandboxCfgHandler(const char *name, int prio, ProcessExpandSan
     }
 
     size_t len = APPSPAWN_ALIGN(strlen(name) + 1);
-    AppSandboxExpandAppCfgNode *node = (AppSandboxExpandAppCfgNode *)malloc(sizeof(AppSandboxExpandAppCfgNode) + len);
-    APPSPAWN_CHECK(node != NULL, return APPSPAWN_SYSTEM_ERROR, "Failed to create sandbox");
+    AppSandboxExpandAppCfgNode *node = static_cast<AppSandboxExpandAppCfgNode *>(
+        malloc(sizeof(AppSandboxExpandAppCfgNode) + len));
+    APPSPAWN_CHECK(node != nullptr, return APPSPAWN_SYSTEM_ERROR, "Failed to create sandbox");
     // ext data init
     OH_ListInit(&node->node);
     node->cfgHandle = handleExpandCfg;
     node->prio = prio;
     int ret = strcpy_s(node->name, len, name);
-    APPSPAWN_CHECK(ret == 0, free(node); return -1, "Failed to copy name %{public}s", name);
+    APPSPAWN_CHECK(ret == 0, free(node);
+        return -1, "Failed to copy name %{public}s", name);
     OH_ListAddWithOrder(&g_sandboxExpandCfgList, &node->node, AppSandboxExpandAppCfgComparePrio);
     return 0;
 }
@@ -266,7 +260,7 @@ int ProcessExpandAppSandboxConfig(const SandboxContext *context, const AppSpawnS
 {
     APPSPAWN_CHECK_ONLY_EXPER(context != nullptr && appSandBox != nullptr, return APPSPAWN_INVALID_ARG);
     APPSPAWN_CHECK_ONLY_EXPER(name != nullptr, return APPSPAWN_INVALID_ARG);
-    APPSPAWN_LOGE("ProcessExpandAppSandboxConfig %{public}s.", name);
+    APPSPAWN_LOGV("ProcessExpandAppSandboxConfig %{public}s.", name);
     const AppSandboxExpandAppCfgNode *node = GetAppSandboxExpandAppCfg(name);
     if (node != nullptr && node->cfgHandle != nullptr) {
         return node->cfgHandle(context, appSandBox, name);
@@ -278,11 +272,11 @@ void AddDefaultExpandAppSandboxConfigHandle(void)
 {
     RegisterExpandSandboxCfgHandler("HspList", 0, ProcessHSPListConfig);
     RegisterExpandSandboxCfgHandler("DataGroup", 1, ProcessDataGroupConfig);
-    RegisterExpandSandboxCfgHandler("Overlay", 2, ProcessOverlayAppConfig);
+    RegisterExpandSandboxCfgHandler("Overlay", 2, ProcessOverlayAppConfig); // 2 priority
 }
 
 void ClearExpandAppSandboxConfigHandle(void)
 {
-    OH_ListRemoveAll(&g_sandboxExpandCfgList, NULL);
+    OH_ListRemoveAll(&g_sandboxExpandCfgList, nullptr);
 }
 

@@ -31,31 +31,28 @@ public:
     void SetUp() {}
     void TearDown() {}
 public:
-    static AppSpawnReqHandle CreateMsg(AppSpawnClientHandle handle, const char *bundleName)
+    static AppSpawnReqMsgHandle CreateMsg(AppSpawnClientHandle handle, const char *bundleName)
     {
-        AppSpawnReqHandle reqHandle = 0;
-        int ret = AppSpawnReqCreate(handle, MSG_APP_SPAWN, bundleName, &reqHandle);
+        AppSpawnReqMsgHandle reqHandle = 0;
+        int ret = AppSpawnReqMsgCreate(MSG_APP_SPAWN, bundleName, &reqHandle);
         APPSPAWN_CHECK(ret == 0, return 0, "Failed to create req %{public}s", bundleName);
         do {
-            AppBundleInfo info;
-            strcpy_s(info.bundleName, sizeof(info.bundleName), bundleName);
-            ret = AppSpawnReqSetBundleInfo(handle, reqHandle, &info);
+            ret = AppSpawnReqMsgSetBundleInfo(reqHandle, 0, bundleName);
             APPSPAWN_CHECK(ret == 0, break, "Failed to create req %{public}s", bundleName);
 
             AppDacInfo dacInfo = {};
             dacInfo.uid = 20010029; // 20010029 test data
             dacInfo.gid = 20010029; // 20010029 test data
-            dacInfo.gidCount = 2;
+            dacInfo.gidCount = 2; // 2 count
             dacInfo.gidTable[0] = 20010029; // 20010029 test data
             dacInfo.gidTable[1] = 20010029 + 1; // 20010029 test data
             (void)strcpy_s(dacInfo.userName, sizeof(dacInfo.userName), "test-app-name");
-            ret = AppSpawnReqSetAppDacInfo(handle, reqHandle, &dacInfo);
+            ret = AppSpawnReqMsgSetAppDacInfo(reqHandle, &dacInfo);
             APPSPAWN_CHECK(ret == 0, break, "Failed to add dac %{public}s", APPSPAWN_SERVER_NAME);
 
-            AppSpawnReqSetAppFlag(handle, reqHandle, 10); // 10 test
+            AppSpawnReqMsgSetAppFlag(reqHandle, 10); // 10 test
 
-            AppSpawnMsgAccessToken token = {1234, 12345678}; // 1234, 12345678
-            ret = AppSpawnReqSetAppAccessToken(handle, reqHandle, &token);
+            ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 1234, 12345678);  // 1234, 12345678
             APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", APPSPAWN_SERVER_NAME);
 
             static const char *permissions[] = {
@@ -64,11 +61,14 @@ public:
                 "ohos.permission.ACTIVATE_THEME_PACKAGE",
                 "ohos.permission.GET_WALLPAPER",
             };
-            ret = AppSpawnReqSetPermission(handle, reqHandle, permissions, sizeof(permissions) / sizeof(permissions[0]));
-            APPSPAWN_CHECK(ret == 0, break, "Failed to create req %{public}s", bundleName);
+            size_t count = sizeof(permissions) / sizeof(permissions[0]);
+            for (size_t i = 0; i < count; i++) {
+                ret = AppSpawnReqMsgSetPermission(reqHandle, permissions[i]);
+                APPSPAWN_CHECK(ret == 0, break, "Failed to create req %{public}s", bundleName);
+            }
             return reqHandle;
         } while (0);
-        AppSpawnReqDestroy(handle, reqHandle);
+        AppSpawnReqMsgFree(reqHandle);
         return INVALID_REQ_HANDLE;
     }
 
@@ -85,7 +85,7 @@ HWTEST_F(AppSpawnClientTest, AppSpawn_Client_AppSpawn_1, TestSize.Level0)
 {
     AppSpawnClientHandle clientHandle = AppSpawnClientTest::CreateClient(APPSPAWN_SERVER_NAME);
     EXPECT_EQ(clientHandle != NULL, 1);
-    AppSpawnReqHandle reqHandle = AppSpawnClientTest::CreateMsg(clientHandle, "ohos.samples.clock");
+    AppSpawnReqMsgHandle reqHandle = AppSpawnClientTest::CreateMsg(clientHandle, "ohos.samples.clock");
     EXPECT_EQ(reqHandle != INVALID_REQ_HANDLE, 1);
 
     AppSpawnResult result = {};

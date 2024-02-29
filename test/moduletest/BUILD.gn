@@ -25,6 +25,7 @@ ohos_executable("AppSpawnTest") {
     "${appspawn_path}/modules/ace_adapter",
     "${appspawn_path}/modules/common",
     "${appspawn_path}/modules/sandbox",
+    "${appspawn_path}/modules/threadpool",
     "${appspawn_innerkits_path}/include",
     "${appspawn_innerkits_path}/client",
     "${appspawn_innerkits_path}/permission",
@@ -40,7 +41,12 @@ ohos_executable("AppSpawnTest") {
 
   configs = [ "${appspawn_path}:appspawn_config" ]
 
-  deps = [ "${appspawn_innerkits_path}/client:appspawn_client" ]
+  deps = [
+    "${appspawn_innerkits_path}/client:appspawn_client",
+    "${appspawn_path}/modules/threadpool:libappspawn_threadpool",
+    "${appspawn_path}/util:libappspawn_util",
+    "//third_party/json:nlohmann_json_static",
+  ]
 
   external_deps = [
     "c_utils:utils",
@@ -48,6 +54,8 @@ ohos_executable("AppSpawnTest") {
     "hilog:libhilog",
     "init:libbegetutil",
   ]
+  subsystem_name = "${subsystem_name}"
+  part_name = "${part_name}"
 }
 
 ohos_moduletest("AppSpawnModuleTest") {
@@ -97,13 +105,14 @@ ohos_moduletest("AppSpawnModuleTest") {
     "hilog:libhilog",
     "init:libbegetutil",
   ]
+  subsystem_name = "${subsystem_name}"
+  part_name = "${part_name}"
 }
 
 group("moduletest") {
   testonly = true
-
-  deps = [ ":AppSpawnModuleTest" ]
-  if (appspawn_test_cmd) {
-    deps += [ ":AppSpawnTest" ]
-  }
+  deps = [
+    ":AppSpawnModuleTest",
+    ":AppSpawnTest",
+  ]
 }

@@ -23,45 +23,41 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 
-#define UNUSED(x) (void)(x)
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct AppSpawnContent_ AppSpawnContent;
-typedef struct AppSpawnClient_ AppSpawnClient;
-typedef struct AppSpawnReqNode_ AppSpawnReqNode;
+typedef struct tagAppSpawnContent AppSpawnContent;
+typedef struct tagAppSpawnClient AppSpawnClient;
+typedef struct tagAppSpawnReqMsgNode AppSpawnReqMsgNode;
 typedef void * AppSpawnClientHandle;
-typedef struct AppSpawnReqMgr_ AppSpawnReqMgr;
-typedef struct AppProperty_ AppProperty;
-typedef struct AppSpawnMsg_ AppSpawnMsg;
-typedef struct AppSpawnSandbox_  AppSpawnSandbox;
-typedef struct AppSpawnExtData_ AppSpawnDataEx;
-typedef struct SandboxContext_ SandboxContext;
-typedef struct AppSpawnAppInfo_ AppSpawnAppInfo;
-typedef struct AppSpawnForkArg_ AppSpawnForkArg;
+typedef struct tagAppSpawnReqMsgMgr AppSpawnReqMsgMgr;
+typedef struct tagAppSpawningCtx AppSpawningCtx;
+typedef struct tagAppSpawnMsg AppSpawnMsg;
+typedef struct tagAppSpawnSandbox  AppSpawnSandbox;
+typedef struct tagAppSpawnExtData AppSpawnDataEx;
+typedef struct tagSandboxContext SandboxContext;
+typedef struct tagAppSpawnedProcess AppSpawnedProcess;
+typedef struct tagAppSpawnForkArg AppSpawnForkArg;
+typedef struct tagAppSpawnMsgReceiverCtx AppSpawnMsgReceiverCtx;
 
 void SetHapDomainSetcontextResult(int result);
 
-void SignalHandler(const struct signalfd_siginfo *siginfo);
+void ProcessSignal(const struct signalfd_siginfo *siginfo);
 
 int CreateClientSocket(uint32_t type, int block);
 void CloseClientSocket(int socketId);
 
-void AddKeepMsgToSendQueue(AppSpawnReqMgr *reqMgr);
-AppSpawnReqNode *GetReqNode(AppSpawnClientHandle handle, uint32_t msgId, int state);
-int DecodeRecvMsg(AppProperty *property, const uint8_t *buffer, uint32_t msgLen);
+int DecodeRecvMsg(AppSpawnMsgReceiverCtx *receiver);
 
 void AppSpawnSandboxFree(AppSpawnDataEx *data);
 AppSpawnSandbox *CreateAppSpawnSandbox(void);
 void AddDefaultVariable(void);
 
 int CloneAppSpawn(void *arg);
-void AppSpawnDestroyContent(AppSpawnContent *content);
 
 int WriteToFile(const char *path, int truncated, pid_t pids[], uint32_t count);
-int GetCgroupPath(const AppSpawnAppInfo *appInfo, char *buffer, uint32_t buffLen);
+int GetCgroupPath(const AppSpawnedProcess *appInfo, char *buffer, uint32_t buffLen);
 
 void SetDeveloperMode(bool mode);
 

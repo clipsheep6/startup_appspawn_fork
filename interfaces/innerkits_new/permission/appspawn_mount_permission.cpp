@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "appspawn_sandbox.h"
-//#include "appspawn_server.h"
 #include "appspawn_utils.h"
 #include "sandbox_utils.h"
 
@@ -63,6 +62,29 @@ static int LoadPermissionConfig(void)
     return 0;
 }
 
+int32_t GetPermissionIndex(const char *permission)
+{
+    return GetPermissionIndexInQueue(&g_permissionQueue, permission);
+}
+
+int32_t GetMaxPermissionIndex(void)
+{
+    return g_maxPermissionIndex;
+}
+
+const SandboxPermissionNode *GetPermissionNode(const char *permission)
+{
+    return GetPermissionNodeInQueue(&g_permissionQueue, permission);
+}
+
+const SandboxPermissionNode *GetPermissionNodeByIndex(int32_t index)
+{
+    if (g_maxPermissionIndex <= index) {
+        return nullptr;
+    }
+    return GetPermissionNodeInQueueByIndex(&g_permissionQueue, index);
+}
+
 static void LoadPermission(void)
 {
     pthread_mutex_lock(&g_mutex);
@@ -74,37 +96,20 @@ static void LoadPermission(void)
     pthread_mutex_unlock(&g_mutex);
 }
 
-int32_t GetPermissionIndex(const char *permission)
-{
-    LoadPermission();
-    return GetPermissionIndexInQueue(&g_permissionQueue, permission);
-}
-
-int32_t GetMaxPermissionIndex(void)
-{
-    LoadPermission();
-    return g_maxPermissionIndex;
-}
-
-const SandboxPermissionNode *GetPermissionNode(const char *permission)
-{
-    LoadPermission();
-    return GetPermissionNodeInQueue(&g_permissionQueue, permission);
-}
-
-const SandboxPermissionNode *GetPermissionNodeByIndex(int32_t index)
-{
-    LoadPermission();
-    if (g_maxPermissionIndex <= index) {
-        return nullptr;
-    }
-    return GetPermissionNodeInQueueByIndex(&g_permissionQueue, index);
-}
-
-void DeletePermissions(void)
+static void DeletePermissions(void)
 {
     pthread_mutex_lock(&g_mutex);
     OH_ListRemoveAll(&g_permissionQueue.front, NULL);
     g_maxPermissionIndex = -1;
     pthread_mutex_unlock(&g_mutex);
+}
+
+__attribute__((constructor)) static void LoadPermissionModule(void)
+{
+    LoadPermission();
+}
+
+__attribute__((destructor)) static void DeletePermissionModule(void)
+{
+    DeletePermissions();
 }

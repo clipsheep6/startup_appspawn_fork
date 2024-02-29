@@ -51,7 +51,6 @@ static bool SetSeccompPolicyForRenderer(void *nwebRenderHandle)
         using SeccompFuncType = bool (*)(void);
         SeccompFuncType funcSetRendererSeccompPolicy =
                 reinterpret_cast<SeccompFuncType>(dlsym(nwebRenderHandle, "SetRendererSeccompPolicy"));
-
         if (funcSetRendererSeccompPolicy != nullptr && funcSetRendererSeccompPolicy()) {
             return true;
         }
@@ -65,8 +64,9 @@ static bool SetSeccompPolicyForRenderer(void *nwebRenderHandle)
 static void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("RunChildProcessorNweb");
-    AppSpawnMsgRenderCmd *renderCmd =
-        (AppSpawnMsgRenderCmd *)GetAppProperty(reinterpret_cast<AppProperty *>(client), TLV_RENDER_CMD);
+    uint32_t len = 0;
+    char *renderCmd = reinterpret_cast<char *>(GetAppPropertyEx(
+        reinterpret_cast<AppSpawningCtx *>(client), MSG_EXT_NAME_RENDER_CMD, &len));
     if (renderCmd == NULL) {
         return;
     }
@@ -111,10 +111,10 @@ static void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
         APPSPAWN_LOGE("webviewspawn dlsym errno: %{public}d", errno);
         return;
     }
-    funcNWebRenderMain(renderCmd->renderCmd);
+    funcNWebRenderMain(renderCmd);
 }
 
-static int NWebSpawnPreload(AppSpawnContentExt *content)
+static int NWebSpawnPreload(AppSpawnMgr *content)
 {
     APPSPAWN_LOGI("NWebSpawnPreload %{public}d", IsNWebSpawnMode(content));
     if (!IsNWebSpawnMode(content)) {

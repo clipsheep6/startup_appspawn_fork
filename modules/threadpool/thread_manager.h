@@ -35,7 +35,8 @@ typedef void (*TaskExecutor)(ThreadTaskHandle handle, const ThreadContext *conte
 int CreateThreadMgr(uint32_t maxThreadCount, ThreadMgr *mgr);
 int DestroyThreadMgr(ThreadMgr instance);
 int ThreadMgrAddTask(ThreadMgr mgr, ThreadTaskHandle *taskHandle);
-int ThreadMgrAddExecutor(ThreadMgr mgr, ThreadTaskHandle taskHandle, TaskExecutor executor, const ThreadContext *context);
+int ThreadMgrAddExecutor(ThreadMgr mgr,
+    ThreadTaskHandle taskHandle, TaskExecutor executor, const ThreadContext *context);
 int ThreadMgrCancelTask(ThreadMgr mgr, ThreadTaskHandle taskHandle);
 int TaskSyncExecute(ThreadMgr mgr, ThreadTaskHandle taskHandle);  // 同步执行
 int TaskExecute(ThreadMgr mgr, ThreadTaskHandle taskHandle, TaskFinishProcessor process, const ThreadContext *context);

@@ -17,80 +17,77 @@
 #define STUB_JS_RUNTIME_H
 
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
-#include <map>
 
 namespace OHOS {
 namespace AbilityRuntime {
-class Runtime {
-public:
-    enum class Language {
-        JS = 0,
+    class Runtime {
+    public:
+        enum class Language {
+            JS = 0,
+        };
+
+        struct Options {
+            Language lang = Language::JS;
+            std::string bundleName;
+            std::string moduleName;
+            bool loadAce = true;
+            bool preload = false;
+            bool isBundle = true;
+            bool isDebugVersion = false;
+            bool isJsFramework = false;
+            bool isStageModel = true;
+            bool isTestFramework = false;
+            int32_t uid = -1;
+            // ArkTsCard start
+            bool isUnique = false;
+        };
+
+        static std::unique_ptr<Runtime> Create(const Options &options)
+        {
+            return std::make_unique<Runtime>();
+        }
+        static void SavePreloaded(std::unique_ptr<Runtime> &&instance) {}
+
+        Runtime() {};
+        ~Runtime() {};
+
+        void PreloadSystemModule(const std::string &moduleName)
+        {
+            return;
+        }
+
+        Runtime(const Runtime &) = delete;
+        Runtime(Runtime &&) = delete;
+        Runtime &operator=(const Runtime &) = delete;
+        Runtime &operator=(Runtime &&) = delete;
     };
-
-    struct Options {
-        Language lang = Language::JS;
-        std::string bundleName;
-        std::string moduleName;
-        bool loadAce = true;
-        bool preload = false;
-        bool isBundle = true;
-        bool isDebugVersion = false;
-        bool isJsFramework = false;
-        bool isStageModel = true;
-        bool isTestFramework = false;
-        int32_t uid = -1;
-        // ArkTsCard start
-        bool isUnique = false;
-    };
-
-    static std::unique_ptr<Runtime> Create(const Options& options) {
-        return std::make_unique<Runtime>();
-    }
-    static void SavePreloaded(std::unique_ptr<Runtime>&& instance)
-    {
-    }
-
-    Runtime() {};
-    ~Runtime() {};
-
-    void PreloadSystemModule(const std::string& moduleName) {
-        return;
-    }
-
-    Runtime(const Runtime&) = delete;
-    Runtime(Runtime&&) = delete;
-    Runtime& operator=(const Runtime&) = delete;
-    Runtime& operator=(Runtime&&) = delete;
-};
-}
+}  // namespace AbilityRuntime
 namespace Ace {
-class AceForwardCompatibility {
-public:
-    AceForwardCompatibility() {}
-    ~AceForwardCompatibility() {}
+    class AceForwardCompatibility {
+    public:
+        AceForwardCompatibility() {}
+        ~AceForwardCompatibility() {}
 
-    static const char * GetAceLibName() {
-        return "";
-    }
-};
-}
+        static const char *GetAceLibName()
+        {
+            return "";
+        }
+    };
+}  // namespace Ace
 
 namespace AppExecFwk {
-class MainThread {
+    class MainThread {
     public:
-    MainThread() {}
-    ~MainThread() {}
+        MainThread() {}
+        ~MainThread() {}
 
-    static void PreloadExtensionPlugin()
-    {
+        static void PreloadExtensionPlugin() {}
+        static void Start() {}
+    };
+}  // namespace AppExecFwk
 
-    }
-    static void Start()
-    {}
-};
-}
-
-} // ohos
+}  // namespace OHOS
 #endif  // STUB_JS_RUNTIME_H

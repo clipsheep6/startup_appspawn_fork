@@ -42,7 +42,7 @@ void ReportProcessExitInfo(const char* processName, int pid, int uid, int status
 }  // namespace system
 }  // namespace OHOS
 
-static int ReportProcessExitInfo(const AppSpawnContentExt *content, const AppSpawnAppInfo *appInfo)
+static int ReportProcessExitInfo(const AppSpawnMgr *content, const AppSpawnedProcess *appInfo)
 {
     OHOS::system::ReportProcessExitInfo(appInfo->name, appInfo->pid, appInfo->uid, appInfo->exitStatus);
     return 0;

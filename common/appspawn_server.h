@@ -32,27 +32,27 @@ typedef enum RunMode_ {
     MODE_FOR_NWEB_COLD_RUN
 } RunMode;
 
-typedef struct AppSpawnClient_ {
+typedef struct tagAppSpawnClient {
     uint32_t id;
     uint32_t flags; // Save negotiated flags
 } AppSpawnClient;
 
-typedef struct AppSpawnContent_ {
+typedef struct tagAppSpawnContent {
     char *longProcName;
     uint32_t longProcNameLen;
     uint32_t sandboxNsFlags;
     RunMode mode;
 
     // system
-    void (*runAppSpawn)(struct AppSpawnContent_ *content, int argc, char *const argv[]);
-    void (*notifyResToParent)(struct AppSpawnContent_ *content, AppSpawnClient *client, int result);
-    void (*runChildProcessor)(struct AppSpawnContent_ *content, AppSpawnClient *client);
+    void (*runAppSpawn)(struct tagAppSpawnContent *content, int argc, char *const argv[]);
+    void (*notifyResToParent)(struct tagAppSpawnContent *content, AppSpawnClient *client, int result);
+    void (*runChildProcessor)(struct tagAppSpawnContent *content, AppSpawnClient *client);
     // for cold start
-    int (*coldStartApp)(struct AppSpawnContent_ *content, AppSpawnClient *client);
+    int (*coldStartApp)(struct tagAppSpawnContent *content, AppSpawnClient *client);
 } AppSpawnContent;
 
-typedef struct AppSpawnForkArg_ {
-    struct AppSpawnContent_ *content;
+typedef struct tagAppSpawnForkArg {
+    struct tagAppSpawnContent *content;
     AppSpawnClient *client;
 } AppSpawnForkArg;
 

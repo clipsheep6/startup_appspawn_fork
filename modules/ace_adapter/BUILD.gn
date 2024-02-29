@@ -14,6 +14,17 @@
 import("//base/startup/appspawn/appspawn.gni")
 import("//build/ohos.gni")
 
+config("ace_config") {
+  visibility = [ "./*" ]
+  include_dirs = [
+    "${ability_runtime_path}/interfaces/kits/native/appkit/app",
+    "//base/notification/eventhandler/interfaces/inner_api",
+    "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
+    "//foundation/arkui/napi",
+    "//third_party/libuv/include",
+  ]
+}
+
 ohos_shared_library("appspawn_ace") {
   sources = [
     "ace_adapter.cpp",
@@ -24,17 +35,12 @@ ohos_shared_library("appspawn_ace") {
     "${appspawn_path}/common",
     "${appspawn_path}/standard",
     "${appspawn_path}/util/include",
-    "${ability_runtime_path}/interfaces/kits/native/appkit/app",
-    "//third_party/json/include",
-    "//base/notification/eventhandler/interfaces/inner_api",
-    "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
-    "//foundation/arkui/napi",
-    "//third_party/libuv/include",
   ]
-
+  configs = [ ":ace_config" ]
   deps = [
     "${appspawn_innerkits_path}/module_engine:libappspawn_module_engine",
     "${appspawn_path}/util:libappspawn_util",
+    "//third_party/json:nlohmann_json_static",
   ]
   defines = []
   if (asan_detector || is_asan) {

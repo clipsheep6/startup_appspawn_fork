@@ -132,7 +132,7 @@ static void LoadExtendLib(void)
     APPSPAWN_LOGI("LoadExtendLib: End preload JS VM");
 }
 
-static void RunChildThread(const AppSpawnContentExt *content, const AppProperty *property)
+static void RunChildThread(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     std::string checkExit;
     if (OHOS::system::GetBoolParameter("persist.init.debug.checkexit", true)) {
@@ -143,23 +143,23 @@ static void RunChildThread(const AppSpawnContentExt *content, const AppProperty 
     unsetenv(APPSPAWN_CHECK_EXIT);
 }
 
-static void RunChildByRenderCmd(const AppSpawnContentExt *content, const AppProperty *property)
+static void RunChildByRenderCmd(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
-    AppSpawnMsgRenderCmd *renderCmd =
-        reinterpret_cast<AppSpawnMsgRenderCmd *>(GetAppProperty(property, TLV_RENDER_CMD));
+    uint32_t len = 0;
+    char *renderCmd = reinterpret_cast<char *>(GetAppPropertyEx(property, MSG_EXT_NAME_RENDER_CMD, &len));
     if (renderCmd == NULL || !IsDeveloperModeOn(property)) {
         APPSPAWN_LOGE("Denied launching a native process: not in developer mode");
         return;
     }
-    APPSPAWN_LOGI("renderCmd %{public}s", renderCmd->renderCmd);
+    APPSPAWN_LOGI("renderCmd %{public}s", renderCmd);
     std::vector<std::string> args;
-    std::string command(renderCmd->renderCmd);
+    std::string command(renderCmd);
     CommandLexer lexer(command);
     if (!lexer.GetAllArguments(args)) {
         return;
     }
     if (args.empty()) {
-        APPSPAWN_LOGE("Failed to run a native process: empty command %{public}s", renderCmd->renderCmd);
+        APPSPAWN_LOGE("Failed to run a native process: empty command %{public}s", renderCmd);
         return;
     }
     std::vector<char *> options;
@@ -177,15 +177,15 @@ static void RunChildByRenderCmd(const AppSpawnContentExt *content, const AppProp
 static void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_CHECK(client != NULL && content != NULL, return, "Invalid client");
-    AppProperty *property = reinterpret_cast<AppProperty *>(client);
+    AppSpawningCtx *property = reinterpret_cast<AppSpawningCtx *>(client);
     if (GetAppPropertyCode(property) == MSG_SPAWN_NATIVE_PROCESS) {
-        RunChildByRenderCmd(reinterpret_cast<AppSpawnContentExt *>(content), property);
+        RunChildByRenderCmd(reinterpret_cast<AppSpawnMgr *>(content), property);
     } else {
-        RunChildThread(reinterpret_cast<AppSpawnContentExt *>(content), property);
+        RunChildThread(reinterpret_cast<AppSpawnMgr *>(content), property);
     }
 }
 
-static int AppSpawnPreload(AppSpawnContentExt *content)
+static int AppSpawnPreload(AppSpawnMgr *content)
 {
     if (IsNWebSpawnMode(content)) {
         return 0;

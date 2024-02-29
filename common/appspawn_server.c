@@ -23,7 +23,7 @@
 
 #include "appspawn_utils.h"
 
-static void NotifyResToParent(struct AppSpawnContent_ *content, AppSpawnClient *client, int result)
+static void NotifyResToParent(struct tagAppSpawnContent *content, AppSpawnClient *client, int result)
 {
     APPSPAWN_LOGI("NotifyResToParent: %{public}d", result);
     if (content->notifyResToParent != NULL) {
@@ -66,7 +66,9 @@ static int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
     APPSPAWN_LOGI("AppSpawnChild %{public}u flags: 0x%{public}x", client->id, client->flags);
 
     int ret = AppSpawnHookExecute(HOOK_SPAWN_FIRST, HOOK_STOP_WHEN_ERROR, content, client);
-    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, NotifyResToParent(content, client, ret); return 0);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0,
+        NotifyResToParent(content, client, ret);
+        return 0);
 
     if (client->flags & APP_COLD_START) {
         // cold start fail, to start normal
@@ -75,13 +77,15 @@ static int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
         }
     }
     ret = AppSpawnHookExecute(HOOK_SPAWN_SECOND, HOOK_STOP_WHEN_ERROR, content, client);
-    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, NotifyResToParent(content, client, ret); return 0);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0,
+        NotifyResToParent(content, client, ret);
+        return 0);
 
     // notify success to father process and start app process
     NotifyResToParent(content, client, 0);
 
     (void)AppSpawnHookExecute(HOOK_SPAWN_THIRD, 0, content, client);
-    // TODO
+
     AppSpawnHookExecute(HOOK_SPAWN_POST, 0, content, client);
 
     if (content->runChildProcessor != NULL) {
@@ -106,11 +110,6 @@ int AppSpawnProcessMsg(AppSpawnContent *content, AppSpawnClient *client, pid_t *
     APPSPAWN_CHECK(client != NULL && childPid != NULL, return -1, "Invalid client for appspawn");
     APPSPAWN_LOGI("AppSpawnProcessMsg id: %{public}d mode: %{public}d sandboxNsFlags: 0x%{public}x",
         client->id, content->mode, content->sandboxNsFlags);
-
-    // mount el2 dir
-    // MountAppEl2Dir(property);
-    // TODO getWrapBundleNameValue
-    AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, client);
 
     pid_t pid = 0;
 #ifndef OHOS_LITE

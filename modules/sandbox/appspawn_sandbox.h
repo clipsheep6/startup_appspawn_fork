@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-#define INVALID_PERMISSION_INDEX -1
+#define INVALID_PERMISSION_INDEX (-1)
 
 #define JSON_FLAGS_INTERNAL "__internal__"
 #define SANDBOX_NWEBSPAWN_ROOT_PATH APPSPAWN_BASE_DIR "/mnt/sandbox/com.ohos.render/"
@@ -46,7 +46,7 @@ extern "C" {
 #define FUSE_OPTIONS_MAX_LEN 256
 #define DLP_FUSE_FD 1000
 #define APP_FLAGS_SECTION 0x80000000
-#define BASIC_MOUNT_FLAGS MS_REC | MS_BIND
+#define BASIC_MOUNT_FLAGS (MS_REC | MS_BIND)
 
 typedef enum SandboxTag {
     SANDBOX_TAG_MOUNT_PATH = 0,
@@ -64,7 +64,7 @@ typedef struct {
     uint32_t type;
 } SandboxNode;
 
-typedef struct PathMountNode {
+typedef struct tagPathMountNode {
     SandboxNode sandboxNode;
     char *source;  // source 目录，一般是全局的fs 目录
     char *target;  // 沙盒化后的目录
@@ -83,7 +83,7 @@ typedef struct PathMountNode {
     char *appAplName;
 } PathMountNode;
 
-typedef struct SymbolLinkNode_ {
+typedef struct tagSymbolLinkNode {
     SandboxNode sandboxNode;
     char *target;
     char *linkName;
@@ -91,7 +91,7 @@ typedef struct SymbolLinkNode_ {
     uint32_t checkErrorFlag : 1;
 } SymbolLinkNode;
 
-typedef struct SandboxSection_ {
+typedef struct tagSandboxSection {
     struct ListNode front;
     uint32_t type;
 #ifndef APPSPAWN_CLIENT
@@ -103,7 +103,7 @@ typedef struct SandboxSection_ {
 } SandboxSection;
 
 #ifndef APPSPAWN_CLIENT
-typedef struct PermissionNode_ {
+typedef struct tagPermissionNode {
     SandboxNode sandboxNode;
     SandboxSection section;
     int32_t permissionIndex;
@@ -112,7 +112,7 @@ typedef struct PermissionNode_ {
     gid_t gidTable[0];  // "gids": [1006, 1008],
 } SandboxPermissionNode;
 #else
-typedef struct PermissionNode_ {
+typedef struct tagPermissionNode {
     SandboxNode sandboxNode;
     uint32_t permissionIndex;
     char name[0];
@@ -125,7 +125,7 @@ typedef struct PathIndividualNode {
     char name[0];
 } SandboxPrivateNode;
 
-typedef struct AppSpawnSandbox_ {
+typedef struct tagAppSpawnSandbox {
     AppSpawnDataEx extData;
     SandboxSection section;
     SandboxSection permissionNodeQueue;
@@ -140,16 +140,15 @@ typedef struct AppSpawnSandbox_ {
     char defaultRootPath[0];     // "sandbox-root" : "/mnt/sandbox/<PackageName>",
 } AppSpawnSandbox;
 
-typedef struct SandboxContext_{
+typedef struct tagSandboxContext {
     uint32_t bufferLen;
     char *buffer[2];
-    //uint32_t flags;
     char *realRootPath;
     char *sandboxPackagePath;
     char *defaultRootPath;
     const char *bundleName;
     const char *sandboxSectionName;
-    const AppProperty *property;
+    const AppSpawningCtx *property;
     uint32_t sandboxSwitch : 1;
     uint32_t sandboxShared : 1;
     uint32_t bundleHasWps : 1;
@@ -195,10 +194,10 @@ const SandboxPermissionNode *GetPermissionNodeInQueue(SandboxSection *queue, con
 const SandboxPermissionNode *GetPermissionNodeInQueueByIndex(SandboxSection *queue, int32_t index);
 int32_t PermissionRenumber(SandboxSection *queue);
 
-AppSpawnSandbox *GetAppSpawnSandbox(const AppSpawnContentExt *content);
+AppSpawnSandbox *GetAppSpawnSandbox(const AppSpawnMgr *content);
 
-int PrepareSandbox(AppSpawnContentExt *content, AppProperty *property);
-int SetSandboxConfigs(const AppSpawnSandbox *appSandBox, AppProperty *property, int nwebspawn);
+int PrepareSandbox(AppSpawnMgr *content, AppSpawningCtx *property);
+int SetSandboxConfigs(const AppSpawnSandbox *appSandBox, AppSpawningCtx *property, int nwebspawn);
 
 void ClearVariable(void);
 void AddDefaultVariable(void);

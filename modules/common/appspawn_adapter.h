@@ -22,12 +22,13 @@
 extern "C" {
 #endif
 
-int SetAppAccessToken(const AppSpawnContentExt *content, const AppProperty *property);
-int SetSelinuxCon(const AppSpawnContentExt *content, const AppProperty *property);
+int SetAppAccessToken(const AppSpawnMgr *content, const AppSpawningCtx *property);
+int SetSelinuxCon(const AppSpawnMgr *content, const AppSpawningCtx *property);
 
-int SetUidGidFilter(const AppSpawnContentExt *content);
-int SetSeccompFilter(const AppSpawnContentExt *content, const AppProperty *property);
-int SetInternetPermission(const AppProperty *property);
+int SetUidGidFilter(const AppSpawnMgr *content);
+int SetSeccompFilter(const AppSpawnMgr *content, const AppSpawningCtx *property);
+int SetInternetPermission(const AppSpawningCtx *property);
+int32_t SetEnvInfo(const AppSpawnMgr *content, const AppSpawningCtx *property);
 
 // stub for extend func
 void DisallowInternet(void);

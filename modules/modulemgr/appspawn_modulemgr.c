@@ -113,7 +113,6 @@ void PostHookExec(const HOOK_INFO *hookInfo, void *executionContext, int executi
 
 int PreloadHookExecute(AppSpawnContent *content)
 {
-    APPSPAWN_LOGI("Execute hook [%{public}d]", HOOK_PRELOAD);
     AppSpawnHookArg arg;
     arg.content = content;
     arg.client = NULL;
@@ -122,6 +121,7 @@ int PreloadHookExecute(AppSpawnContent *content)
     options.preHook = PreHookExec;
     options.postHook = PostHookExec;
     int ret = HookMgrExecute(GetAppSpawnHookMgr(), HOOK_PRELOAD, (void *)(&arg), &options);
+    APPSPAWN_LOGI("Execute hook [%{public}d] result %{public}d", HOOK_PRELOAD, ret);
     return ret == ERR_NO_HOOK_STAGE ? 0 : ret;
 }
 
@@ -140,12 +140,12 @@ static int AppSpawnHookRun(const HOOK_INFO *hookInfo, void *executionContext)
 {
     AppSpawnForkArg *arg = (AppSpawnForkArg *)executionContext;
     AppSpawnHook realHook = (AppSpawnHook)hookInfo->hookCookie;
-    return realHook((AppSpawnContentExt *)arg->content, (AppProperty *)arg->client);
+    return realHook((AppSpawnMgr *)arg->content, (AppSpawningCtx *)arg->client);
 }
 
 int AppSpawnHookExecute(int stage, uint32_t flags, AppSpawnContent *content, AppSpawnClient *client)
 {
-    APPSPAWN_LOGI("Execute hook [%{public}d] for app: %{public}s", stage, GetProcessName((AppProperty *)client));
+    APPSPAWN_LOGI("Execute hook [%{public}d] for app: %{public}s", stage, GetProcessName((AppSpawningCtx *)client));
     AppSpawnHookArg forkArg;
     forkArg.client = client;
     forkArg.content = content;
@@ -168,7 +168,7 @@ int AddAppSpawnHook(int stage, int prio, AppSpawnHook hook)
     return HookMgrAddEx(GetAppSpawnHookMgr(), &info);
 }
 
-int AppChangeHookExecute(int stage, const AppSpawnContent *content, const AppSpawnAppInfo *appInfo)
+int AppChangeHookExecute(int stage, const AppSpawnContent *content, const AppSpawnedProcess *appInfo)
 {
     AppSpawnAppArg arg;
     arg.appInfo = appInfo;
@@ -180,11 +180,11 @@ int AppChangeHookExecute(int stage, const AppSpawnContent *content, const AppSpa
 static int AppChangeHookRun(const HOOK_INFO *hookInfo, void *executionContext)
 {
     AppSpawnAppArg *arg = (AppSpawnAppArg *)executionContext;
-    AppChangeHook realHook = (AppChangeHook)hookInfo->hookCookie;
-    return realHook((AppSpawnContentExt *)arg->content, arg->appInfo);
+    ProcessChangeHook realHook = (ProcessChangeHook)hookInfo->hookCookie;
+    return realHook((AppSpawnMgr *)arg->content, arg->appInfo);
 }
 
-int AddAppChangeHook(int stage, int prio, AppChangeHook hook)
+int AddAppChangeHook(int stage, int prio, ProcessChangeHook hook)
 {
     HOOK_INFO info;
     info.stage = stage;
@@ -194,7 +194,7 @@ int AddAppChangeHook(int stage, int prio, AppChangeHook hook)
     return HookMgrAddEx(GetAppSpawnHookMgr(), &info);
 }
 
-void RegChildLooper(struct AppSpawnContent_ *content, ChildLoop loop)
+void RegChildLooper(struct tagAppSpawnContent *content, ChildLoop loop)
 {
     APPSPAWN_CHECK(content != NULL && loop != NULL, return, "Invalid content for RegChildLooper");
     content->runChildProcessor = loop;

@@ -20,9 +20,9 @@
 #include <string>
 #include <unistd.h>
 
+#include <gtest/gtest.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <gtest/gtest.h>
 
 #include "appspawn_modulemgr.h"
 #include "appspawn_server.h"
@@ -31,8 +31,8 @@
 #include "sandbox_utils.h"
 #include "securec.h"
 
-#include "app_spawn_test_helper.h"
 #include "app_spawn_stub.h"
+#include "app_spawn_test_helper.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -40,26 +40,14 @@ using namespace OHOS;
 using nlohmann::json;
 
 namespace OHOS {
+static AppSpawnTestHelper g_testHelper;
 class AppSpawnColdRunTest : public testing::Test {
 public:
-    static void SetUpTestCase();
-    static void TearDownTestCase();
-    void SetUp();
-    void TearDown();
-    AppSpawnTestHelper testHelper_;
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
+    void SetUp() {}
+    void TearDown() {}
 };
-
-void AppSpawnColdRunTest::SetUpTestCase()
-{}
-
-void AppSpawnColdRunTest::TearDownTestCase()
-{}
-
-void AppSpawnColdRunTest::SetUp()
-{}
-
-void AppSpawnColdRunTest::TearDown()
-{}
 
 /**
  * 接管启动的exec 过程
@@ -90,7 +78,7 @@ static int ExecvTimeoutStub(const char *pathName, char *const argv[])
         return 0;
     }
     APPSPAWN_LOGV("ExecvLocalProcessStub pathName: %{public}s ", pathName);
-    usleep(500000); //
+    usleep(500000);  // 500000 500ms
     return 0;
 }
 
@@ -117,6 +105,8 @@ static int HandleExecvStub(const char *pathName, char *const argv[])
     }
     content->runAppSpawn(content, args->argc, args->argv);
     free(args);
+    // exit delete content
+    AppSpawnDestroyContent(content);
     APPSPAWN_LOGV("HandleExecvStub %{public}s exit", pathName);
     return 0;
 }
@@ -132,9 +122,9 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_001, TestSize.Level0)
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create client %{public}s", APPSPAWN_SERVER_NAME);
-        AppSpawnReqHandle reqHandle = testServer.CreateMsg(clientHandle,  MSG_APP_SPAWN, 0);
+        AppSpawnReqMsgHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
         // set cold start flags
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_COLD_BOOT);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_COLD_BOOT);
 
         ret = -1;
         node->flags |= STUB_NEED_CHECK;
@@ -163,9 +153,9 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_002, TestSize.Level0)
     do {
         ret = AppSpawnClientInit(NWEBSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create client %{public}s", NWEBSPAWN_SERVER_NAME);
-        AppSpawnReqHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+        AppSpawnReqMsgHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
         // set cold start flags
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_COLD_BOOT);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_COLD_BOOT);
 
         ret = -1;
         node->flags |= STUB_NEED_CHECK;
@@ -184,33 +174,47 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_002, TestSize.Level0)
     ASSERT_EQ(ret, 0);
 }
 
+static CmdArgs *GetColdRunArgs(const AppSpawningCtx *property, const char *arg)
+{
+    std::string argStr = arg;
+    char *param = Base64Encode(property->receiver->buffer, property->receiver->msgRecvLen - sizeof(AppSpawnMsg));
+    APPSPAWN_CHECK(param != nullptr, return nullptr, "Failed to encode msg");
+    char *header = Base64Encode(reinterpret_cast<uint8_t *>(&property->receiver->msgHeader), sizeof(AppSpawnMsg));
+    if (header != nullptr) {
+        argStr += param;
+        argStr += "  -fd -1 0  ";
+        argStr += header;
+        free(header);
+    } else {
+        free(param);
+        return nullptr;
+    }
+    free(param);
+    return AppSpawnTestHelper::ToCmdList(argStr.c_str());
+}
+
 HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_003, TestSize.Level0)
 {
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     AppSpawnContent *content = nullptr;
     CmdArgs *args = nullptr;
-    char *param  = nullptr;
     int ret = -1;
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
         // set cold start flags
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_COLD_BOOT);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_COLD_BOOT);
 
         ret = APPSPAWN_INVALID_ARG;
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
-        param = Base64Encode((uint8_t *)property->msg, property->msg->msgLen);
-        APPSPAWN_CHECK(param != nullptr, break, "Failed to encode msg");
 
         std::string arg = "appspawn -mode app_cold -param ";
-        arg += param;
-        arg += "  -fd -1 0";
-        args = AppSpawnTestHelper::ToCmdList(arg.c_str());
+        args = GetColdRunArgs(property, arg.c_str());
         APPSPAWN_CHECK(args != nullptr, break, "Failed to alloc args");
         content = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
@@ -224,41 +228,34 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_003, TestSize.Level0)
     if (args) {
         free(args);
     }
-    if (param) {
-        free(param);
-    }
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
+    AppSpawnDestroyContent(content);
     ASSERT_EQ(ret, 0);
 }
 
 HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_004, TestSize.Level0)
 {
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     AppSpawnContent *content = nullptr;
     CmdArgs *args = nullptr;
-    char *param  = nullptr;
     int ret = -1;
     do {
         ret = AppSpawnClientInit(NWEBSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", NWEBSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
-        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", NWEBSPAWN_SERVER_NAME);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req ");
         // set cold start flags
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_COLD_BOOT);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_COLD_BOOT);
 
         ret = APPSPAWN_INVALID_ARG;
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
-        param = Base64Encode((uint8_t *)property->msg, property->msg->msgLen);
-        APPSPAWN_CHECK(param != nullptr, break, "Failed to encode msg");
 
         std::string arg = "appspawn -mode nweb_cold -param ";
-        arg += param;
-        arg += "  -fd -1 0";
-        args = AppSpawnTestHelper::ToCmdList(arg.c_str());
+        args = GetColdRunArgs(property, arg.c_str());
         APPSPAWN_CHECK(args != nullptr, break, "Failed to alloc args");
         content = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
@@ -273,47 +270,40 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_004, TestSize.Level0)
     if (args) {
         free(args);
     }
-    if (param) {
-        free(param);
-    }
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
+    AppSpawnDestroyContent(content);
     ASSERT_EQ(ret, 0);
 }
 
 HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_005, TestSize.Level0)
 {
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     AppSpawnContent *content = nullptr;
     CmdArgs *args = nullptr;
-    char *param  = nullptr;
     int ret = -1;
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         // asan set cold
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_DEBUGGABLE);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_NATIVEDEBUG);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_ASANENABLED);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_GWP_ENABLED_FORCE);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_DEBUGGABLE);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_NATIVEDEBUG);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ASANENABLED);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_GWP_ENABLED_FORCE);
 
         ret = APPSPAWN_INVALID_ARG;
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
-        param = Base64Encode((uint8_t *)property->msg, property->msg->msgLen);
-        APPSPAWN_CHECK(param != nullptr, break, "Failed to encode msg");
 
         std::string arg = "appspawn -mode app_cold -param ";
-        arg += param;
-        arg += "  -fd -1 0";
-        args = AppSpawnTestHelper::ToCmdList(arg.c_str());
+        args = GetColdRunArgs(property, arg.c_str());
         APPSPAWN_CHECK(args != nullptr, break, "Failed to alloc args");
         content = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
@@ -328,54 +318,47 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_005, TestSize.Level0)
     if (args) {
         free(args);
     }
-    if (param) {
-        free(param);
-    }
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
+    AppSpawnDestroyContent(content);
     ASSERT_EQ(ret, 0);
 }
 
 HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
 {
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     AppSpawnContent *content = nullptr;
     CmdArgs *args = nullptr;
-    char *param  = nullptr;
     int ret = -1;
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         // asan set cold
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_DEBUGGABLE);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_NATIVEDEBUG);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_ASANENABLED);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_GWP_ENABLED_NORMAL);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_DEBUGGABLE);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_NATIVEDEBUG);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ASANENABLED);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_GWP_ENABLED_NORMAL);
 
         ret = APPSPAWN_INVALID_ARG;
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
-        param = Base64Encode((uint8_t *)property->msg, property->msg->msgLen);
-        APPSPAWN_CHECK(param != nullptr, break, "Failed to encode msg");
 
         std::string arg = "appspawn -mode app_cold -param ";
-        arg += param;
-        arg += "  -fd -1 0";
-        args = AppSpawnTestHelper::ToCmdList(arg.c_str());
+        args = GetColdRunArgs(property, arg.c_str());
         APPSPAWN_CHECK(args != nullptr, break, "Failed to alloc args");
         content = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         ASSERT_EQ(content->mode, MODE_FOR_APP_COLD_RUN);
         // add property to content
-        OH_ListAddTail(&(reinterpret_cast<AppSpawnContentExt *>(content))->appMgr.appSpawnQueue, &property->node);
-        DumpApSpawn(reinterpret_cast<AppSpawnContentExt *>(content));
+        OH_ListAddTail(&(reinterpret_cast<AppSpawnMgr *>(content))->processMgr.appSpawnQueue, &property->node);
+        DumpApSpawn(reinterpret_cast<AppSpawnMgr *>(content));
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
         AppSpawnHookExecute(HOOK_SPAWN_FIRST, 0, content, &property->client);
@@ -386,11 +369,9 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
     if (args) {
         free(args);
     }
-    if (param) {
-        free(param);
-    }
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
+    AppSpawnDestroyContent(content);
     ASSERT_EQ(ret, 0);
 }
 
@@ -401,8 +382,8 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
 HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_007, TestSize.Level0)
 {
     AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqHandle reqHandle = 0;
-    AppProperty *property = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
     AppSpawnContent *content = nullptr;
     CmdArgs *args = nullptr;
     StubNode *node = GetStubNode(STUB_EXECV);
@@ -411,19 +392,19 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_007, TestSize.Level0)
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = testHelper_.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         // asan set cold
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_DEBUGGABLE);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_NATIVEDEBUG);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_ASANENABLED);
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_GWP_ENABLED_NORMAL);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_DEBUGGABLE);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_NATIVEDEBUG);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ASANENABLED);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_GWP_ENABLED_NORMAL);
 
         ret = APPSPAWN_INVALID_ARG;
-        property = testHelper_.GetAppProperty(clientHandle, reqHandle);
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         std::string arg = "appspawn -mode nwebspawn";
@@ -443,7 +424,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_007, TestSize.Level0)
         free(args);
     }
     node->flags &= ~STUB_NEED_CHECK;
-    AppMgrDeleteAppProperty(property);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     AppSpawnDestroyContent(content);
     ASSERT_EQ(ret, 0);
@@ -465,9 +446,9 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_008, TestSize.Level0)
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create client %{public}s", APPSPAWN_SERVER_NAME);
-        AppSpawnReqHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+        AppSpawnReqMsgHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
         // set cold start flags
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_COLD_BOOT);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_COLD_BOOT);
 
         ret = -1;
         node->flags |= STUB_NEED_CHECK;
@@ -502,9 +483,9 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_009, TestSize.Level0)
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create client %{public}s", APPSPAWN_SERVER_NAME);
-        AppSpawnReqHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+        AppSpawnReqMsgHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
         // set cold start flags
-        AppSpawnReqSetAppFlag(clientHandle, reqHandle, APP_FLAGS_COLD_BOOT);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_COLD_BOOT);
 
         ret = -1;
         node->flags |= STUB_NEED_CHECK;

@@ -31,7 +31,7 @@
 #include "appspawn_utils.h"
 #include "securec.h"
 
-APPSPAWN_STATIC int GetCgroupPath(const AppSpawnAppInfo *appInfo, char *buffer, uint32_t buffLen)
+APPSPAWN_STATIC int GetCgroupPath(const AppSpawnedProcess *appInfo, char *buffer, uint32_t buffLen)
 {
     const int userId = appInfo->uid / UID_BASE;
 #ifdef APPSPAWN_TEST
@@ -54,7 +54,7 @@ APPSPAWN_STATIC int WriteToFile(const char *path, int truncated, pid_t pids[], u
     int ret = 0;
     for (uint32_t i = 0; i < count; i++) {
         APPSPAWN_LOGV(" WriteToFile pid %{public}d ", pids[i]);
-        int ret = snprintf_s(pidName, sizeof(pidName), sizeof(pidName) - 1, "%d\n", pids[i]);
+        ret = snprintf_s(pidName, sizeof(pidName), sizeof(pidName) - 1, "%d\n", pids[i]);
         APPSPAWN_CHECK(ret > 0, break, "Failed to snprintf_s errno: %{public}d", errno);
         ret = write(fd, pidName, strlen(pidName));
         APPSPAWN_CHECK(ret > 0, break,
@@ -84,7 +84,7 @@ static int WritePidMax(const char *path, uint32_t max)
     return ret;
 }
 
-static void KillProcessesByCGroup(const char *path, const AppSpawnContentExt *content, const AppSpawnAppInfo *appInfo)
+static void KillProcessesByCGroup(const char *path, AppSpawnMgr *content, const AppSpawnedProcess *appInfo)
 {
     FILE *file = fopen(path, "r");
     APPSPAWN_CHECK(file != NULL, return, "Open file fail %{public}s errno: %{public}d", path, errno);
@@ -94,7 +94,7 @@ static void KillProcessesByCGroup(const char *path, const AppSpawnContentExt *co
         if (pid == appInfo->pid) {
             continue;
         }
-        AppSpawnAppInfo *tmp = GetAppInfo((AppSpawnAppMgr *)&content->appMgr, pid);
+        AppSpawnedProcess *tmp = GetSpawnedProcess(&content->processMgr, pid);
         if (tmp != NULL) {
             APPSPAWN_LOGI("Got app %{public}s in same group for pid %{public}d.", tmp->name, pid);
             continue;
@@ -107,7 +107,7 @@ static void KillProcessesByCGroup(const char *path, const AppSpawnContentExt *co
     (void)fclose(file);
 }
 
-static int ProcessAppDied(const AppSpawnContentExt *content, const AppSpawnAppInfo *appInfo)
+static int ProcessAppDied(const AppSpawnMgr *content, const AppSpawnedProcess *appInfo)
 {
     APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return -1);
     APPSPAWN_CHECK_ONLY_EXPER(appInfo != NULL, return -1);
@@ -120,11 +120,11 @@ static int ProcessAppDied(const AppSpawnContentExt *content, const AppSpawnAppIn
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to get real path errno: %d", errno);
     ret = strcat_s(path, sizeof(path), "cgroup.procs");
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to strcat_s errno: %{public}d", errno);
-    KillProcessesByCGroup(path, content, appInfo);
+    KillProcessesByCGroup(path, (AppSpawnMgr *)content, appInfo);
     return ret;
 }
 
-static int ProcessAppAdd(const AppSpawnContentExt *content, const AppSpawnAppInfo *appInfo)
+static int ProcessAppAdd(const AppSpawnMgr *content, const AppSpawnedProcess *appInfo)
 {
     APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return -1);
     APPSPAWN_CHECK_ONLY_EXPER(appInfo != NULL, return -1);

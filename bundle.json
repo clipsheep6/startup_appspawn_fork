@@ -69,7 +69,8 @@
                 "libuv",
                 "libpng",
                 "selinux",
-                "cJSON"
+                "cJSON",
+                "json"
 	    ]
         },
         "build": {

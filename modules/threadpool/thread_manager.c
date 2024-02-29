@@ -59,7 +59,7 @@ typedef struct {
     ListNode node;         // 保存sub task到对应的task，方便管理
     ListNode executeNode;  // 等待处理的任务节点
     TaskNode *task;
-    const const ThreadContext *context;
+    const ThreadContext *context;
     TaskExecutor executor;
 } TaskExecuteNode;
 
@@ -126,7 +126,8 @@ static int AddExecutor(ThreadManager *mgr, const TaskNode *task)
 
 static void RunExecutor(ThreadManager *mgr, ThreadNode *threadNode, uint32_t maxCount)
 {
-    APPSPAWN_LOGV("RunExecutor in thread: %{public}d executorCount: %{public}u ", threadNode->index, mgr->executorCount);
+    APPSPAWN_LOGV("RunExecutor in thread: %{public}d executorCount: %{public}u ",
+        threadNode->index, mgr->executorCount);
     TaskExecuteNode *executor = PopTaskExecutor(mgr);
     uint32_t count = 0;
     while (executor != NULL && !threadNode->threadExit) {
@@ -190,7 +191,7 @@ static TaskNode *PopTask(ThreadManager *mgr, ListNode *queue)
 static void PushTask(ThreadManager *mgr, TaskNode *task, ListNode *queue)
 {
     pthread_mutex_lock(&mgr->mutex);
-    OH_ListAddTail(queue, &task->node);  // 后插
+    OH_ListAddTail(queue, &task->node);
     pthread_cond_broadcast(&mgr->cond);
     pthread_mutex_unlock(&mgr->mutex);
 }
@@ -206,9 +207,7 @@ static void SafeRemoveTask(ThreadManager *mgr, TaskNode *task)
     while (node != &task->executorList) {
         OH_ListRemove(node);
         OH_ListInit(node);
-
-        // 从发送队列中删除
-        TaskExecuteNode *executor = ListEntry(node, TaskExecuteNode, node);  // 从task中取
+        TaskExecuteNode *executor = ListEntry(node, TaskExecuteNode, node);
         pthread_mutex_lock(&mgr->mutex);
         if (!ListEmpty(executor->executeNode)) {
             OH_ListRemove(&executor->executeNode);
@@ -231,7 +230,6 @@ static void ExecuteTask(ThreadManager *mgr)
 
     APPSPAWN_LOGV("ExecuteTask task: %{public}u ", task->taskId);
     AddExecutor(mgr, task);
-    // 插入执行队列
     PushTask(mgr, task, &mgr->executingTaskQueue);
     return;
 }
@@ -244,20 +242,17 @@ static void CheckTaskComplete(ThreadManager *mgr)
     }
     APPSPAWN_LOGV("CheckTaskComplete task: %{public}u task count: %{public}u %{public}u",
         task->taskId, atomic_load(&task->finishTaskCount), task->totalTask);
-    // 检查已经结束的任务数
     if (task->totalTask <= atomic_load(&task->finishTaskCount)) {
         if (task->finishProcess != NULL) {
             task->finishProcess(task->taskId, task->context);
             DeleteTask(task);
             return;
         }
-        // 通知同步结束
         pthread_mutex_lock(&task->mutex);
         pthread_cond_signal(&task->cond);
         pthread_mutex_unlock(&task->mutex);
         return;
     }
-    // 重新插入执行队列，继续等待
     PushTask(mgr, task, &mgr->executingTaskQueue);
     return;
 }
@@ -295,7 +290,6 @@ int CreateThreadMgr(uint32_t maxThreadCount, ThreadMgr *instance)
         mgr->threadNode[index].threadId = INVALID_THREAD_ID;
         atomic_init(&mgr->threadNode[index].threadExit, 0);
     }
-    // 启动管理线程
     g_threadManager = mgr;
     int ret = pthread_create(&mgr->threadNode[0].threadId, NULL, ManagerThreadProc, (void *)&mgr->threadNode[0]);
     if (ret != 0) {
@@ -321,7 +315,6 @@ int DestroyThreadMgr(ThreadMgr instance)
             APPSPAWN_LOGV("DestroyThreadMgr index %{public}d %{public}d", index, mgr->threadNode[index].threadExit);
         }
     }
-    // 通知结束
     pthread_mutex_lock(&mgr->mutex);
     pthread_cond_broadcast(&mgr->cond);
     pthread_mutex_unlock(&mgr->mutex);
@@ -341,6 +334,7 @@ int DestroyThreadMgr(ThreadMgr instance)
 
     pthread_cond_destroy(&mgr->cond);
     pthread_mutex_destroy(&mgr->mutex);
+    return 0;
 }
 
 int ThreadMgrAddTask(ThreadMgr instance, ThreadTaskHandle *taskHandle)
@@ -420,28 +414,29 @@ int TaskSyncExecute(ThreadMgr instance, ThreadTaskHandle taskHandle)
     TaskNode *task = GetTask(mgr, &mgr->taskList, taskHandle);
     APPSPAWN_CHECK(task != NULL, return -1, "Invalid thread task %{public}u", taskHandle);
 
-    pthread_mutex_lock(&task->mutex);  // 加入等待执行
+    pthread_mutex_lock(&task->mutex);
     OH_ListRemove(&task->node);
     OH_ListInit(&task->node);
     OH_ListAddTail(&mgr->waitingTaskQueue, &task->node);
-    pthread_cond_broadcast(&mgr->cond);  // 通知执行
+    pthread_cond_broadcast(&mgr->cond);
     pthread_mutex_unlock(&task->mutex);
     APPSPAWN_LOGV("TaskSyncExecute task: %{public}u", task->taskId);
     struct timespec abstime;
     int ret = 0;
     do {
-        ConvertToTimespec(60 * 1000, &abstime);  // 等待60 * 1000 60s
+        ConvertToTimespec(60 * 1000, &abstime);  // wait 60 * 1000 60s
         pthread_mutex_lock(&task->mutex);
         ret = pthread_cond_timedwait(&task->cond, &task->mutex, &abstime);
         pthread_mutex_unlock(&task->mutex);
         APPSPAWN_LOGV("TaskSyncExecute success task id: %{public}u ret: %{public}d", task->taskId, ret);
-    } while (ret == ETIMEDOUT);  // 直到执行结束
+    } while (ret == ETIMEDOUT);
 
     DeleteTask(task);
     return ret;
 }
 
-int TaskExecute(ThreadMgr instance, ThreadTaskHandle taskHandle, TaskFinishProcessor process, const ThreadContext *context)
+int TaskExecute(ThreadMgr instance,
+    ThreadTaskHandle taskHandle, TaskFinishProcessor process, const ThreadContext *context)
 {
     ThreadManager *mgr = (ThreadManager *)instance;
     APPSPAWN_CHECK(mgr != NULL, return -1, "Invalid thread manager");
@@ -450,11 +445,11 @@ int TaskExecute(ThreadMgr instance, ThreadTaskHandle taskHandle, TaskFinishProce
 
     task->finishProcess = process;
     task->context = context;
-    pthread_mutex_lock(&mgr->mutex);  // 加入等待执行
+    pthread_mutex_lock(&mgr->mutex);
     OH_ListRemove(&task->node);
     OH_ListInit(&task->node);
     OH_ListAddTail(&mgr->waitingTaskQueue, &task->node);
-    pthread_cond_broadcast(&mgr->cond);  // 通知执行
+    pthread_cond_broadcast(&mgr->cond);
     pthread_mutex_unlock(&mgr->mutex);
     APPSPAWN_LOGV("TaskExecute task: %{public}u", task->taskId);
     return 0;
@@ -465,11 +460,10 @@ static void CheckAndCreateNewThread(ThreadManager *mgr)
     if (mgr->maxThreadCount <= mgr->validThreadCount) {
         return;
     }
-    // 有效线程小于待执行的节点，不需要扩大
     if (mgr->executorCount <= mgr->validThreadCount) {
         return;
     }
-    APPSPAWN_LOGV("CheckAndCreateNewThread maxThreadCount: %{public}u validThreadCount: %{public}u executorCount: %{public}u",
+    APPSPAWN_LOGV("CheckAndCreateNewThread maxThreadCount: %{public}u validThreadCount: %{public}u %{public}u",
         mgr->maxThreadCount, mgr->validThreadCount, mgr->executorCount);
 
     uint32_t totalThread = mgr->maxThreadCount;
@@ -503,11 +497,10 @@ static void *ManagerThreadProc(void *args)
         pthread_mutex_lock(&mgr->mutex);
         do {
             uint32_t timeout = 60 * 1000; // 60 * 1000 60s
-            // 先处理等待任务
             if (!ListEmpty(mgr->waitingTaskQueue)) {
                 break;
             }
-            if (!ListEmpty(mgr->executingTaskQueue)) { // 检查结束，等待500ms
+            if (!ListEmpty(mgr->executingTaskQueue)) {
                 timeout = 500; // 500ms
             }
             ConvertToTimespec(timeout, &abstime);
@@ -521,18 +514,15 @@ static void *ManagerThreadProc(void *args)
         } while (1);
         pthread_mutex_unlock(&mgr->mutex);
         APPSPAWN_LOGV("aaaa threadNode->threadExit %{public}d", threadNode->threadExit);
-        ExecuteTask(mgr); // 添加到执行队列
-        CheckAndCreateNewThread(mgr); // 检查创建线程
+        ExecuteTask(mgr);
+        CheckAndCreateNewThread(mgr);
 
         if (mgr->validThreadCount == 0) {
-            RunExecutor(mgr, threadNode, 5); // 只有一个线程，直接执行
+            RunExecutor(mgr, threadNode, 5); // 5 max thread
         }
-        // 检查任务是否执行完成
         CheckTaskComplete(mgr);
-        if (ret == ETIMEDOUT) { // 优化线程个数
-            // RebuildThreadPool(mgr);
-        }
     }
+    return 0;
 }
 
 static void *ThreadExecute(void *args)
@@ -551,4 +541,5 @@ static void *ThreadExecute(void *args)
         APPSPAWN_LOGV("bbbb threadNode->threadExit %{public}d", threadNode->threadExit);
         RunExecutor(mgr, threadNode, 1);
     }
+    return NULL;
 }

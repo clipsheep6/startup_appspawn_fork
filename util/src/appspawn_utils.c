@@ -58,7 +58,6 @@ int MakeDirRec(const char *path, mode_t mode, int lastPath)
         int ret = memcpy_s(buffer, PATH_MAX, path, p - path - 1);
         APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy path");
         ret = mkdir(buffer, mode);
-        // APPSPAWN_LOGV("MakeDirRec %{public}s errno: %{public}d %{public}d", buffer, ret, errno);
         if (ret == -1 && errno != EEXIST) {
             return errno;
         }
@@ -116,10 +115,10 @@ int SandboxMountPath(const MountArg *arg)
     return 0;
 }
 
-static uint32_t dumpToConsole = 0;
+static uint32_t g_dumpToConsole = 0;
 void SetDumpFlags(uint32_t flags)
 {
-    dumpToConsole = flags;
+    g_dumpToConsole = flags;
 }
 
 #if defined(__clang__)
@@ -134,7 +133,7 @@ void SetDumpFlags(uint32_t flags)
 
 void AppSpawnDump(const char *fmt, ...)
 {
-    if (!dumpToConsole) {
+    if (!g_dumpToConsole) {
         return;
     }
     char format[128] = {0}; // 128 max buffer for format
@@ -156,7 +155,7 @@ void AppSpawnDump(const char *fmt, ...)
     vprintf(format, vargs);
     va_end(vargs);
     printf("\n");
-    fflush(stdout);
+    (void)fflush(stdout);
 }
 
 #if defined(__clang__)

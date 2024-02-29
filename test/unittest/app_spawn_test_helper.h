@@ -13,26 +13,28 @@
  * limitations under the License.
  */
 
-#ifndef APPSPAWN_SERVER_TEST_H
-#define APPSPAWN_SERVER_TEST_H
+#ifndef APPSPAWN_TEST_HELPER_H
+#define APPSPAWN_TEST_HELPER_H
 
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <functional>
 #include <mutex>
 #include <pthread.h>
 #include <string>
-#include <cstring>
 #include <unistd.h>
 #include <vector>
 
 #include "appspawn.h"
 #include "appspawn_hook.h"
+#include "appspawn_utils.h"
 #include "list.h"
 #include "loop_event.h"
 
+#include "app_spawn_stub.h"
 
 namespace OHOS {
 typedef struct {
@@ -40,7 +42,7 @@ typedef struct {
     char *argv[0];
 } CmdArgs;
 
-typedef struct AppSpawnClient_ AppSpawnClient;
+typedef struct tagAppSpawnClient AppSpawnClient;
 struct TestConnection;
 class LocalTestServer;
 using RecvMsgProcess = std::function<void(struct TestConnection *connection, const uint8_t *buffer, uint32_t buffLen)>;
@@ -52,41 +54,56 @@ public:
     {
         SetDefaultTestData();
     }
-    ~AppSpawnTestHelper() {
-        if (processName_) {
-            free(processName_);
-        }
-    }
+    ~AppSpawnTestHelper() {}
 
     void SetDefaultTestData();
-    char *GetDefaultTestAppBundleName() { return processName_; }
-    uid_t GetTestUid() { return defaultTestUid_; }
-    gid_t GetTestGid() { return defaultTestGid_; }
-    gid_t GetTestGidGroup() { return defaultTestGidGroup_; }
-    int32_t GetTestBundleIndex() { return defaultTestBundleIndex_; }
-
-    void SetTestUid(uid_t uid) { defaultTestUid_ = uid; }
-    void SetProcessName(const char *name)
+    const char *GetDefaultTestAppBundleName()
     {
-        if (processName_) {
-            free(processName_);
-        }
-        processName_ = strdup(name);
+        return processName_.c_str();
+    }
+    uid_t GetTestUid()
+    {
+        return defaultTestUid_;
+    }
+    gid_t GetTestGid()
+    {
+        return defaultTestGid_;
+    }
+    gid_t GetTestGidGroup()
+    {
+        return defaultTestGidGroup_;
+    }
+    int32_t GetTestBundleIndex()
+    {
+        return defaultTestBundleIndex_;
     }
 
-    AppSpawnReqHandle CreateMsg(AppSpawnClientHandle handle, uint32_t msgType = MSG_APP_SPAWN, int base = 0);
-    AppProperty *GetAppProperty(AppSpawnClientHandle handle, AppSpawnReqHandle reqHandle);
+    void SetTestUid(uid_t uid)
+    {
+        defaultTestUid_ = uid;
+    }
+    void SetProcessName(const char *name)
+    {
+        processName_ = std::string(name);
+    }
+
+    AppSpawnReqMsgHandle CreateMsg(AppSpawnClientHandle handle, uint32_t msgType = MSG_APP_SPAWN, int base = 0);
+    AppSpawningCtx *GetAppProperty(AppSpawnClientHandle handle, AppSpawnReqMsgHandle reqHandle);
 
     int CreateSocket(void);
     int CreateSendMsg(std::vector<uint8_t> &buffer, uint32_t msgType, uint32_t &msgLen,
         const std::vector<AddTlvFunction> &addTlvFuncs);
-    const std::vector<const char *> &GetPermissions() { return permissions_; }
+    const std::vector<const char *> &GetPermissions()
+    {
+        return permissions_;
+    }
 
     static int AddBaseTlv(uint8_t *buffer, uint32_t bufferLen, uint32_t &realLen, uint32_t &tlvCount);
     static uint32_t GenRandom(void);
     static CmdArgs *ToCmdList(const char *cmd);
+
 private:
-    char *processName_ = nullptr;
+    std::string processName_ = {};
     uid_t defaultTestUid_;
     gid_t defaultTestGid_;
     gid_t defaultTestGidGroup_;
@@ -105,38 +122,41 @@ private:
 static uint32_t g_serverId = 1;
 class AppSpawnTestServer : public AppSpawnTestHelper {
 public:
-    AppSpawnTestServer(const char *cmd, bool testServer)
-        : AppSpawnTestHelper(), serviceCmd_(cmd), testServer_(testServer), protectTime_(2000) // 2000 2s
+    explicit AppSpawnTestServer(const char *cmd, bool testServer)
+        : AppSpawnTestHelper(), serviceCmd_(cmd), testServer_(testServer), protectTime_(2000)  // 2000 2s
     {
-        serverId_ = g_serverId;
-        g_serverId++;
+        serverId_ = AppSpawnTestServer::serverId;
+        AppSpawnTestServer::serverId++;
     }
 
     AppSpawnTestServer(const char *cmd)
-        : AppSpawnTestHelper(), serviceCmd_(cmd), testServer_(true), protectTime_(2000) // 2000 2s
+        : AppSpawnTestHelper(), serviceCmd_(cmd), testServer_(true), protectTime_(2000)  // 2000 2s
     {
-        serverId_ = g_serverId;
-        g_serverId++;
+        serverId_ = AppSpawnTestServer::serverId;
+        AppSpawnTestServer::serverId++;
     }
     ~AppSpawnTestServer();
 
     void Start(void);
-    void Start(RecvMsgProcess process, uint32_t time = 2000); // 2000 default 2s
+    void Start(RecvMsgProcess process, uint32_t time = 2000);  // 2000 default 2s
     void Stop();
     void KillNWebSpawnServer();
+
 private:
     void StopSpawnService(void);
 
+    static uint32_t serverId;
     static void *ServiceThread(void *arg);
     static void WaitChildTimeout(const TimerHandle taskHandle, void *context);
     static void ChildLoopRun(AppSpawnContent *content, AppSpawnClient *client);
+    static void ProcessIdle(const IdleHandle taskHandle, void *context);
 
     AppSpawnContent *content_ = nullptr;
-    std::atomic<long> appPid_ { -1 };
+    std::atomic<long> appPid_{-1};
     std::string serviceCmd_{};
-    TimerHandle timer_ = nullptr;
+    IdleHandle idle_ = nullptr;
     pthread_t threadId_ = 0;
-    std::atomic<bool> stop_ { false };
+    std::atomic<bool> stop_{false};
     RecvMsgProcess recvMsgProcess_ = nullptr;
     bool testServer_ = false;
     struct timespec startTime_ {};
@@ -161,15 +181,12 @@ struct TestConnection {
  */
 class LocalTestServer {
 public:
-    LocalTestServer()
-    {
-    }
-    ~LocalTestServer()
-    {
-    }
+    LocalTestServer() {}
+    ~LocalTestServer() {}
 
     int Run(const char *serverName, RecvMsgProcess recvMsg);
     void Stop();
+
 private:
     using ServerInfo = struct ServerInfo_ {
         LocalTestServer *local = nullptr;
@@ -183,4 +200,4 @@ private:
     TaskHandle serverHandle_ = 0;
 };
 }  // namespace OHOS
-#endif  // APPSPAWN_SERVER_TEST_H
+#endif  // APPSPAWN_TEST_HELPER_H

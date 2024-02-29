@@ -65,18 +65,18 @@ void *DlopenStub(const char *pathname, int mode)
     return &index;
 }
 
-bool InitEnvironmentParamStub(const char *name)
+static bool InitEnvironmentParamStub(const char *name)
 {
     UNUSED(name);
     return true;
 }
 
-bool SetRendererSecCompPolicyStub(void)
+static bool SetRendererSecCompPolicyStub(void)
 {
     return true;
 }
 
-void NWebRenderMainStub(const char *cmd)
+static void NWebRenderMainStub(const char *cmd)
 {
     printf("NWebRenderMainStub cmd %s \n", cmd);
 }
@@ -125,51 +125,6 @@ bool may_init_gwp_asan(bool forceInit)
     return false;
 }
 
-int BindStub(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
-{
-    UNUSED(sockfd);
-    UNUSED(addr);
-    UNUSED(addrlen);
-    return 0;
-}
-
-int ListenStub(int fd, int backlog)
-{
-    UNUSED(fd);
-    UNUSED(backlog);
-    return 0;
-}
-
-int LchownStub(const char *pathname, uid_t owner, gid_t group)
-{
-    UNUSED(pathname);
-    UNUSED(owner);
-    UNUSED(group);
-    return 0;
-}
-
-int LchmodStub(const char *pathname, mode_t mode)
-{
-    UNUSED(pathname);
-    UNUSED(mode);
-    return 0;
-}
-
-int GetsockoptStub(int sockfd, int level, int optname, void *optval, socklen_t *optlen)
-{
-    UNUSED(sockfd);
-    UNUSED(level);
-    UNUSED(optlen);
-    if (optval == NULL) {
-        return -1;
-    }
-    if (optname == SO_PEERCRED) {
-        struct ucred *cred = (struct ucred *)(optval);
-        cred->uid = 0;
-    }
-    return 0;
-}
-
 int SetgroupsStub(size_t size, const gid_t *list)
 {
     UNUSED(size);
@@ -200,25 +155,30 @@ int CapsetStub(cap_user_header_t hdrp, const cap_user_data_t datap)
     return 0;
 }
 
-const char *GetDeviceType()
+int UnshareStub(int flags)
 {
-    return "2in1";
-}
-
-int unshareStub(int flags)
-{
-    printf("unshareStub %x \n", flags);
+    printf("UnshareStub %x \n", flags);
     return 0;
 }
 
-int mountStub(const char *originPath, const char *destinationPath,
-	const char *fsType, unsigned long mountFlags, const char *options, mode_t mountSharedFlag)
+int MountStub(const char *originPath, const char *destinationPath,
+    const char *fsType, unsigned long mountFlags, const char *options, mode_t mountSharedFlag)
 {
     StubNode *node = GetStubNode(STUB_MOUNT);
     if (node == NULL || node->arg == NULL || (node->flags & STUB_NEED_CHECK) != STUB_NEED_CHECK) {
         return 0;
     }
     MountArg *args = (MountArg *)node->arg;
+
+    printf("args->originPath %s \n", args->originPath);
+    printf("args->destinationPath %s \n", args->destinationPath);
+    printf("args->fsType %s \n", args->fsType);
+    printf("args->options %s \n", args->options);
+    printf("originPath %s \n", originPath);
+    printf("destinationPath %s \n", destinationPath);
+    printf("fsType %s \n", fsType);
+    printf("options %s \n", options);
+    printf("mountFlags %lx args->mountFlags %lx \n", mountFlags, args->mountFlags);
 
     if (originPath != NULL && (strcmp(originPath, args->originPath) == 0)) {
         int result = (destinationPath != NULL && (strcmp(destinationPath, args->destinationPath) == 0) &&
@@ -227,43 +187,38 @@ int mountStub(const char *originPath, const char *destinationPath,
             (args->options == NULL || (options != NULL && strcmp(options, args->options) == 0)));
         errno = result ? 0 : -EINVAL;
         node->result = result ? 0 : -EINVAL;
-        printf("mountStub result %d node->result %d \n", result, node->result);
+        printf("MountStub result %d node->result %d \n", result, node->result);
         return errno;
     }
     return 0;
 }
 
-int symlinkStub(const char *target, const char *linkName)
+int SymlinkStub(const char *target, const char *linkName)
 {
     return 0;
 }
 
-int chdirStub(const char *path)
+int ChdirStub(const char *path)
 {
     return 0;
 }
 
-int chrootStub(const char *path)
+int ChrootStub(const char *path)
 {
     return 0;
 }
 
-long int syscallStub(long int type, ...)
+long int SyscallStub(long int type, ...)
 {
     return 0;
 }
 
-int umount2Stub(const char *path, int type)
+int Umount2Stub(const char *path, int type)
 {
     return 0;
 }
 
 int mallopt(int param, int value)
-{
-    return 0;
-}
-
-int mkdirStub(const char *path, mode_t mode)
 {
     return 0;
 }
@@ -280,9 +235,9 @@ int AccessStub(const char *pathName, int mode)
     return 0;
 }
 
-int execvStub(const char *pathName, char *const argv[])
+int ExecvStub(const char *pathName, char *const argv[])
 {
-    printf("execvStub %s \n", pathName);
+    printf("ExecvStub %s \n", pathName);
     StubNode *node = GetStubNode(STUB_EXECV);
     if (node == NULL || node->arg == NULL || (node->flags & STUB_NEED_CHECK) != STUB_NEED_CHECK) {
         return 0;
@@ -293,7 +248,13 @@ int execvStub(const char *pathName, char *const argv[])
     return 0;
 }
 
-int getprocpidStub()
+int ExecvpStub(const char *pathName, char *const argv[])
+{
+    printf("ExecvpStub %s \n", pathName);
+    return 0;
+}
+
+int GetprocpidStub()
 {
     return 0;
 }

@@ -37,15 +37,18 @@ extern "C" {
 #define FD_ID_INDEX 5
 #define FD_VALUE_INDEX 6
 #define FLAGS_VALUE_INDEX 7
+#define MSG_HEADER_INDEX 8
+
+#define INVALID_OFFSET 0xffffffff
 
 #define APP_STATE_IDLE 1
 #define APP_STATE_SPAWNING 2
 
 #ifdef APPSPAWN_TEST
-#define MAX_WAIT_MSG_COMPLETE 500 // 500
+#define MAX_WAIT_MSG_COMPLETE 500  // 500
 #define WAIT_CHILD_RESPONSE_TIMEOUT 500
 #else
-#define MAX_WAIT_MSG_COMPLETE 5 * 1000 // 5s
+#define MAX_WAIT_MSG_COMPLETE (5 * 1000)  // 5s
 #define WAIT_CHILD_RESPONSE_TIMEOUT 5000
 #endif
 
@@ -55,82 +58,86 @@ extern "C" {
 #define FLAGS_SANDBOX_PRIVATE 0x10
 #define FLAGS_SANDBOX_APP 0x20
 
-typedef struct AppSpawnContent_ AppSpawnContent;
-typedef struct AppSpawnClient_ AppSpawnClient;
+typedef struct tagAppSpawnContent AppSpawnContent;
+typedef struct tagAppSpawnClient AppSpawnClient;
 
-typedef struct AppSpawnConnection_ {
+typedef struct tagAppSpawnMsgReceiverCtx {
+    uint32_t msgRecvLen;    // 已经接收的长度
+    AppSpawnMsg msgHeader;  // 保存不完整的消息，额外保存消息头信息
+    TimerHandle timer;      // 测试消息完整
+    uint32_t tlvCount;
+    uint32_t *tlvOffset;  // 记录属性的在msg中的偏移，不完全拷贝试消息完整
+    uint8_t *buffer;
+} AppSpawnMsgReceiverCtx;
+
+typedef struct tagAppSpawnConnection {
     uint32_t connectionId;
     TaskHandle stream;
-    uint32_t msgRecvLen;  // 已经接收的长度
-    AppSpawnMsg msg;      // 保存不完整的消息，额外保存消息头信息
-    TimerHandle timer;    // 测试连接保活
-    uint8_t *buffer;
+    AppSpawnMsgReceiverCtx *receiver;
 } AppSpawnConnection;
 
 typedef struct {
-    struct ListNode node;
-    AppSpawnTlvEx *tlv;
-} AppPropertyEx;
-
-typedef struct AppProperty_ {
-    AppSpawnClient client;
-    struct ListNode node;
     int32_t fd[2];  // 2 fd count
     WatcherHandle watcherHandle;
     TimerHandle timer;
-    int state;
-    pid_t pid;
-    AppSpawnConnection *connection;
-    AppSpawnMsg *msg;  // 指向消息头，方便数据获取
-    uint32_t tlvCount;
-    uint32_t tlvOffset[TLV_MAX];  // 记录属性的在msg中的偏移，不完全拷贝
-} AppProperty;
+} AppSpawnForkCtx;
 
-typedef struct AppSpawnAppInfo_ {
+typedef struct tagAppSpawningCtx {
+    AppSpawnClient client;
+    struct ListNode node;
+    AppSpawnForkCtx forkCtx;
+    AppSpawnMsgReceiverCtx *receiver;
+    AppSpawnConnection *connection;
+    pid_t pid;
+    int state;
+} AppSpawningCtx;
+
+typedef struct tagAppSpawnedProcess {
     struct ListNode node;
     uid_t uid;
     pid_t pid;
     uint32_t max;
     int exitStatus;
     char name[0];
-} AppSpawnAppInfo;
+} AppSpawnedProcess;
 
-typedef struct AppSpawnAppMgr_ {
+typedef struct {
     struct ListNode appQueue;  // save app pid and name
     uint32_t diedAppCount;
     struct ListNode diedQueue;      // save app pid and name
     struct ListNode appSpawnQueue;  // save app pid and name
-} AppSpawnAppMgr;
+} AppSpawnedProcessMgr;
 
-typedef struct AppSpawnContentExt_ {
+typedef struct tagAppSpawnMgr {
     AppSpawnContent content;
     TaskHandle server;
     SignalHandle sigHandler;
-    TimerHandle timer;
-    struct AppSpawnAppMgr_ appMgr;
+    AppSpawnedProcessMgr processMgr;
     struct ListNode extData;
-} AppSpawnContentExt;
+} AppSpawnMgr;
 
-int AppSpawnAppMgrInit(AppSpawnAppMgr *mgr);
-int AppSpawnAppMgrDestroy(AppSpawnAppMgr *mgr);
-AppSpawnAppInfo *AppMgrAddApp(AppSpawnAppMgr *mgr, pid_t pid, const char *processName);
-void AppMgrHandleAppDied(AppSpawnAppMgr *mgr, AppSpawnAppInfo *node, int nwebspawn);
-AppSpawnAppInfo *GetAppInfo(AppSpawnAppMgr *mgr, pid_t pid);
-AppSpawnAppInfo *GetAppInfoByName(AppSpawnAppMgr *mgr, const char *name);
-int GetProcessTerminationStatus(AppSpawnAppMgr *mgr, pid_t pid);
-void AppMgrHandleConnectClose(AppSpawnAppMgr *mgr, const AppSpawnConnection *connection);
+int AppSpawnedProcessMgrInit(AppSpawnedProcessMgr *mgr);
+int AppSpawnedProcessMgrDestroy(AppSpawnedProcessMgr *mgr);
+AppSpawnedProcess *AddSpawnedProcess(AppSpawnedProcessMgr *mgr, pid_t pid, const char *processName);
+AppSpawnedProcess *GetSpawnedProcess(AppSpawnedProcessMgr *mgr, pid_t pid);
+AppSpawnedProcess *GetSpawnedProcessByName(AppSpawnedProcessMgr *mgr, const char *name);
+void HandleProcessTerminate(AppSpawnedProcessMgr *mgr, AppSpawnedProcess *node, int nwebspawn);
+int GetProcessTerminationStatus(AppSpawnedProcessMgr *mgr, pid_t pid);
+void AppMgrHandleConnectClose(AppSpawnedProcessMgr *mgr, const AppSpawnConnection *connection);
 
-AppProperty *GetAppPropertyByPid(AppSpawnAppMgr *mgr, pid_t pid);
-AppProperty *AppMgrCreateAppProperty(AppSpawnAppMgr *mgr, uint32_t tlvCount);
-void AppMgrDeleteAppProperty(AppProperty *property);
+AppSpawningCtx *GetAppSpawningCtxByPid(AppSpawnedProcessMgr *mgr, pid_t pid);
+AppSpawningCtx *CreateAppSpawningCtx(AppSpawnedProcessMgr *mgr);
+void DeleteAppSpawnMsgReceiver(AppSpawnMsgReceiverCtx *receiver);
+void DeleteAppSpawningCtx(AppSpawningCtx *property);
 
 pid_t NWebSpawnLaunch(void);
 void NWebSpawnInit(void);
 AppSpawnContent *StartSpawnService(uint32_t argvSize, int argc, char *const argv[]);
+void AppSpawnDestroyContent(AppSpawnContent *content);
 
 // dump
-void DumpApSpawn(const AppSpawnContentExt *content);
-void DumpNormalProperty(const AppProperty *property, const uint8_t *buffer);
+void DumpApSpawn(const AppSpawnMgr *content);
+void DumpNormalProperty(const AppSpawningCtx *property);
 
 // for stub
 bool may_init_gwp_asan(bool forceInit);

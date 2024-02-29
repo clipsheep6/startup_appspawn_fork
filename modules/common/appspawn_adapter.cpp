@@ -21,6 +21,7 @@
 #include "access_token.h"
 #include "token_setproc.h"
 #include "tokenid_kit.h"
+#include "nlohmann/json.hpp"
 
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
@@ -35,7 +36,7 @@ const char *RENDERER_NAME = "renderer";
 #define NWEBSPAWN_SERVER_NAME "nwebspawn"
 using namespace OHOS::Security::AccessToken;
 
-int SetAppAccessToken(const AppSpawnContentExt *content, const AppProperty *property)
+int SetAppAccessToken(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Process step %{public}s", "SetAppAccessToken");
     int32_t ret = 0;
@@ -60,7 +61,7 @@ int SetAppAccessToken(const AppSpawnContentExt *content, const AppProperty *prop
     return 0;
 }
 
-int SetSelinuxCon(const AppSpawnContentExt *content, const AppProperty *property)
+int SetSelinuxCon(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
 #ifdef WITH_SELINUX
     APPSPAWN_LOGV("SetSelinuxCon IsDeveloperModeOn %{public}d", IsDeveloperModeOn(property));
@@ -97,7 +98,7 @@ int SetSelinuxCon(const AppSpawnContentExt *content, const AppProperty *property
     return 0;
 }
 
-int SetUidGidFilter(const AppSpawnContentExt *content)
+int SetUidGidFilter(const AppSpawnMgr *content)
 {
 #ifdef WITH_SECCOMP
     bool ret = false;
@@ -118,7 +119,7 @@ int SetUidGidFilter(const AppSpawnContentExt *content)
     return 0;
 }
 
-int SetSeccompFilter(const AppSpawnContentExt *content, const AppProperty *property)
+int SetSeccompFilter(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
 #ifdef WITH_SECCOMP
     const char *appName = APP_NAME;
@@ -135,9 +136,9 @@ int SetSeccompFilter(const AppSpawnContentExt *content, const AppProperty *prope
     return 0;
 }
 
-int SetInternetPermission(const AppProperty *property)
+int SetInternetPermission(const AppSpawningCtx *property)
 {
-    AppInternetPermissionInfo *info = (AppInternetPermissionInfo *)GetAppProperty(property, TLV_INTERNET_INFO);
+    AppSpawnMsgInternetInfo *info = (AppSpawnMsgInternetInfo *)GetAppProperty(property, TLV_INTERNET_INFO);
     APPSPAWN_CHECK(info != NULL, return 0,
         "No tlv internet permission info in req form %{public}s", GetProcessName(property));
     APPSPAWN_LOGV("SetInternetPermission %{public}d %{public}d",  info->setAllowInternet, info->allowInternet);
@@ -145,4 +146,26 @@ int SetInternetPermission(const AppProperty *property)
         DisallowInternet();
     }
     return 0;
+}
+
+int32_t SetEnvInfo(const AppSpawnMgr *content, const AppSpawningCtx *property)
+{
+    uint32_t size = 0;
+    char *envStr = reinterpret_cast<char *>(GetAppPropertyEx(property, "AppEnv", &size));
+    if (size == 0 || envStr == NULL) {
+        return 0;
+    }
+    int ret = 0;
+    std::string appEnvInfo(envStr);
+    nlohmann::json envs = nlohmann::json::parse(appEnvInfo.c_str(), nullptr, false);
+    APPSPAWN_CHECK(!envs.is_discarded(), return -1, "SetEnvInfo: json parse failed");
+
+    for (nlohmann::json::iterator it = envs.begin(); it != envs.end(); ++it) {
+        APPSPAWN_CHECK(it.value().is_string(), return -1, "SetEnvInfo: element type error");
+        std::string name = it.key();
+        std::string value = it.value();
+        ret = setenv(name.c_str(), value.c_str(), 1);
+        APPSPAWN_CHECK(ret == 0, return ret, "setenv failed, errno: %{public}d", errno);
+    }
+    return ret;
 }

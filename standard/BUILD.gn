@@ -20,7 +20,6 @@ config("appspawn_server_config") {
     "${appspawn_path}/common",
     "${appspawn_path}/standard",
     "${appspawn_path}/modules/modulemgr",
-    "${startup_path}/init/services/loopevent/include",
   ]
 
   cflags = []

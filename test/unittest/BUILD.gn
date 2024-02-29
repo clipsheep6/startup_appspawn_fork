@@ -26,24 +26,25 @@ if (!defined(ohos_lite)) {
       "OHOS_DEBUG",
       "GRAPHIC_PERMISSION_CHECK",
       "capset=CapsetStub",
-      "unshare=unshareStub",
-      "mount=mountStub",
-      "symlink=symlinkStub",
-      "chdir=chdirStub",
-      "chroot=chrootStub",
-      "syscall=syscallStub",
-      "umount2=umount2Stub",
+      "unshare=UnshareStub",
+      "mount=MountStub",
+      "symlink=SymlinkStub",
+      "chdir=ChdirStub",
+      "chroot=ChrootStub",
+      "syscall=SyscallStub",
+      "umount2=Umount2Stub",
       "access=AccessStub",
       "dlopen=DlopenStub",
       "dlsym=DlsymStub",
       "dlclose=DlcloseStub",
-      "execv=execvStub",
-      "getprocpid=getprocpidStub",
+      "execv=ExecvStub",
+      "getprocpid=GetprocpidStub",
       "setgroups=SetgroupsStub",
       "setresgid=SetresgidStub",
       "setresuid=SetresuidStub",
       "setuid=SetuidStub",
       "setgid=SetgidStub",
+      "execvp=ExecvpStub"
     ]
     include_dirs = [
       "${appspawn_path}",
@@ -77,7 +78,6 @@ if (!defined(ohos_lite)) {
       "//commonlibrary/c_utils/base/include",
       "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
       "//foundation/arkui/napi",
-      "//third_party/json/include",
       "//third_party/libuv/include",
       "//third_party/selinux/libselinux/include/",
     ]
@@ -113,7 +113,6 @@ if (!defined(ohos_lite)) {
     # client sources
     sources += [
       "${appspawn_innerkits_path}/client/appspawn_client.c",
-      "${appspawn_innerkits_path}/client/appspawn_msg.c",
       "${appspawn_innerkits_path}/permission/appspawn_mount_permission.cpp",
     ]
 
@@ -138,7 +137,10 @@ if (!defined(ohos_lite)) {
     ]
 
     configs = [ "//base/startup/appspawn:appspawn_config" ]
-    deps += [ "//third_party/selinux:libselinux" ]
+    deps += [
+      "//third_party/json:nlohmann_json_static",
+      "//third_party/selinux:libselinux",
+    ]
     external_deps = [
       "c_utils:utils",
       "config_policy:configpolicy_util",

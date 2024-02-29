@@ -25,8 +25,8 @@
 #define BASE64DE_FIRST '+'
 #define BASE64DE_LAST 'z'
 
-#define CALC_ENCODE_LEN(len) (((len) + 2) / 3 + 1) * 4 + 1
-#define CALC_DECODE_LEN(len) (len) / 4 * 3
+#define CALC_ENCODE_LEN(len) ((((len) + 2) / 3 + 1) * 4 + 1)
+#define CALC_DECODE_LEN(len) ((len) / 4 * 3)
 
 static const char g_base64EncodeTab[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 /* ASCII order for BASE 64 decode, 255 in unused character */
@@ -115,7 +115,7 @@ char *Base64Encode(const uint8_t *data, uint32_t len)
         out[destIndex++] = g_base64EncodeTab[(data[sourceIndex] & 0x3) << 4]; // 4 0x3
         out[destIndex++] = BASE64_PAD;
         out[destIndex++] = BASE64_PAD;
-    } else if ((len - sourceIndex) == 2) { // 1 byte
+    } else if ((len - sourceIndex) == 2) { // 2 byte
         out[destIndex++] = g_base64EncodeTab[(data[sourceIndex] >> 2) & 0x3F]; // 2 0x3F
         // 0x3 4 0xF
         out[destIndex++] = g_base64EncodeTab[((data[sourceIndex] & 0x3) << 4) | ((data[sourceIndex + 1] >> 4) & 0xF)];
@@ -165,7 +165,7 @@ uint8_t *Base64Decode(const char *data, uint32_t dataLen, uint32_t *outLen)
                 break;
             case 2: // 2 byte
                 out[destIndex++] |= (dest >> 2) & 0xF; // 2 0xF
-                out[destIndex] = (dest & 0x3) << 6; // 3 0x3
+                out[destIndex] = (dest & 0x3) << 6; // 3 0x3 6
                 break;
             case 3: // 3 byte
                 out[destIndex++] |= dest;

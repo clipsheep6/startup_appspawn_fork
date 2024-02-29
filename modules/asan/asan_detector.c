@@ -20,7 +20,7 @@
 #include "securec.h"
 
 // ide-asan
-static int SetAsanEnabledEnv(const AppSpawnContentExt *content, const AppProperty *property)
+static int SetAsanEnabledEnv(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     const char *bundleName = GetBundleName(property);
     if (TestAppMsgFlagsSet(property, APP_FLAGS_ASANENABLED)) {
@@ -46,7 +46,7 @@ static int SetAsanEnabledEnv(const AppSpawnContentExt *content, const AppPropert
     return -1;
 }
 
-static void SetGwpAsanEnabled(const AppSpawnContentExt *content, const AppProperty *property)
+static void SetGwpAsanEnabled(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     if (!(TestAppMsgFlagsSet(property, APP_FLAGS_GWP_ENABLED_FORCE) ||
         TestAppMsgFlagsSet(property, APP_FLAGS_GWP_ENABLED_NORMAL))) {
@@ -77,7 +77,7 @@ static int CheckSupportColdStart(const char *bundleName)
 }
 #endif
 
-static int AppSpawnPreSpawn(AppSpawnContentExt *content, AppProperty *property)
+static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Prepare spawn app %{public}s", GetProcessName(property));
     if (IsNWebSpawnMode(content)) {
@@ -92,7 +92,7 @@ static int AppSpawnPreSpawn(AppSpawnContentExt *content, AppProperty *property)
     return 0;
 }
 
-static int AppSpawnSpawnPrepare(AppSpawnContentExt *content, AppProperty *property)
+static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     if (IsNWebSpawnMode(content) || GetAppPropertyCode(property) == MSG_SPAWN_NATIVE_PROCESS) {
         return 0;

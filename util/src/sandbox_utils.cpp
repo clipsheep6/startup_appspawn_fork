@@ -15,8 +15,8 @@
 
 #include "sandbox_utils.h"
 
+#include <climits>
 #include <fstream>
-#include <limits.h>
 #include <sstream>
 #include <vector>
 

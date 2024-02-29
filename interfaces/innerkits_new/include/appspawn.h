@@ -25,26 +25,32 @@
 extern "C" {
 #endif
 
-typedef uint32_t AppSpawnReqHandle;
-typedef void * AppSpawnClientHandle;
+typedef void *AppSpawnReqMsgHandle;
+typedef void *AppSpawnClientHandle;
 
-#define INVALID_REQ_HANDLE 0
+#define INVALID_REQ_HANDLE NULL
 #define NWEBSPAWN_SERVER_NAME "nwebspawn"
 #define APPSPAWN_SERVER_NAME "appspawn"
 
-#define APP_LEN_PROC_NAME 256         // process name length
-#define APP_LEN_BUNDLE_NAME 256       // bundle name length
-#define APP_LEN_SO_PATH 256             // load so lib
+#define APP_LEN_PROC_NAME 256    // process name length
+#define APP_LEN_BUNDLE_NAME 256  // bundle name length
+#define APP_LEN_SO_PATH 256      // load so lib
 #define APP_MAX_GIDS 64
 #define APP_APL_MAX_LEN 32
 #define APP_RENDER_CMD_MAX_LEN 1024
 #define APP_OWNER_ID_LEN 64
 #define APP_USER_NAME 64
 
+#define MSG_EXT_NAME_RENDER_CMD "render-cmd"
+#define MSG_EXT_NAME_HSP_LIST "HspList"
+#define MSG_EXT_NAME_OVERLAY "Overlay"
+#define MSG_EXT_NAME_DATA_GROUP "DataGroup"
+#define MSG_EXT_NAME_APP_ENV "AppEnv"
+
 /*
 flags bit definition
     use TestAppMsgFlagsSet to test
-    use AppSpawnReqSetAppFlag to set
+    use AppSpawnReqMsgSetAppFlag to set
 */
 typedef enum {
     APP_FLAGS_COLD_BOOT = 0,
@@ -57,8 +63,8 @@ typedef enum {
     APP_FLAGS_NO_SANDBOX = 7,
     APP_FLAGS_OVERLAY = 8,
     APP_FLAGS_BUNDLE_RESOURCES = 9,
-    APP_FLAGS_GWP_ENABLED_FORCE, // APP_GWP_ENABLED_FORCE 0x400
-    APP_FLAGS_GWP_ENABLED_NORMAL, // APP_GWP_ENABLED_NORMAL 0x800
+    APP_FLAGS_GWP_ENABLED_FORCE,   // APP_GWP_ENABLED_FORCE 0x400
+    APP_FLAGS_GWP_ENABLED_NORMAL,  // APP_GWP_ENABLED_NORMAL 0x800
 #ifndef APPSPAWN_TEST
     MAX_FLAGS_INDEX,
 #else
@@ -77,40 +83,12 @@ typedef enum {
 
 #pragma pack(4)
 typedef struct {
-    uint32_t uid;                     // the UNIX uid that the child process setuid() to after fork()
-    uint32_t gid;                     // the UNIX gid that the child process setgid() to after fork()
-    uint32_t gidCount;                // the size of gidTable
+    uint32_t uid;       // the UNIX uid that the child process setuid() to after fork()
+    uint32_t gid;       // the UNIX gid that the child process setgid() to after fork()
+    uint32_t gidCount;  // the size of gidTable
     uint32_t gidTable[APP_MAX_GIDS];
     char userName[APP_USER_NAME];
-} AppDacInfo, AppSpawnMsgDacInfo;
-
-typedef struct {
-    uint32_t accessTokenId; // 这个字段目前没有使用，是否删除
-    uint64_t accessTokenIdEx;
-} AppAccessTokenInfo, AppSpawnMsgAccessToken;
-
-typedef struct {
-    char renderCmd[APP_RENDER_CMD_MAX_LEN]; // 整体申请内存
-} AppRenderCmd;
-
-typedef struct {
-    char ownerId[APP_OWNER_ID_LEN];  // app identifier id
-} AppOwnerId;
-
-typedef struct {
-    uint32_t hapFlags;
-    char apl[APP_APL_MAX_LEN];
-} AppDomainInfo;
-
-typedef struct {
-    uint8_t setAllowInternet;
-    uint8_t allowInternet; // hap sockect allowed
-} AppInternetPermissionInfo;
-
-typedef struct {
-    int32_t bundleIndex;
-    char bundleName[APP_LEN_BUNDLE_NAME];  // process name
-} AppBundleInfo;
+} AppDacInfo;
 
 typedef struct {
     int result;
@@ -142,146 +120,126 @@ int AppSpawnClientDestroy(AppSpawnClientHandle handle);
  * @param result result from appspawn service
  * @return int
  */
-int AppSpawnClientSendMsg(AppSpawnClientHandle handle, AppSpawnReqHandle reqHandle, AppSpawnResult *result);
+int AppSpawnClientSendMsg(AppSpawnClientHandle handle, AppSpawnReqMsgHandle reqHandle, AppSpawnResult *result);
 
 /**
  * @brief create request
  *
- * @param handle handle for client
  * @param msgType msg type AppSpawnMsgType
  * @param processName process name
  * @param reqHandle handle for request
  * @return int
  */
-int  AppSpawnReqCreate(AppSpawnClientHandle handle,
-    uint32_t msgType, const char *processName, AppSpawnReqHandle *reqHandle);
+int AppSpawnReqMsgCreate(uint32_t msgType, const char *processName, AppSpawnReqMsgHandle *reqHandle);
+
 /**
  * @brief destroy request
  *
- * @param handle handle for client
  * @param reqHandle handle for request
  */
-void AppSpawnReqDestroy(AppSpawnClientHandle handle, AppSpawnReqHandle reqHandle);
+void AppSpawnReqMsgFree(AppSpawnReqMsgHandle reqHandle);
 
 /**
  * @brief set bundle info
  *
- * @param handle handle for client
  * @param reqHandle handle for request
- * @param info bundle info AppBundleInfo
+ * @param bundleIndex
+ * @param bundleName
  * @return int
  */
-int AppSpawnReqSetBundleInfo(AppSpawnClientHandle handle, AppSpawnReqHandle reqHandle, const AppBundleInfo *info);
+int AppSpawnReqMsgSetBundleInfo(AppSpawnReqMsgHandle reqHandle, int32_t bundleIndex, const char *bundleName);
 
 /**
  * @brief set app flags info
  *
- * @param handle handle for client
  * @param reqHandle handle for request
  * @param flagIndex flags index from AppFlagsIndex
  * @return int
  */
-int AppSpawnReqSetAppFlag(AppSpawnClientHandle handle, AppSpawnReqHandle reqHandle, uint32_t flagIndex);
+int AppSpawnReqMsgSetAppFlag(AppSpawnReqMsgHandle reqHandle, uint32_t flagIndex);
 
 /**
  * @brief set dac info
  *
- * @param handle handle for client
  * @param reqHandle handle for request
  * @param dacInfo dac info from AppDacInfo
  * @return int
  */
-int AppSpawnReqSetAppDacInfo(AppSpawnClientHandle handle, AppSpawnReqHandle reqHandle, const AppDacInfo *dacInfo);
+int AppSpawnReqMsgSetAppDacInfo(AppSpawnReqMsgHandle reqHandle, const AppDacInfo *dacInfo);
 
 /**
  * @brief set domain info
  *
- * @param handle handle for client
  * @param reqHandle handle for request
- * @param info info from AppDomainInfo
+ * @param hapFlags
+ * @param apl
  * @return int
  */
-int AppSpawnReqSetAppDomainInfo(AppSpawnClientHandle handle, AppSpawnReqHandle reqHandle, const AppDomainInfo *info);
+int AppSpawnReqMsgSetAppDomainInfo(AppSpawnReqMsgHandle reqHandle, uint32_t hapFlags, const char *apl);
 
 /**
  * @brief set internet permission info
  *
- * @param handle handle for client
  * @param reqHandle handle for request
- * @param info info from AppInternetPermissionInfo
+ * @param allowInternet
+ * @param setAllowInternet
  * @return int
  */
-int AppSpawnReqSetAppInternetPermissionInfo(AppSpawnClientHandle handle,
-    AppSpawnReqHandle reqHandle, const AppInternetPermissionInfo *info);
-
-/**
- * @brief set owner info
- *
- * @param handle handle for client
- * @param reqHandle handle for request
- * @param info info from AppOwnerId
- * @return int
- */
-int AppSpawnReqSetAppOwnerId(AppSpawnClientHandle handle, AppSpawnReqHandle reqHandle, const AppOwnerId *info);
-
-/**
- * @brief set render cmd info
- *
- * @param handle handle for client
- * @param reqHandle handle for request
- * @param info info from AppRenderCmd
- * @return int
- */
-int AppSpawnReqSetAppRenderCmd(AppSpawnClientHandle handle, AppSpawnReqHandle reqHandle, const AppRenderCmd *info);
+int AppSpawnReqMsgSetAppInternetPermissionInfo(AppSpawnReqMsgHandle reqHandle, uint8_t allow, uint8_t setAllow);
 
 /**
  * @brief set access token info
  *
  * @param handle handle for client
  * @param reqHandle handle for request
- * @param info info from AppAccessTokenInfo
+ * @param accessTokenId access tokenId
+ * @param accessTokenIdEx access tokenId
  * @return int
  */
-int AppSpawnReqSetAppAccessToken(AppSpawnClientHandle handle,
-    AppSpawnReqHandle reqHandle, const AppAccessTokenInfo *info);
+int AppSpawnReqMsgSetAppAccessToken(AppSpawnReqMsgHandle reqHandle, uint32_t accessTokenId, uint64_t accessTokenIdEx);
 
 /**
- * @brief add extend info
+ * @brief set owner info
  *
  * @param handle handle for client
  * @param reqHandle handle for request
- * @param name extend name
- * @param value extend value
- * @param valueLen extend value length
+ * @param ownerId
  * @return int
  */
-int AppSpawnReqAddExtInfo(AppSpawnClientHandle handle,
-    AppSpawnReqHandle reqHandle, const char *name, const uint8_t *value, uint32_t valueLen);
+int AppSpawnReqMsgSetAppOwnerId(AppSpawnReqMsgHandle reqHandle, const char *ownerId);
 
 /**
  * @brief set permission
  *
- * @param handle handle for client
  * @param reqHandle handle for request
- * @param permissions permission name list
- * @param count permission count
+ * @param permission permission name
  * @return int
  */
-int AppSpawnReqSetPermission(AppSpawnClientHandle handle,
-    AppSpawnReqHandle reqHandle, const char **permissions, uint32_t count);
+int AppSpawnReqMsgSetPermission(AppSpawnReqMsgHandle reqHandle, const char *permission);
 
 /**
- * @brief set termination pid for nweb service
+ * @brief create request
  *
- * @param handle handle for client
+ * @param pid process pid
  * @param reqHandle handle for request
- * @param pid
  * @return int
  */
-int AppSpawnReqSetTerminationPid(AppSpawnClientHandle handle, AppSpawnReqHandle reqHandle, uint32_t pid);
+int AppSpawnTerminateMsgCreate(pid_t pid, AppSpawnReqMsgHandle *reqHandle);
 
-int AppSpawnReqSeFlags(AppSpawnClientHandle handle,
-    AppSpawnReqHandle reqHandle, uint32_t tlv, uint32_t flags);
+/**
+ * @brief add extend info
+ *
+ * @param reqHandle handle for request
+ * @param name extend name
+ *
+ * @param value extend value
+ * @param valueLen extend value length
+ * @return int
+ */
+int AppSpawnReqMsgAddExtInfo(AppSpawnReqMsgHandle reqHandle, const char *name, const uint8_t *value, uint32_t valueLen);
+int AppSpawnReqMsgAddStringInfo(AppSpawnReqMsgHandle reqHandle, const char *name, const char *value);
+
+int AppSpawnReqMsgSetFlags(AppSpawnReqMsgHandle reqHandle, uint32_t tlv, uint32_t flags);
 
 #ifdef __cplusplus
 }

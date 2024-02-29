@@ -33,12 +33,18 @@
 #include "appspawn_service.h"
 #include "appspawn_utils.h"
 #include "loop_event.h"
+#include "parameters.h"
 #include "securec.h"
 
 #include "app_spawn_stub.h"
 
 namespace OHOS {
+typedef struct {
+    int32_t bundleIndex;
+    char bundleName[APP_LEN_BUNDLE_NAME];  // process name
+} AppBundleInfo;
 
+uint32_t AppSpawnTestServer::serverId = 0;
 AppSpawnTestServer::~AppSpawnTestServer()
 {
     if (localServer_) {
@@ -57,38 +63,42 @@ void AppSpawnTestServer::ChildLoopRun(AppSpawnContent *content, AppSpawnClient *
 
 void *AppSpawnTestServer::ServiceThread(void *arg)
 {
+    pid_t pid = getpid();
     AppSpawnTestServer *server = reinterpret_cast<AppSpawnTestServer *>(arg);
     APPSPAWN_LOGV("serviceCmd_ %{public}s", server->serviceCmd_.c_str());
     CmdArgs *args = ToCmdList(server->serviceCmd_.c_str());
     APPSPAWN_CHECK(args != nullptr, return nullptr, "Failed to alloc args");
 
     // 测试server时，使用appspawn的server
-    pid_t pid = getpid();
     if (server->testServer_) {
         server->content_ = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
         if (server->content_ == nullptr) {
             free(args);
             return nullptr;
         }
-        if (pid == getpid()) { // 非fork 的 nwebspawn
+        if (pid == getpid()) {  // 主进程进行处理
             APPSPAWN_LOGV("Service start timer %{public}s ", server->serviceCmd_.c_str());
-            LE_CreateTimer(LE_GetDefaultLoop(), &server->timer_, WaitChildTimeout, server);
-            LE_StartTimer(LE_GetDefaultLoop(), server->timer_, 100, 100000); // 100ms 100000
+            LE_AddIdle(LE_GetDefaultLoop(), &server->idle_, ProcessIdle, server, 10000000);  // 10000000 repeat
 
             RegChildLooper(server->content_, ChildLoopRun);
-            AppSpawnContentExt *content = reinterpret_cast<AppSpawnContentExt *>(server->content_);
+            AppSpawnMgr *content = reinterpret_cast<AppSpawnMgr *>(server->content_);
             APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return nullptr);
-            AppSpawnAppInfo *info = GetAppInfoByName(&content->appMgr, NWEBSPAWN_SERVER_NAME);
+            AppSpawnedProcess *info = GetSpawnedProcessByName(&content->processMgr, NWEBSPAWN_SERVER_NAME);
             if (info != NULL) {
                 APPSPAWN_LOGV("Save nwebspawn pid: %{public}d %{public}d", info->pid, server->serverId_);
                 server->appPid_.store(info->pid);
             }
         }
         server->content_->runAppSpawn(server->content_, args->argc, args->argv);
+        if (pid != getpid()) {  // 子进程退出
+            exit(0);
+        } else {
+            // exit delete content
+            AppSpawnDestroyContent(server->content_);
+            server->content_ = nullptr;
+        }
     } else {
-        LE_CreateTimer(LE_GetDefaultLoop(), &server->timer_, WaitChildTimeout, server);
-        LE_StartTimer(LE_GetDefaultLoop(), server->timer_, 100, 100000); // 100ms 100000
-
+        LE_AddIdle(LE_GetDefaultLoop(), &server->idle_, ProcessIdle, server, 10000000);  // 10000000 repeat
         server->localServer_ = new LocalTestServer();
         server->localServer_->Run(APPSPAWN_SOCKET_NAME, server->recvMsgProcess_);
     }
@@ -107,8 +117,9 @@ void AppSpawnTestServer::Start(RecvMsgProcess process, uint32_t time)
     protectTime_ = time;
     if (threadId_ == 0) {
         clock_gettime(CLOCK_MONOTONIC, &startTime_);
+        APPSPAWN_LOGV("Start: %{public}u %{public}u", startTime_.tv_sec, startTime_.tv_nsec / (1000 * 1000));
         recvMsgProcess_ = process;
-        int ret = pthread_create(&threadId_, nullptr, ServiceThread, (void *)this);
+        int ret = pthread_create(&threadId_, nullptr, ServiceThread, static_cast<void *>(this));
         if (ret != 0) {
             return;
         }
@@ -117,6 +128,7 @@ void AppSpawnTestServer::Start(RecvMsgProcess process, uint32_t time)
 
 void AppSpawnTestServer::Stop()
 {
+    APPSPAWN_LOGV("AppSpawnTestServer::Stop");
     if (threadId_ != 0) {
         stop_ = true;
         pthread_join(threadId_, nullptr);
@@ -135,23 +147,22 @@ void AppSpawnTestServer::KillNWebSpawnServer()
 
 void AppSpawnTestServer::StopSpawnService(void)
 {
-    if (timer_) {
-        LE_StopTimer(LE_GetDefaultLoop(), timer_);
-        timer_ = nullptr;
+    APPSPAWN_LOGV("StopSpawnService ");
+    if (idle_) {
+        LE_DelIdle(idle_);
+        idle_ = nullptr;
     }
-
     if (testServer_) {
         struct signalfd_siginfo siginfo = {};
         siginfo.ssi_signo = SIGTERM;
         siginfo.ssi_uid = 0;
-        SignalHandler(&siginfo);
-        content_ = nullptr;
+        ProcessSignal(&siginfo);
     } else {
         localServer_->Stop();
     }
 }
 
-void AppSpawnTestServer::WaitChildTimeout(const TimerHandle taskHandle, void *context)
+void AppSpawnTestServer::ProcessIdle(const IdleHandle taskHandle, void *context)
 {
     AppSpawnTestServer *server = reinterpret_cast<AppSpawnTestServer *>(const_cast<void *>(context));
     if (server->stop_) {
@@ -163,6 +174,8 @@ void AppSpawnTestServer::WaitChildTimeout(const TimerHandle taskHandle, void *co
     clock_gettime(CLOCK_MONOTONIC, &end);
     uint64_t diff = DiffTime(&server->startTime_, &end);
     if (diff >= (server->protectTime_ * 1000)) {  // 1000 ms -> us
+        APPSPAWN_LOGV("AppSpawnTestServer::ProcessIdle: %{public}u %{public}u %{public}llu",
+            server->protectTime_, end.tv_sec, diff);
         server->StopSpawnService();
         return;
     }
@@ -235,7 +248,7 @@ int LocalTestServer::Run(const char *socketName, RecvMsgProcess recvMsg)
     info.baseInfo.close = nullptr;
     info.incommingConnect = OnConnection;
 
-    MakeDirRec(path, 0711, 0); // 0711 default mask
+    MakeDirRec(path, 0711, 0);  // 0711 default mask
     ret = LE_CreateStreamServer(LE_GetDefaultLoop(), &serverHandle_, &info);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to create socket for %{public}s errno: %{public}d", path, errno);
     APPSPAWN_LOGI("LocalTestServer path %{public}s fd %{public}d", path, LE_GetSocketFd(serverHandle_));
@@ -286,11 +299,12 @@ CmdArgs *AppSpawnTestHelper::ToCmdList(const char *cmd)
 {
     const uint32_t maxArgc = 10;
     const uint32_t length = sizeof(CmdArgs) + maxArgc * sizeof(char *) + strlen(cmd) + APP_LEN_PROC_NAME + 1 + 2;
-    CmdArgs *args = (CmdArgs *)malloc(length);
-    APPSPAWN_CHECK(args != nullptr, return nullptr, "Failed to alloc args");
+    char *buffer = static_cast<char *>(malloc(length));
+    CmdArgs *args = reinterpret_cast<CmdArgs *>(buffer);
+    APPSPAWN_CHECK(buffer != nullptr, return nullptr, "Failed to alloc args");
     (void)memset_s(args, length, 0, length);
-    char *start = ((char *)args) + sizeof(CmdArgs) + maxArgc * sizeof(char *);
-    char *end = ((char *)args) + length;
+    char *start = buffer + sizeof(CmdArgs) + maxArgc * sizeof(char *);
+    char *end = buffer + length;
     uint32_t index = 0;
     char *curr = const_cast<char *>(cmd);
     while (isspace(*curr)) {
@@ -319,122 +333,148 @@ CmdArgs *AppSpawnTestHelper::ToCmdList(const char *cmd)
     }
 
     index++;
-    args->argv[index] = end - 2;
+    args->argv[index] = end - 2;  // 2 last
     args->argv[index][0] = '#';
     args->argv[index][1] = '\0';
     args->argc = index + 1;
     return args;
 }
 
-AppSpawnReqHandle AppSpawnTestHelper::CreateMsg(AppSpawnClientHandle handle, uint32_t msgType, int base)
+AppSpawnReqMsgHandle AppSpawnTestHelper::CreateMsg(AppSpawnClientHandle handle, uint32_t msgType, int base)
 {
-    AppSpawnReqHandle reqHandle = 0;
-    int ret = AppSpawnReqCreate(handle, msgType, processName_, &reqHandle);
-    APPSPAWN_CHECK(ret == 0, return INVALID_REQ_HANDLE, "Failed to create req %{public}s", processName_);
+    AppSpawnReqMsgHandle reqHandle = 0;
+    int ret = AppSpawnReqMsgCreate(msgType, processName_.c_str(), &reqHandle);
+    APPSPAWN_CHECK(ret == 0, return INVALID_REQ_HANDLE, "Failed to create req %{public}s", processName_.c_str());
     do {
-        AppBundleInfo info;
-        strcpy_s(info.bundleName, sizeof(info.bundleName), processName_);
-        info.bundleIndex = 100;
-        ret = AppSpawnReqSetBundleInfo(handle, reqHandle, &info);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to add bundle info req %{public}s", processName_);
+        ret = AppSpawnReqMsgSetBundleInfo(reqHandle, 100, processName_.c_str());  // 100 test index
+        APPSPAWN_CHECK(ret == 0, break, "Failed to add bundle info req %{public}s", processName_.c_str());
 
         AppDacInfo dacInfo = {};
         dacInfo.uid = defaultTestUid_;
         dacInfo.gid = defaultTestGid_;
-        dacInfo.gidCount = 2;
+        dacInfo.gidCount = 2;  // 2 count
         dacInfo.gidTable[0] = defaultTestGidGroup_;
         dacInfo.gidTable[1] = defaultTestGidGroup_ + 1;
         (void)strcpy_s(dacInfo.userName, sizeof(dacInfo.userName), "test-app-name");
-        ret = AppSpawnReqSetAppDacInfo(handle, reqHandle, &dacInfo);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to add dac %{public}s", processName_);
+        ret = AppSpawnReqMsgSetAppDacInfo(reqHandle, &dacInfo);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to add dac %{public}s", processName_.c_str());
 
-        AppSpawnMsgAccessToken token = {1234, 12345678}; // 1234, 12345678
-        ret = AppSpawnReqSetAppAccessToken(handle, reqHandle, &token);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", processName_);
+        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 1234, 12345678);  // 1234, 12345678
+        APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", processName_.c_str());
 
         if (base) {
             return reqHandle;
         }
         const char *testData = "ssssssssssssss sssssssss ssssssss";
-        ret = AppSpawnReqAddExtInfo(handle, reqHandle, "tlv-name-1",
+        ret = AppSpawnReqMsgAddExtInfo(reqHandle, "tlv-name-1",
             reinterpret_cast<uint8_t *>(const_cast<char *>(testData)), strlen(testData));
-        APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", processName_);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", processName_.c_str());
+        size_t count = permissions_.size();
+        for (size_t i = 0; i < count; i++) {
+            ret = AppSpawnReqMsgSetPermission(reqHandle, permissions_[i]);
+            APPSPAWN_CHECK(ret == 0, break, "Failed to permission %{public}s", permissions_[i]);
+        }
 
-        ret = AppSpawnReqSetPermission(handle, reqHandle, permissions_.data(), permissions_.size());
-        APPSPAWN_CHECK(ret == 0, break, "Failed to permission %{public}s", processName_);
+        ret = AppSpawnReqMsgSetAppInternetPermissionInfo(reqHandle, 1, 0);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to internet info %{public}s", processName_.c_str());
 
-        AppInternetPermissionInfo internetInfo = { 1, 0 };
-        ret = AppSpawnReqSetAppInternetPermissionInfo(handle, reqHandle, &internetInfo);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to internet info %{public}s", processName_);
-
-        AppOwnerId ownerId = { "ohos.permission.FILE_ACCESS_MANAGER"};
-        ret = AppSpawnReqSetAppOwnerId(handle, reqHandle, &ownerId);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to ownerid %{public}s", processName_);
-        AppRenderCmd renderCmd = { "/system/bin/sh ls -l " };
-        ret = AppSpawnReqSetAppRenderCmd(handle, reqHandle, &renderCmd);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to render cmd %{public}s", processName_);
-        AppDomainInfo domainInfo = { 1, "system_core" };
-        ret = AppSpawnReqSetAppDomainInfo(handle, reqHandle, &domainInfo);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to domain info %{public}s", processName_);
+        ret = AppSpawnReqMsgSetAppOwnerId(reqHandle, "ohos.permission.FILE_ACCESS_MANAGER");
+        APPSPAWN_CHECK(ret == 0, break, "Failed to ownerid %{public}s", processName_.c_str());
+        const char *renderCmd = "/system/bin/sh ls -l ";
+        ret = AppSpawnReqMsgAddExtInfo(reqHandle, MSG_EXT_NAME_RENDER_CMD,
+            reinterpret_cast<const uint8_t *>(renderCmd), strlen(renderCmd));
+        APPSPAWN_CHECK(ret == 0, break, "Failed to render cmd %{public}s", processName_.c_str());
+        ret = AppSpawnReqMsgSetAppDomainInfo(reqHandle, 1, "system_core");
+        APPSPAWN_CHECK(ret == 0, break, "Failed to domain info %{public}s", processName_.c_str());
         return reqHandle;
     } while (0);
-    AppSpawnReqDestroy(handle, reqHandle);
+    AppSpawnReqMsgFree(reqHandle);
     return INVALID_REQ_HANDLE;
 }
 
-AppProperty *AppSpawnTestHelper::GetAppProperty(AppSpawnClientHandle handle, AppSpawnReqHandle reqHandle)
+static AppSpawnMsgReceiverCtx *CreateAppSpawnMsgReceiver(AppSpawnMsg *msg)
 {
-    AppSpawnReqNode *reqNode = GetReqNode(handle, reqHandle, MSG_STATE_COLLECTION);
-    APPSPAWN_CHECK(reqNode != nullptr, return nullptr, "Invalid reqNode");
-    ListNode *node = reqNode->msgBlocks.next;
-    APPSPAWN_CHECK(node != &reqNode->msgBlocks, return nullptr, "No block in reqNode");
+    AppSpawnMsgReceiverCtx *receiver = static_cast<AppSpawnMsgReceiverCtx *>(calloc(1, sizeof(AppSpawnMsgReceiverCtx)));
+    APPSPAWN_CHECK(receiver != NULL, return NULL, "Failed to create receiver");
+    receiver->msgRecvLen = msg->msgLen;
+    receiver->timer = NULL;
+    int ret = memcpy_s(&receiver->msgHeader, sizeof(receiver->msgHeader), msg, sizeof(receiver->msgHeader));
+    APPSPAWN_CHECK(ret == 0, free(receiver);
+        return nullptr, "Failed to memcpy msg");
+    receiver->buffer = static_cast<uint8_t *>(malloc(msg->msgLen));
+    APPSPAWN_CHECK(receiver->buffer != NULL, free(receiver);
+        return nullptr, "Failed to memcpy msg");
+    uint32_t totalCount = msg->tlvCount + TLV_MAX;
+    receiver->tlvOffset = static_cast<uint32_t *>(malloc(totalCount * sizeof(uint32_t)));
+    APPSPAWN_CHECK(receiver->tlvOffset != NULL, free(receiver);
+        return nullptr, "Failed to alloc memory for recv message");
+    for (uint32_t i = 0; i < totalCount; i++) {
+        receiver->tlvOffset[i] = INVALID_OFFSET;
+    }
+    return receiver;
+}
 
-    AppSpawnMsgBlock *block = ListEntry(node, AppSpawnMsgBlock, node);
-    APPSPAWN_CHECK(block->currentIndex >= sizeof(AppSpawnMsg), return nullptr, "Invalid first block in reqNode");
-    AppSpawnMsg *msg = reinterpret_cast<AppSpawnMsg *>(block->buffer);
-    uint32_t bufferSize = msg->msgLen;
-    uint8_t *buffer = (uint8_t *)malloc(msg->msgLen);
-    APPSPAWN_CHECK(buffer != nullptr, return nullptr, "Failed to alloc for msg");
+AppSpawningCtx *AppSpawnTestHelper::GetAppProperty(AppSpawnClientHandle handle, AppSpawnReqMsgHandle reqHandle)
+{
+    AppSpawnReqMsgNode *reqNode = static_cast<AppSpawnReqMsgNode *>(reqHandle);
+    APPSPAWN_CHECK(reqNode != nullptr && reqNode->msg != nullptr, AppSpawnReqMsgFree(reqHandle);
+        return nullptr, "Invalid reqNode");
 
+    AppSpawnMsgReceiverCtx *receiver = CreateAppSpawnMsgReceiver(reqNode->msg);
+    APPSPAWN_CHECK(receiver != nullptr, return nullptr, "Failed to alloc for msg");
+    uint32_t bufferSize = reqNode->msg->msgLen;
     uint32_t currIndex = 0;
-    do {
-        block = ListEntry(node, AppSpawnMsgBlock, node);
-        if (currIndex + block->currentIndex > bufferSize) {
-            free(buffer);
+    uint32_t bufferStart = sizeof(AppSpawnMsg);
+    ListNode *node = reqNode->msgBlocks.next;
+    while (node != &reqNode->msgBlocks) {
+        AppSpawnMsgBlock *block = ListEntry(node, AppSpawnMsgBlock, node);
+        APPSPAWN_LOGV("GetAppProperty currIndex %{public}u currentIndex %{public}u %u", currIndex, block->currentIndex, bufferStart);
+        int ret = memcpy_s(receiver->buffer + currIndex, bufferSize - currIndex,
+            block->buffer + bufferStart, block->currentIndex - bufferStart);
+        if (ret != 0) {
+            AppSpawnReqMsgFree(reqHandle);
+            DeleteAppSpawnMsgReceiver(receiver);
             return nullptr;
         }
-        if (memcpy_s(buffer + currIndex, bufferSize - currIndex, block->buffer, block->currentIndex) != EOK) {
-            free(buffer);
-            return nullptr;
-        }
-        currIndex += block->currentIndex;
+        currIndex += block->currentIndex - bufferStart;
+        bufferStart = 0;
+        AppSpawnTlv *tlv = (AppSpawnTlv *)(block->buffer + 4056);
+        APPSPAWN_LOGV("GetAppProperty tlv %{public}u %{public}u %x", tlv->tlvType, tlv->tlvLen, block->buffer);
         node = node->next;
-    } while (node != &reqNode->msgBlocks);
+    }
+    APPSPAWN_LOGV("GetAppProperty header magic 0x%{public}x type %{public}u id %{public}u len %{public}u %{public}s",
+        receiver->msgHeader.magic, receiver->msgHeader.msgType,
+        receiver->msgHeader.msgId, receiver->msgHeader.msgLen, receiver->msgHeader.processName);
 
-    AppSpawnAppMgr appMgr;
-    int ret = AppSpawnAppMgrInit(&appMgr);
-    APPSPAWN_CHECK(ret == 0, return nullptr, "Failed to init mgr req");
-
-    msg = reinterpret_cast<AppSpawnMsg *>(buffer);
-    AppProperty *property = AppMgrCreateAppProperty(&appMgr, msg->tlvCount);
-    APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, free(buffer); return nullptr);
-    OH_ListRemove(&property->node);
-    OH_ListInit(&property->node);
-
-    property->msg = msg;
-    ret = DecodeRecvMsg(property, buffer, bufferSize);
-    APPSPAWN_CHECK(ret == 0, AppMgrDeleteAppProperty(property); return nullptr, "Decode msg fail");
-    APPSPAWN_LOGV("GetAppProperty tlvCount: %{public}d", property->tlvCount);
-    return property;
+    // delete reqHandle
+    AppSpawnReqMsgFree(reqHandle);
+    AppSpawningCtx *property = nullptr;
+    while (receiver != nullptr) {
+        AppSpawnedProcessMgr appMgr;
+        int ret = AppSpawnedProcessMgrInit(&appMgr);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to init mgr req");
+        property = CreateAppSpawningCtx(&appMgr);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+        property->receiver = receiver;
+        OH_ListRemove(&property->node);
+        OH_ListInit(&property->node);
+        ret = DecodeRecvMsg(property->receiver);
+        receiver = nullptr;
+        APPSPAWN_CHECK(ret == 0, break, "Decode msg fail");
+        return property;
+    }
+    DeleteAppSpawningCtx(property);
+    return nullptr;
 }
 
 void AppSpawnTestHelper::SetDefaultTestData()
 {
-    processName_ = strdup("com.ohos.dlpmanager");
-    defaultTestUid_ = 20010029;
-    defaultTestGid_ = 20010029;
-    defaultTestGidGroup_ = 20010029;
-    defaultTestBundleIndex_ = 100;
+    processName_ = std::string("com.ohos.dlpmanager");
+    defaultTestUid_ = 20010029;       // 20010029 test
+    defaultTestGid_ = 20010029;       // 20010029 test
+    defaultTestGidGroup_ = 20010029;  // 20010029 test
+    defaultTestBundleIndex_ = 100;    // 100 test
+    SetDumpFlags(OHOS::system::GetBoolParameter("appspawn.open.console", true));
 }
 
 int AppSpawnTestHelper::CreateSocket(void)
@@ -443,11 +483,11 @@ int AppSpawnTestHelper::CreateSocket(void)
     uint32_t count = 0;
     int socketId = -1;
     while ((socketId < 0) && (count < maxCount)) {
-        socketId = CreateClientSocket(0, 1);
+        usleep(20000);                        // 20000 20ms
+        socketId = CreateClientSocket(0, 2);  // 2s
         if (socketId > 0) {
             return socketId;
         }
-        usleep(20000);
         count++;
     }
     return socketId;
@@ -465,7 +505,7 @@ int AppSpawnTestHelper::CreateSendMsg(std::vector<uint8_t> &buffer, uint32_t msg
     msg->msgLen = sizeof(AppSpawnMsg);
     msg->msgId = 1;
     msg->tlvCount = 0;
-    (void)strcpy_s(msg->processName, sizeof(msg->processName), processName_);
+    (void)strcpy_s(msg->processName, sizeof(msg->processName), processName_.c_str());
     // add tlv
     uint32_t currLen = sizeof(AppSpawnMsg);
     for (auto addTlvFunc : addTlvFuncs) {
@@ -473,7 +513,7 @@ int AppSpawnTestHelper::CreateSendMsg(std::vector<uint8_t> &buffer, uint32_t msg
         uint32_t tlvCount = 0;
         int ret = addTlvFunc(buffer.data() + currLen, buffer.size() - currLen, realLen, tlvCount);
         APPSPAWN_CHECK(ret == 0 && (currLen + realLen) < buffer.size(),
-            return -1, "Failed add tlv to msg %{public}s", processName_);
+            return -1, "Failed add tlv to msg %{public}s", processName_.c_str());
         msg->msgLen += realLen;
         currLen += realLen;
         msg->tlvCount += tlvCount;
@@ -488,8 +528,10 @@ static int inline AddOneTlv(uint8_t *buffer, uint32_t bufferLen, const AppSpawnT
     if (tlv.tlvLen > bufferLen) {
         return -1;
     }
-    (void)memcpy_s(buffer, bufferLen, &tlv, sizeof(tlv));
-    (void)memcpy_s(buffer + sizeof(tlv), bufferLen - sizeof(tlv), data, tlv.tlvLen - sizeof(tlv));
+    int ret = memcpy_s(buffer, bufferLen, &tlv, sizeof(tlv));
+    APPSPAWN_CHECK(ret == 0, return -1, "Failed to memcpy_s bufferSize");
+    ret = memcpy_s(buffer + sizeof(tlv), bufferLen - sizeof(tlv), data, tlv.tlvLen - sizeof(tlv));
+    APPSPAWN_CHECK(ret == 0, return -1, "Failed to memcpy_s bufferSize");
     return 0;
 }
 
@@ -497,7 +539,7 @@ int AppSpawnTestHelper::AddBaseTlv(uint8_t *buffer, uint32_t bufferLen, uint32_t
 {
     // add app flage
     uint32_t currLen = 0;
-    uint32_t flags[2] = { 1, 0 };
+    uint32_t flags[2] = {1, 0};
     AppSpawnTlv tlv = {};
     tlv.tlvType = TLV_MSG_FLAGS;
     tlv.tlvLen = sizeof(AppSpawnTlv) + sizeof(flags);
@@ -513,7 +555,7 @@ int AppSpawnTestHelper::AddBaseTlv(uint8_t *buffer, uint32_t bufferLen, uint32_t
     currLen += tlv.tlvLen;
     tlvCount++;
 
-    AppSpawnMsgAccessToken token = {1234, 12345678}; // 1234, 12345678
+    AppSpawnMsgAccessToken token = {1234, 12345678};  // 1234, 12345678
     tlv.tlvType = TLV_ACCESS_TOKEN_INFO;
     tlv.tlvLen = sizeof(AppSpawnTlv) + sizeof(token);
     ret = AddOneTlv(buffer + currLen, bufferLen - currLen, tlv, (uint8_t *)&token);
@@ -524,7 +566,7 @@ int AppSpawnTestHelper::AddBaseTlv(uint8_t *buffer, uint32_t bufferLen, uint32_t
     // add bundle info
     AppBundleInfo info = {};
     (void)strcpy_s(info.bundleName, sizeof(info.bundleName), "test-bundleName");
-    info.bundleIndex = 100;
+    info.bundleIndex = 100;  // 100 test index
     tlv.tlvType = TLV_BUNDLE_INFO;
     tlv.tlvLen = sizeof(AppSpawnTlv) + sizeof(AppBundleInfo);
     ret = AddOneTlv(buffer + currLen, bufferLen - currLen, tlv, (uint8_t *)&info);
@@ -534,11 +576,11 @@ int AppSpawnTestHelper::AddBaseTlv(uint8_t *buffer, uint32_t bufferLen, uint32_t
 
     // add dac
     AppDacInfo dacInfo = {};
-    dacInfo.uid = 20010029; // 20010029
-    dacInfo.gid = 20010029; // 20010029
-    dacInfo.gidCount = 2; // 2 count
-    dacInfo.gidTable[0] = 20010029; // 20010029
-    dacInfo.gidTable[1] = 20010029 + 1; // 20010029
+    dacInfo.uid = 20010029;              // 20010029
+    dacInfo.gid = 20010029;              // 20010029
+    dacInfo.gidCount = 2;                // 2 count
+    dacInfo.gidTable[0] = 20010029;      // 20010029
+    dacInfo.gidTable[1] = 20010029 + 1;  // 20010029
     tlv.tlvType = TLV_DAC_INFO;
     tlv.tlvLen = sizeof(AppSpawnTlv) + sizeof(dacInfo);
     ret = AddOneTlv(buffer + currLen, bufferLen - currLen, tlv, (uint8_t *)&dacInfo);
