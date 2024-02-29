@@ -59,7 +59,6 @@ void AddDefaultVariable(void);
 
 int CloneAppSpawn(void *arg);
 void AppSpawnDestroyContent(AppSpawnContent *content);
-AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t nameLen, int mode);
 
 int WriteToFile(const char *path, int truncated, pid_t pids[], uint32_t count);
 int GetCgroupPath(const AppSpawnAppInfo *appInfo, char *buffer, uint32_t buffLen);

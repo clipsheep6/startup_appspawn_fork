@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -86,6 +86,6 @@ pid_t NWebSpawnLaunch(void)
     if (ret == 0) {
         NWebSpawnInit();
     }
-    APPSPAWN_LOGI("nwebspawn fork success %{public}d", ret);
+    APPSPAWN_LOGI("nwebspawn fork success pid: %{public}d", ret);
     return ret;
 }

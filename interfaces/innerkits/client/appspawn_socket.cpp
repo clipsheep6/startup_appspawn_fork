@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -211,24 +211,17 @@ static int AddBaseTlv(AppSpawnClientHandle clientHandle, const AppParameter *par
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to add ownerId info");
     return 0;
 }
-#endif
 
-int AppSpawnSocket::WriteSocketMessage(int socketFd, const void *buf, int len)
+int AppSpawnSocket::SendMessage(const uint8_t *buffer, uint32_t bufferLen)
 {
-    if (socketFd < 0 || len <= 0 || buf == nullptr) {
-        APPSPAWN_LOGE("Invalid args: socket %{public}d, len %{public}d, buf might be nullptr", socketFd, len);
-        return -1;
-    }
-     APPSPAWN_LOGV("WriteSocketMessage socketName_: %{public}s", socketName_.c_str());
-#ifdef APPSPAWN_NEW_CLIENT
     int ret = 0;
     if (clientHandle_ == nullptr) {
         ret = AppSpawnClientInit(socketName_.c_str(), &clientHandle_);
         APPSPAWN_CHECK(ret == 0, return -1, "Failed to create client %{public}s", socketName_.c_str());
     }
-
-    const AppParameter *parameter = reinterpret_cast<const AppParameter *>(buf);
-    APPSPAWN_LOGV("WriteSocketMessage processName: %{public}s %{public}x", parameter->processName, parameter->mountPermissionFlags);
+    const AppParameter *parameter = reinterpret_cast<const AppParameter *>(buffer);
+    APPSPAWN_LOGV("WriteSocketMessage processName: %{public}s %{public}x",
+        parameter->processName, parameter->mountPermissionFlags);
     AppSpawnReqHandle reqHandle = 0;
     ret = AppSpawnReqCreate(clientHandle_, static_cast<uint32_t>(parameter->code), parameter->processName, &reqHandle);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to create req %{public}s", socketName_.c_str());
@@ -263,6 +256,49 @@ int AppSpawnSocket::WriteSocketMessage(int socketFd, const void *buf, int len)
         parameter->processName, ret, result.pid);
     if (ret == 0 && result.pid > 0) {
         childPid_ = (pid_t)result.pid;
+        return 0;
+    }
+    return ret;
+}
+#endif
+
+int AppSpawnSocket::WriteSocketMessage(int socketFd, const void *buf, int len)
+{
+    if (socketFd < 0 || len <= 0 || buf == nullptr) {
+        APPSPAWN_LOGE("Invalid args: socket %{public}d, len %{public}d, buf might be nullptr", socketFd, len);
+        return -1;
+    }
+    int ret = 0;
+#ifdef APPSPAWN_NEW_CLIENT
+    if (currMsgLen_ == 0) {
+        const AppParameter *parameter = reinterpret_cast<const AppParameter *>(buf);
+        if (parameter->extraInfo.totalLength == 0) {
+            ret = SendMessage(reinterpret_cast<const uint8_t *>(buf), static_cast<uint32_t>(len));
+            currMsgLen_ = 0;
+            if (ret == 0) {
+                return len;
+            }
+        }
+        message_.resize(sizeof(AppParameter) + parameter->extraInfo.totalLength);
+        ret = memcpy_s(message_.data(), message_.size(), buf, len);
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy msg: %{public}u recv: %{public}u", currMsgLen_, len);
+        currMsgLen_ = len;
+        APPSPAWN_LOGI("WriteSocketMessage total %{public}u", message_.size());
+    } else if ((currMsgLen_ + len) > message_.size()) {
+        APPSPAWN_LOGI("WriteSocketMessage invalid msg: %{public}u recv: %{public}u", currMsgLen_, len);
+        return -1;
+    } else {
+        ret = memcpy_s(message_.data() + currMsgLen_, message_.size() - currMsgLen_, buf, len);
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy msg: %{public}u recv: %{public}u", currMsgLen_, len);
+        currMsgLen_ += len;
+    }
+    if (currMsgLen_ < message_.size()) {
+        return len;
+    }
+    ret = SendMessage(message_.data(), message_.size());
+    message_.clear();
+    currMsgLen_ = 0;
+    if (ret == 0) {
         return len;
     }
     return ret;

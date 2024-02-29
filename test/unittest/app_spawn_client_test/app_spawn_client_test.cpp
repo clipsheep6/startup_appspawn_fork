@@ -159,7 +159,7 @@ HWTEST(AppSpawnClientTest, App_Client_Communication_004, TestSize.Level0)
     testServer.Start([](TestConnection *connection, const uint8_t *buffer, uint32_t buffLen)
         {
             AppSpawnMsg *msg = reinterpret_cast<AppSpawnMsg *>(const_cast<uint8_t *>(buffer));
-            connection->SendResponse(msg, 0, TEST_PID); // TEST_PID
+            connection->SendResponse(msg, 0, TEST_PID);
         }, 5000);  // 5000 timeout
     int ret = 0;
     AppSpawnClientHandle clientHandle = nullptr;
@@ -473,7 +473,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_008, TestSize.Level0)
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqHandle reqHandle = 0;
     const char *tlvName = "tlv-name-2";
-    const uint32_t testDataLen = 7416; // 7300
+    const uint32_t testDataLen = 7416; // 7416
     AppProperty *property = nullptr;
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);

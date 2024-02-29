@@ -110,15 +110,16 @@ char *Base64Encode(const uint8_t *data, uint32_t len)
         destIndex += BASE64_DEST_STEP;
     }
 
-    if ((len - sourceIndex) == 1) {
-        out[destIndex++] = g_base64EncodeTab[(data[sourceIndex] >> 2) & 0x3F];
-        out[destIndex++] = g_base64EncodeTab[(data[sourceIndex] & 0x3) << 4];
+    if ((len - sourceIndex) == 1) { // 1 byte
+        out[destIndex++] = g_base64EncodeTab[(data[sourceIndex] >> 2) & 0x3F]; // 2 0x3F
+        out[destIndex++] = g_base64EncodeTab[(data[sourceIndex] & 0x3) << 4]; // 4 0x3
         out[destIndex++] = BASE64_PAD;
         out[destIndex++] = BASE64_PAD;
-    } else if ((len - sourceIndex) == 2) {
-        out[destIndex++] = g_base64EncodeTab[(data[sourceIndex] >> 2) & 0x3F];
+    } else if ((len - sourceIndex) == 2) { // 1 byte
+        out[destIndex++] = g_base64EncodeTab[(data[sourceIndex] >> 2) & 0x3F]; // 2 0x3F
+        // 0x3 4 0xF
         out[destIndex++] = g_base64EncodeTab[((data[sourceIndex] & 0x3) << 4) | ((data[sourceIndex + 1] >> 4) & 0xF)];
-        out[destIndex++] = g_base64EncodeTab[((data[sourceIndex + 1] & 0xF) << 2)];
+        out[destIndex++] = g_base64EncodeTab[((data[sourceIndex + 1] & 0xF) << 2)]; // 2 0xF
         out[destIndex++] = BASE64_PAD;
     }
     out[destIndex] = 0;
@@ -156,17 +157,17 @@ uint8_t *Base64Decode(const char *data, uint32_t dataLen, uint32_t *outLen)
 
         switch (source & 0x3) {
             case 0:
-                out[destIndex] = (dest << 2) & 0xFF;
+                out[destIndex] = (dest << 2) & 0xFF; // 2 oxFF
                 break;
             case 1:
-                out[destIndex++] |= (dest >> 4) & 0x3;
-                out[destIndex] = (dest & 0xF) << 4;
+                out[destIndex++] |= (dest >> 4) & 0x3; // 4 0x3
+                out[destIndex] = (dest & 0xF) << 4; // 4 0xF
                 break;
-            case 2:
-                out[destIndex++] |= (dest >> 2) & 0xF;
-                out[destIndex] = (dest & 0x3) << 6;
+            case 2: // 2 byte
+                out[destIndex++] |= (dest >> 2) & 0xF; // 2 0xF
+                out[destIndex] = (dest & 0x3) << 6; // 3 0x3
                 break;
-            case 3:
+            case 3: // 3 byte
                 out[destIndex++] |= dest;
                 break;
         }

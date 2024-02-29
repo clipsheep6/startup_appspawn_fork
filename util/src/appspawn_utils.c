@@ -98,13 +98,6 @@ static void CheckDirRecursive(const char *path)
 
 int SandboxMountPath(const MountArg *arg)
 {
-    /*
-    APPSPAWN_LOGV("MountArg %{public}s => %{public}s", arg->originPath, arg->destinationPath);
-    APPSPAWN_LOGV("MountArg fsType: %{public}s ", arg->fsType);
-    APPSPAWN_LOGV("MountArg options: %{public}s", arg->options);
-    APPSPAWN_LOGV("MountArg mountFlag: %{public}u mountSharedFlag: %{public}u ",
-        (uint32_t)arg->mountFlags, (uint32_t)arg->mountSharedFlag);
-    */
     int ret = mount(arg->originPath, arg->destinationPath, arg->fsType, arg->mountFlags, arg->options);
     if (ret != 0) {
         if (arg->originPath != NULL && strstr(arg->originPath, "/data/app/el2/") != NULL) {
@@ -121,15 +114,6 @@ int SandboxMountPath(const MountArg *arg)
         return errno;
     }
     return 0;
-}
-
-int CheckEnabled(const char *param, const char *value)
-{
-    char tmp[32] = {0}; // 32 max
-    int ret = GetParameter(param, "", tmp, sizeof(tmp));
-    APPSPAWN_LOGV("IsParameterEnabled key %{public}s ret %{public}d result: %{public}s", param, ret, tmp);
-    int enabled = (ret > 0 && strcmp(tmp, value) == 0);
-    return enabled;
 }
 
 static uint32_t dumpToConsole = 0;

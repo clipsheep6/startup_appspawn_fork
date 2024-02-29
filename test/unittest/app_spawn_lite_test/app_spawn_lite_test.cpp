@@ -394,7 +394,7 @@ HWTEST_F(AppSpawnLiteTest, SetContentFunctionTest_001, TestSize.Level0)
     int ret = SplitMessage(validStr.c_str(), validStr.length(), &liteClient->message);
     EXPECT_EQ(ret, 0);
 
-    int ret = AppSpawnHookExecute(HOOK_SPAWN_SECOND, 0, content, &liteClient->client);
+    ret = AppSpawnHookExecute(HOOK_SPAWN_SECOND, 0, content, &liteClient->client);
     EXPECT_EQ(ret, 0);
 
     content->runChildProcessor(content, &liteClient->client);

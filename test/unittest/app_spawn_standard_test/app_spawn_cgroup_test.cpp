@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <string>
+#include <unistd.h>
+
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
+#include <gtest/gtest.h>
 
 #include "appspawn_modulemgr.h"
 #include "appspawn_server.h"

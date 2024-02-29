@@ -15,9 +15,9 @@
 
 #include <cerrno>
 #include <cstdbool>
-#include <gtest/gtest.h>
 #include <memory>
 #include <string>
+#include <gtest/gtest.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>

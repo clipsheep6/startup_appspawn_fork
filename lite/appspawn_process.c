@@ -190,7 +190,7 @@ int AppSpawnHookExecute(int stage, uint32_t flags, AppSpawnContent *content, App
     }
 
     (void)umask(DEFAULT_UMASK);
-    int ret = SetKeepCapabilities();
+    int ret = SetKeepCapabilities(content, client);
     if (ret != 0) {
         return ret;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -752,8 +752,7 @@ static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
     g_appSpawnContent = NULL;
 }
 
-APPSPAWN_STATIC AppSpawnContent *AppSpawnCreateContent(
-    const char *socketName, char *longProcName, uint32_t nameLen, int mode)
+AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t nameLen, int mode)
 {
     APPSPAWN_CHECK(socketName != NULL && longProcName != NULL, return NULL, "Invalid name");
     APPSPAWN_LOGI("AppSpawnCreateContent %{public}s %{public}u mode %{public}d", socketName, nameLen, mode);
@@ -835,8 +834,8 @@ AppSpawnContent *StartSpawnService(uint32_t argvSize, int argc, char *const argv
 
     AppSpawnLoadAutoRunModules(moduleType);  // 按启动的模式加在对应的插件
     int ret = PreloadHookExecute(content);  // 预加载，解析sandbox
-    APPSPAWN_CHECK(ret == 0 && content->runChildProcessor != NULL, AppSpawnDestroyContent(content);
-        return NULL, "Failed to init %{public}s result: %{public}d", serviceName, ret);
+    APPSPAWN_CHECK(ret == 0, AppSpawnDestroyContent(content); return NULL,
+        "Failed to prepare load %{public}s result: %{public}d", serviceName, ret);
     if (mode == MODE_FOR_APPSPAWN) {
         if (pid > 0) {
             AppMgrAddApp(&((AppSpawnContentExt *)content)->appMgr, pid, NWEBSPAWN_SERVER_NAME);

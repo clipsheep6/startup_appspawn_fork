@@ -465,6 +465,15 @@ static int AppSpawnSpawnAfter(AppSpawnContentExt *content, AppProperty *property
 	return 0;
 }
 
+static int CheckEnabled(const char *param, const char *value)
+{
+    char tmp[32] = {0}; // 32 max
+    int ret = GetParameter(param, "", tmp, sizeof(tmp));
+    APPSPAWN_LOGV("IsParameterEnabled key %{public}s ret %{public}d result: %{public}s", param, ret, tmp);
+    int enabled = (ret > 0 && strcmp(tmp, value) == 0);
+    return enabled;
+}
+
 static int AppSpawnPreSpawn(AppSpawnContentExt *content, AppProperty *property)
 {
     APPSPAWN_LOGV("Prepare spawn app %{public}s", GetProcessName(property));

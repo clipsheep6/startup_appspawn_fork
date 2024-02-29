@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Huawei Device Co., Ltd.
+ * Copyright (C) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -115,7 +115,6 @@ typedef enum {
     HOOK_PRIO_STEP7 = 7000,
 } AppSpawnHookPrio;
 
-int CheckEnabled(const char *param, const char *defValue);
 uint64_t DiffTime(const struct timespec *startTime, const struct timespec *endTime);
 uint8_t *Base64Decode(const char *data, uint32_t dataLen, uint32_t *outLen);
 char *Base64Encode(const uint8_t *data, uint32_t len);
@@ -146,7 +145,7 @@ void SetDumpFlags(uint32_t flags);
 #define APPSPAWN_LOGE(fmt, ...) \
     APPSPAWN_LOG(LOG_ERROR, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
 #define APPSPAWN_LOGV(fmt, ...) \
-    APPSPAWN_LOG(LOG_INFO, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+    APPSPAWN_LOG(LOG_DEBUG, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
 #define APPSPAWN_LOGW(fmt, ...) \
     APPSPAWN_LOG(LOG_WARN, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
 #define APPSPAWN_LOGF(fmt, ...) \

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -249,7 +249,7 @@ int TestAppPropertyFlags(const struct AppProperty_ *property, uint32_t type, uin
     uint32_t bitIndex = index % 32;    // 32 max bit in int
     APPSPAWN_CHECK(blockIndex < msgFlags->count, return 0,
         "Invalid index %{public}d max: %{public}d", index, msgFlags->count);
-    return TEST_FLAGS_BY_INDEX(msgFlags->flags[blockIndex], bitIndex); //msgFlags->flags[blockIndex] & (1 << bitIndex);
+    return TEST_FLAGS_BY_INDEX(msgFlags->flags[blockIndex], bitIndex);
 }
 
 int SetAppPropertyFlags(const struct AppProperty_ *property, uint32_t type, uint32_t index)
