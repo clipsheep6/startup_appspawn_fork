@@ -26,8 +26,8 @@
 #include "appspawn_modulemgr.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
+#include "json_utils.h"
 #include "parameter.h"
-#include "sandbox_utils.h"
 #include "securec.h"
 
 #include "app_spawn_stub.h"
@@ -98,7 +98,8 @@ HWTEST(AppSpawnServiceTest, App_Spawn_002, TestSize.Level0)
         APPSPAWN_LOGI("App_Spawn_002 Kill pid %{public}d ", result.pid);
         kill(result.pid, SIGKILL);
         // MSG_GET_RENDER_TERMINATION_STATUS
-        reqHandle = testServer.CreateMsg(clientHandle, MSG_GET_RENDER_TERMINATION_STATUS, 0);
+        ret = AppSpawnTerminateMsgCreate(result.pid, &reqHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create termination msg %{public}s", APPSPAWN_SERVER_NAME);
         ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
         APPSPAWN_LOGV("Send MSG_GET_RENDER_TERMINATION_STATUS %{public}d", ret);
     } while (0);
@@ -117,7 +118,6 @@ HWTEST(AppSpawnServiceTest, App_Spawn_003, TestSize.Level0)
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create client %{public}s", APPSPAWN_SERVER_NAME);
         AppSpawnReqMsgHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_DUMP, 0);
-
         AppSpawnResult result = {};
         ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
         APPSPAWN_CHECK(ret == 0, break, "Failed to send msg %{public}d", ret);
@@ -452,7 +452,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_001, TestSize.Level0)
 
         PreloadHookExecute(content);  // 预加载，解析sandbox
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -497,7 +497,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_002, TestSize.Level0)
 
         PreloadHookExecute(content);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -543,7 +543,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_003, TestSize.Level0)
 
         PreloadHookExecute(content);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -590,7 +590,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_004, TestSize.Level0)
 
         PreloadHookExecute(content);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -637,7 +637,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_005, TestSize.Level0)
 
         PreloadHookExecute(content);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -687,7 +687,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_006, TestSize.Level0)
 
         PreloadHookExecute(content);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 

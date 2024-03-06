@@ -12,64 +12,64 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cstdbool>
+#include <set>
+#include <string>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <cstdbool>
-#include <string>
-#include <set>
 #include <vector>
 
 #include "appspawn_msg.h"
 #include "appspawn_sandbox.h"
 #include "appspawn_utils.h"
+#include "json_utils.h"
 #include "nlohmann/json.hpp"
-#include "parameters.h"
 #include "parameter.h"
+#include "parameters.h"
 #include "securec.h"
-#include "sandbox_utils.h"
 
 using namespace std;
 
 namespace {
-    const std::string MODULE_TEST_BUNDLE_NAME("moduleTestProcessName");
-    const std::string g_sandBoxAppInstallPath = "/data/accounts/account_0/applications/";
-    const std::string g_bundleResourceSrcPath = "/data/service/el1/public/bms/bundle_resources/";
-    const std::string g_bundleResourceDestPath = "/data/storage/bundle_resources/";
-    const std::string g_dataBundles = "/data/bundles/";
-    const std::string g_sandBoxDir = "/mnt/sandbox/";
+const std::string MODULE_TEST_BUNDLE_NAME("moduleTestProcessName");
+const std::string g_sandBoxAppInstallPath = "/data/accounts/account_0/applications/";
+const std::string g_bundleResourceSrcPath = "/data/service/el1/public/bms/bundle_resources/";
+const std::string g_bundleResourceDestPath = "/data/storage/bundle_resources/";
+const std::string g_dataBundles = "/data/bundles/";
+const std::string g_sandBoxDir = "/mnt/sandbox/";
 
-    const char *g_actionStatus = "check-action-status";
-    const char *g_appBase = "app-base";
-    const char *g_appResources = "app-resources";
-    const char *g_commonPrefix = "common";
-    const char *g_destMode = "dest-mode";
-    const char *g_fsType = "fs-type";
-    const char *g_linkName = "link-name";
-    const char *g_mountPrefix = "mount-paths";
-    const char *g_gidPrefix = "gids";
-    const char *g_privatePrefix = "individual";
-    const char *g_permissionPrefix = "permission";
-    const char *g_srcPath = "src-path";
-    const char *g_sandBoxPath = "sandbox-path";
-    const char *g_sandBoxFlags = "sandbox-flags";
-    const char *g_sandBoxFlagsCustomized = "sandbox-flags-customized";
-    const char *g_sandBoxOptions = "options";
-    const char *g_dacOverrideSensitive = "dac-override-sensitive";
-    const char *g_sandBoxShared = "sandbox-shared";
-    const char *g_sandBoxSwitchPrefix = "sandbox-switch";
-    const char *g_symlinkPrefix = "symbol-links";
-    const char *g_sandboxRootPrefix = "sandbox-root";
-    const char *g_topSandBoxSwitchPrefix = "top-sandbox-switch";
-    const char *g_targetName = "target-name";
-    const char *g_flagePoint = "flags-point";
-    const char *g_mountSharedFlag = "mount-shared-flag";
-    const char *g_flags = "flags";
-    const char *g_appAplName = "app-apl-name";
-    const char *g_sandBoxNsFlags = "sandbox-ns-flags";
-    const std::string FILE_CROSS_APP_MODE = "ohos.permission.FILE_CROSS_APP";
-    static const std::map<std::string, mode_t> g_mountFlagsMap = { {"rec", MS_REC}, {"MS_REC", MS_REC},
+const char *g_actionStatus = "check-action-status";
+const char *g_appBase = "app-base";
+const char *g_appResources = "app-resources";
+const char *g_commonPrefix = "common";
+const char *g_destMode = "dest-mode";
+const char *g_fsType = "fs-type";
+const char *g_linkName = "link-name";
+const char *g_mountPrefix = "mount-paths";
+const char *g_gidPrefix = "gids";
+const char *g_privatePrefix = "individual";
+const char *g_permissionPrefix = "permission";
+const char *g_srcPath = "src-path";
+const char *g_sandBoxPath = "sandbox-path";
+const char *g_sandBoxFlags = "sandbox-flags";
+const char *g_sandBoxFlagsCustomized = "sandbox-flags-customized";
+const char *g_sandBoxOptions = "options";
+const char *g_dacOverrideSensitive = "dac-override-sensitive";
+const char *g_sandBoxShared = "sandbox-shared";
+const char *g_sandBoxSwitchPrefix = "sandbox-switch";
+const char *g_symlinkPrefix = "symbol-links";
+const char *g_sandboxRootPrefix = "sandbox-root";
+const char *g_topSandBoxSwitchPrefix = "top-sandbox-switch";
+const char *g_targetName = "target-name";
+const char *g_flagePoint = "flags-point";
+const char *g_mountSharedFlag = "mount-shared-flag";
+const char *g_flags = "flags";
+const char *g_appAplName = "app-apl-name";
+const char *g_sandBoxNsFlags = "sandbox-ns-flags";
+const std::string FILE_CROSS_APP_MODE = "ohos.permission.FILE_CROSS_APP";
+static const std::map<std::string, mode_t> g_mountFlagsMap = { {"rec", MS_REC}, {"MS_REC", MS_REC},
         {"bind", MS_BIND}, {"MS_BIND", MS_BIND}, {"move", MS_MOVE}, {"MS_MOVE", MS_MOVE},
         {"slave", MS_SLAVE}, {"MS_SLAVE", MS_SLAVE}, {"rdonly", MS_RDONLY}, {"MS_RDONLY", MS_RDONLY},
         {"shared", MS_SHARED}, {"MS_SHARED", MS_SHARED}, {"unbindable", MS_UNBINDABLE},
@@ -85,7 +85,7 @@ namespace {
         {"S_IROTH", S_IROTH}, {"S_IWOTH", S_IWOTH}, {"S_IXOTH", S_IXOTH},
         {"S_IRWXU", S_IRWXU}, {"S_IRWXG", S_IRWXG}, {"S_IRWXO", S_IRWXO}
     };
-}
+}  // namespace
 
 namespace OHOS {
 namespace AppSpawn {
@@ -172,7 +172,7 @@ private:
             return mode;
         }
 
-        std::vector<std::string> modeVec = SandboxUtils::split(fileModeStr, "|");
+        std::vector<std::string> modeVec = JsonUtils::split(fileModeStr, "|");
         for (unsigned int i = 0; i < modeVec.size(); i++) {
             if (g_modeMap.count(modeVec[i])) {
                 mode |= g_modeMap.at(modeVec[i]);
@@ -463,7 +463,7 @@ public:
     static int LoadAppSandboxConfig(AppSpawnSandbox &sandbox)
     {
         std::vector<nlohmann::json> jsonConfigs;
-        int ret = SandboxUtils::GetSandboxConfigs(jsonConfigs);
+        int ret = JsonUtils::GetSandboxConfigs(jsonConfigs);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
         if (jsonConfigs.empty()) {
             APPSPAWN_LOGW("No sandbox config");
@@ -510,8 +510,8 @@ public:
         APPSPAPWN_DUMP("%{public}s[0x%{public}x] %{public}s", info, static_cast<uint32_t>(mode), dump.c_str());
     }
 }; // for class
-}
-}
+}  // namespace AppSpawn
+}  // namespace OHOS
 
 #ifdef __cplusplus
 extern "C" {

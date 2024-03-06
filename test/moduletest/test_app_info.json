@@ -1,16 +1,17 @@
 {
         "msg-type": 0,
         "msg-flags": [1, 2 ],
-        "process-name" : "com.ohos.dlpmanager",
+        "process-name" : "com.example.myapplication",
+        "pid": 328018,
         "dac-info" : {
-                "uid" : 1001,
-                "gid" : 1001,
-                "gid-table" : [1001],
+                "uid" : 20010043,
+                "gid" : 20010043,
+                "gid-table" : [20010043],
                 "user-name" : ""
         },
         "access-token" : {
                 "accessTokenId" : 22,
-                "accessTokenIdEx" : 100
+                "accessTokenIdEx" : 537854093
         },
         "permission" : [
                 "ohos.permission.READ_IMAGEVIDEO",
@@ -29,12 +30,12 @@
         },
         "bundle-info" : {
                 "bundle-index" : 0,
-                "bundle-name" : "com.ohos.dlpmanager"
+                "bundle-name" : "com.example.myapplication"
         },
         "ext-info" : [
                 {
                         "name" : "hiplist",
-                        "value" : ""
+                        "value" : "{}"
                 }
         ]
 }

@@ -17,8 +17,9 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "appspawn_service.h"
+#include "appspawn_hook.h"
 #include "appspawn_modulemgr.h"
+#include "appspawn_service.h"
 #include "securec.h"
 
 #define APPSPAWN_PRELOAD "libappspawn_helper.z.so"
@@ -44,6 +45,22 @@ static void CheckPreload(char *const argv[])
 }
 
 
+static int AppSpawnSpawnPost(AppSpawnMgr *content, AppSpawningCtx *property)
+{
+    APPSPAWN_LOGI("AppSpawnSpawnPost clear all appspawn content");
+    // delete all hook
+    /*
+    AppSpawnModuleMgrUnInstall(MODULE_DEFAULT);
+    AppSpawnModuleMgrUnInstall(MODULE_APPSPAWN);
+    AppSpawnModuleMgrUnInstall(MODULE_NWEBSPAWN);
+    AppSpawnModuleMgrUnInstall(MODULE_COMMON);
+    DeleteAppSpawnHookMgr();
+    DeleteAppSpawningCtx(property);
+    AppSpawnDestroyContent(&content->content);
+    */
+    return 0;
+}
+
 // appspawn -mode appspawn | cold | nwebspawn -param app_property -fd clientFd
 int main(int argc, char *const argv[])
 {
@@ -65,13 +82,8 @@ int main(int argc, char *const argv[])
     (void)signal(SIGPIPE, SIG_IGN);
     AppSpawnContent *content = StartSpawnService(argvSize, argc, argv);
     if (content != NULL) {
+        AddAppSpawnHook(HOOK_SPAWN_POST, HOOK_PRIO_STEP7, AppSpawnSpawnPost);
         content->runAppSpawn(content, argc, argv);
     }
-    // delete all hook
-    AppSpawnModuleMgrUnInstall(MODULE_DEFAULT);
-    AppSpawnModuleMgrUnInstall(MODULE_APPSPAWN);
-    AppSpawnModuleMgrUnInstall(MODULE_NWEBSPAWN);
-    AppSpawnModuleMgrUnInstall(MODULE_COMMON);
-    DeleteAppSpawnHookMgr();
     return 0;
 }

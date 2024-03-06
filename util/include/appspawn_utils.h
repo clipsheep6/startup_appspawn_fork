@@ -69,24 +69,23 @@ extern "C" {
 
 typedef enum {
     APPSPAWN_OK = 0,
-    APPSPAWN_INVALID_ARG = 0xD000000,
-    APPSPAWN_INVALID_MSG,
-    APPSPAWN_SYSTEM_ERROR,
-    APPSPAWN_NO_TLV,
-    APPSPAWN_NO_SANDBOX,
-    APPSPAWN_LOAD_SANDBOX_FAIL,
-    APPSPAWN_CLIENT_TIMEOUT,
-    APPSPAWN_CHILD_CRASH,
-    APPSPAWN_NOT_SUPPORT_NATIVE,
-    APPSPAWN_INVALID_ACCESS_TOKEN,
-    APPSPAWN_NODE_EXIST,
-
-    APPSPAWN_TIMEOUT = 0xD100000, // for client
-    APPSPAWN_RETRY_MAX,
-    APPSPAWN_RETRY_AGAIN,
-    APPSPAWN_CLOSE_CONNECT,
-    APPSPAWN_RETRY_CONNECT,
+    APPSPAWN_SYSTEM_ERROR = 0xD000000,
+    APPSPAWN_ARG_INVALID,
+    APPSPAWN_MSG_INVALID,
+    APPSPAWN_MSG_TOO_LONG,
     APPSPAWN_TLV_NOT_SUPPORT,
+    APPSPAWN_TLV_NONE,
+    APPSPAWN_SANDBOX_NONE,
+    APPSPAWN_SANDBOX_LOAD_FAIL,
+    APPSPAWN_SPAWN_TIMEOUT,
+    APPSPAWN_CHILD_CRASH,
+    APPSPAWN_NATIVE_NOT_SUPPORT,
+    APPSPAWN_ACCESS_TOKEN_INVALID,
+    APPSPAWN_PERMISSION_NOT_SUPPORT,
+    APPSPAWN_BUFFER_NOT_ENOUGH,
+    APPSPAWN_TIMEOUT,
+    APPSPAWN_FORK_FAIL,
+    APPSPAWN_NODE_EXIST,
 } AppSpawnErrorCode;
 
 typedef enum  {
@@ -95,11 +94,11 @@ typedef enum  {
     // run before fork
     HOOK_SPAWN_PREPARE = 20,
     // run in child process
-    HOOK_SPAWN_FIRST = 30, // clear env, set token
-    HOOK_SPAWN_SECOND,
-    HOOK_SPAWN_THIRD,
-
+    HOOK_SPAWN_CLEAR_ENV = 30, // clear env, set token HOOK_SPAWN_CLEAR_ENV
+    HOOK_SPAWN_SET_CHILD_PROPERTY,
+    HOOK_SPAWN_COMPLETED,
     HOOK_SPAWN_POST = 40,
+
     // for app change
     HOOK_APP_ADD = 50,
     HOOK_APP_DIED,
@@ -108,8 +107,6 @@ typedef enum  {
 typedef enum {
     HOOK_PRIO_STEP1 = 1000,
     HOOK_PRIO_STEP2 = 2000,
-    HOOK_PRIO_STEP3 = 3000,
-    HOOK_PRIO_STEP4 = 4000,
     HOOK_PRIO_SANDBOX = 5000,
     HOOK_PRIO_STEP6 = 6000,
     HOOK_PRIO_STEP7 = 7000,
@@ -131,29 +128,25 @@ void SetDumpFlags(uint32_t flags);
 #define APPSPAWN_LABEL "APPSPAWN"
 #endif
 
-#ifndef APPSPAWN_TEST
-#define APPSPAWN_LOG(logLevel, domain, tag, fmt, ...) \
-    HiLogPrint(LOG_CORE, (LogLevel)logLevel, domain, tag, \
-        "[%{public}s:%{public}d]" fmt,  (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
-#else
-#define APPSPAWN_LOG(logLevel, domain, tag, fmt, ...) \
-    AppSpawnDump("[%d %d][%{public}s:%{public}d]" fmt, getpid(), gettid(), (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
-#endif
+#undef LOG_TAG
+#define LOG_TAG APPSPAWN_LABEL
+#undef LOG_DOMAIN
+#define LOG_DOMAIN APPSPAWN_DOMAIN
 
 #define APPSPAWN_LOGI(fmt, ...) \
-    APPSPAWN_LOG(LOG_INFO, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+    HILOG_INFO(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
 #define APPSPAWN_LOGE(fmt, ...) \
-    APPSPAWN_LOG(LOG_ERROR, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+    HILOG_ERROR(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
 #define APPSPAWN_LOGV(fmt, ...) \
-    APPSPAWN_LOG(LOG_DEBUG, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+    HILOG_DEBUG(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
 #define APPSPAWN_LOGW(fmt, ...) \
-    APPSPAWN_LOG(LOG_WARN, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+    HILOG_WARN(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
 #define APPSPAWN_LOGF(fmt, ...) \
-    APPSPAWN_LOG(LOG_FATAL, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+    HILOG_FATAL(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__)
 
 #define APPSPAPWN_DUMP(fmt, ...) \
     do { \
-        HiLogPrint(LOG_CORE, LOG_INFO, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__); \
+        HILOG_INFO(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__); \
         AppSpawnDump(fmt, ##__VA_ARGS__); \
     } while (0)
 

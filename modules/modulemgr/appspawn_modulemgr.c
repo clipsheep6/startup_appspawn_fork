@@ -88,25 +88,27 @@ void DeleteAppSpawnHookMgr(void)
     g_appspawnHookMgr = NULL;
 }
 
-int PreloadHookRun(const HOOK_INFO *hookInfo, void *executionContext)
+static int PreloadHookRun(const HOOK_INFO *hookInfo, void *executionContext)
 {
     AppSpawnHookArg *arg = (AppSpawnHookArg *)executionContext;
     PreloadHook realHook = (PreloadHook)hookInfo->hookCookie;
     return realHook((void *)arg->content);
 }
 
-void PreHookExec(const HOOK_INFO *hookInfo, void *executionContext)
+static void PreHookExec(const HOOK_INFO *hookInfo, void *executionContext)
 {
     AppSpawnHookArg *arg = (AppSpawnHookArg *)executionContext;
-    clock_gettime(CLOCK_MONOTONIC, &arg->tmStart);
+    AppSpawnMgr *spawnMgr = (AppSpawnMgr *)arg->content;
+    clock_gettime(CLOCK_MONOTONIC, &spawnMgr->perLoadStart);
     APPSPAWN_LOGI("Hook stage: %{public}d prio: %{public}d start", hookInfo->stage, hookInfo->prio);
 }
 
-void PostHookExec(const HOOK_INFO *hookInfo, void *executionContext, int executionRetVal)
+static void PostHookExec(const HOOK_INFO *hookInfo, void *executionContext, int executionRetVal)
 {
     AppSpawnHookArg *arg = (AppSpawnHookArg *)executionContext;
-    clock_gettime(CLOCK_MONOTONIC, &arg->tmEnd);
-    uint64_t diff = DiffTime(&arg->tmStart, &arg->tmEnd);
+    AppSpawnMgr *spawnMgr = (AppSpawnMgr *)arg->content;
+    clock_gettime(CLOCK_MONOTONIC, &spawnMgr->perLoadEnd);
+    uint64_t diff = DiffTime(&spawnMgr->perLoadStart, &spawnMgr->perLoadEnd);
     APPSPAWN_LOGI("Hook stage: %{public}d prio: %{public}d end time %{public}" PRId64 " ns result: %{public}d",
         hookInfo->stage, hookInfo->prio, diff, executionRetVal);
 }
@@ -143,6 +145,22 @@ static int AppSpawnHookRun(const HOOK_INFO *hookInfo, void *executionContext)
     return realHook((AppSpawnMgr *)arg->content, (AppSpawningCtx *)arg->client);
 }
 
+static void PreAppSpawnHookExec(const HOOK_INFO *hookInfo, void *executionContext)
+{
+    AppSpawnHookArg *arg = (AppSpawnHookArg *)executionContext;
+    clock_gettime(CLOCK_MONOTONIC, &arg->tmStart);
+    APPSPAWN_LOGI("Hook stage: %{public}d prio: %{public}d start", hookInfo->stage, hookInfo->prio);
+}
+
+static void PostAppSpawnHookExec(const HOOK_INFO *hookInfo, void *executionContext, int executionRetVal)
+{
+    AppSpawnHookArg *arg = (AppSpawnHookArg *)executionContext;
+    clock_gettime(CLOCK_MONOTONIC, &arg->tmEnd);
+    uint64_t diff = DiffTime(&arg->tmStart, &arg->tmEnd);
+    APPSPAWN_LOGI("Hook stage: %{public}d prio: %{public}d end time %{public}" PRId64 " ns result: %{public}d",
+        hookInfo->stage, hookInfo->prio, diff, executionRetVal);
+}
+
 int AppSpawnHookExecute(int stage, uint32_t flags, AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("Execute hook [%{public}d] for app: %{public}s", stage, GetProcessName((AppSpawningCtx *)client));
@@ -151,8 +169,8 @@ int AppSpawnHookExecute(int stage, uint32_t flags, AppSpawnContent *content, App
     forkArg.content = content;
     HOOK_EXEC_OPTIONS options;
     options.flags = flags;  // TRAVERSE_STOP_WHEN_ERROR : 0;
-    options.preHook = PreHookExec;
-    options.postHook = PostHookExec;
+    options.preHook = PreAppSpawnHookExec;
+    options.postHook = PostAppSpawnHookExec;
     int ret = HookMgrExecute(GetAppSpawnHookMgr(), stage, (void *)(&forkArg), &options);
     return ret == ERR_NO_HOOK_STAGE ? 0 : ret;
 }

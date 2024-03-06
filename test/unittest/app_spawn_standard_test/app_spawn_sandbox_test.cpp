@@ -27,8 +27,8 @@
 #include "appspawn_server.h"
 #include "appspawn_service.h"
 #include "appspawn_utils.h"
+#include "json_utils.h"
 #include "nlohmann/json.hpp"
-#include "sandbox_utils.h"
 
 #include "app_spawn_stub.h"
 #include "app_spawn_test_helper.h"
@@ -92,7 +92,7 @@ static const std::string g_individualConfig = "{ \
                 } \
             ] \
         }], \
-        \"com.ohos.dlpmanager\" : [{ \
+        \"com.example.myapplication\" : [{ \
             \"sandbox-switch\": \"ON\", \
             \"sandbox-shared\" : \"true\", \
             \"mount-paths\" : [{ \
@@ -250,6 +250,88 @@ public:
     void SetUp() {}
     void TearDown() {}
 };
+
+static int TestJsonUtilSplit(const char *args[], uint32_t argc, const std::string &input, const std::string &pattern)
+{
+    std::vector<std::string> results = OHOS::AppSpawn::JsonUtils::split(input, pattern);
+    if (argc != results.size()) {
+        return -1;
+    }
+    for (size_t i = 0; i < argc; i++) {
+        if (strcmp(args[i], results[i].c_str()) != 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_JsonUtil_001, TestSize.Level0)
+{
+    const char *args[] = {
+        "S_IRUSR", "S_IWOTH", "S_IRWXU"
+    };
+    std::string cmd = "   S_IRUSR   S_IWOTH      S_IRWXU   ";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_JsonUtil_002, TestSize.Level0)
+{
+    const char *args[] = {
+        "S_IRUSR", "S_IWOTH", "S_IRWXU"
+    };
+    std::string cmd = "S_IRUSR   S_IWOTH      S_IRWXU";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_JsonUtil_003, TestSize.Level0)
+{
+    const char *args[] = {
+        "S_IRUSR", "S_IWOTH", "S_IRWXU"
+    };
+    std::string cmd = "  S_IRUSR   S_IWOTH      S_IRWXU";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_JsonUtil_004, TestSize.Level0)
+{
+    const char *args[] = {
+        "S_IRUSR", "S_IWOTH", "S_IRWXU"
+    };
+    std::string cmd = "S_IRUSR   S_IWOTH      S_IRWXU  ";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_JsonUtil_005, TestSize.Level0)
+{
+    const char *args[] = {"S_IRUSR"};
+    std::string cmd = "  S_IRUSR    ";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_JsonUtil_006, TestSize.Level0)
+{
+    const char *args[] = {
+        "S_IRUSR", "S_IWOTH", "S_IRWXU"
+    };
+    std::string cmd = "  S_IRUSR |  S_IWOTH    |  S_IRWXU  ";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, "|"), 0);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_JsonUtil_007, TestSize.Level0)
+{
+    const char *args[] = {
+        "send", "--type", "2"
+    };
+    std::string cmd = "send --type 2 ";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Permission_01, TestSize.Level0)
 {
@@ -700,7 +782,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_10, TestSize.Level0)
         reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -715,7 +797,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_10, TestSize.Level0)
         // set check point
         MountArg args = {};
         args.originPath = "/config";
-        args.destinationPath = "/mnt/sandbox/100/com.ohos.dlpmanager/config";
+        args.destinationPath = "/mnt/sandbox/100/com.example.myapplication/config";
         args.fsType = "sharefs";
         args.mountFlags = MS_NODEV | MS_RDONLY;  // 当前条件走customizedFlags，这里设置为customizedFlags
         stub->flags = STUB_NEED_CHECK;
@@ -749,7 +831,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_11, TestSize.Level0)
         reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -764,7 +846,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_11, TestSize.Level0)
         // set check point
         MountArg args = {};
         args.originPath = "/config";
-        args.destinationPath = "/mnt/sandbox/100/com.ohos.dlpmanager/config";
+        args.destinationPath = "/mnt/sandbox/100/com.example.myapplication/config";
         args.fsType = "sharefs";
         args.mountFlags = MS_NODEV | MS_RDONLY;  // 当前条件走customizedFlags，这里设置为customizedFlags
         stub->flags = STUB_NEED_CHECK;
@@ -800,7 +882,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_12, TestSize.Level0)
         reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -819,7 +901,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_12, TestSize.Level0)
         // set check point
         MountArg args = {};
         args.originPath = "/config";
-        args.destinationPath = "/mnt/sandbox/100/com.ohos.dlpmanager/config";
+        args.destinationPath = "/mnt/sandbox/100/com.example.myapplication/config";
         args.fsType = "sharefs";
         args.mountFlags = MS_NODEV | MS_RDONLY;  // 当前条件走customizedFlags，这里设置为customizedFlags
         stub->flags = STUB_NEED_CHECK;
@@ -856,7 +938,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_13, TestSize.Level0)
         reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -871,7 +953,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_13, TestSize.Level0)
         // set check point
         MountArg args = {};
         args.originPath = "/dev/fuse";
-        args.destinationPath = "/mnt/sandbox/100/com.ohos.dlpmanager/mnt/data/fuse";
+        args.destinationPath = "/mnt/sandbox/100/com.example.myapplication/mnt/data/fuse";
         args.fsType = "fuse";
         args.mountFlags = MS_LAZYTIME | MS_NOATIME | MS_NODEV | MS_NOEXEC | MS_NOSUID;
         stub->flags = STUB_NEED_CHECK;
@@ -905,7 +987,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_14, TestSize.Level0)
         reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -920,7 +1002,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_14, TestSize.Level0)
         // set check point
         MountArg args = {};
         args.originPath = "/dev/fuse";
-        args.destinationPath = "/home/axw/appspawn_ut/mnt/sandbox/100/com.ohos.dlpmanager/mnt/data/fuse";
+        args.destinationPath = "/home/axw/appspawn_ut/mnt/sandbox/100/com.example.myapplication/mnt/data/fuse";
         args.fsType = "fuse";
         args.mountFlags = MS_LAZYTIME | MS_NOATIME | MS_NODEV | MS_NOEXEC;
         stub->flags = STUB_NEED_CHECK;
@@ -956,7 +1038,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_15, TestSize.Level0)
         // 设置permission
         AppSpawnReqMsgSetFlags(reqHandle, TLV_PERMISSION, 0x01);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -971,7 +1053,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_15, TestSize.Level0)
         // set check point
         MountArg args = {};
         args.originPath = "/config";
-        args.destinationPath = "/mnt/sandbox/100/com.ohos.dlpmanager/"
+        args.destinationPath = "/mnt/sandbox/100/com.example.myapplication/"
             "data/app/el1/currentUser/database/com.ohos.dlpmanager_100";
         args.fsType = "sharefs";
         args.mountFlags = MS_NODEV | MS_RDONLY;
@@ -1011,7 +1093,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_16, TestSize.Level0)
         AppSpawnReqMsgSetFlags(reqHandle, TLV_PERMISSION, 0x01);
         AppSpawnReqMsgSetFlags(reqHandle, TLV_MSG_FLAGS, 0x01);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 

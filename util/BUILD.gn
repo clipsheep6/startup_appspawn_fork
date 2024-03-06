@@ -29,7 +29,7 @@ ohos_static_library("libappspawn_base64") {
 ohos_static_library("libappspawn_util") {
   sources = [
     "src/appspawn_utils.c",
-    "src/sandbox_utils.cpp",
+    "src/json_utils.cpp",
   ]
   deps = [ "//third_party/json:nlohmann_json_static" ]
   external_deps = [

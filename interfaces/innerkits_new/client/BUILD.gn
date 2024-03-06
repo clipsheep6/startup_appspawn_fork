@@ -24,7 +24,7 @@ if (!defined(ohos_lite)) {
     sources = [
       "${appspawn_path}/modules/sandbox/appspawn_permission.c",
       "${appspawn_path}/util/src/appspawn_utils.c",
-      "${appspawn_path}/util/src/sandbox_utils.cpp",
+      "${appspawn_path}/util/src/json_utils.cpp",
       "../permission/appspawn_mount_permission.cpp",
       "appspawn_client.c",
     ]

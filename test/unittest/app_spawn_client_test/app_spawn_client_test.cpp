@@ -28,8 +28,8 @@
 #include "appspawn_client.h"
 #include "appspawn_service.h"
 #include "appspawn_utils.h"
+#include "json_utils.h"
 #include "parameter.h"
-#include "sandbox_utils.h"
 #include "securec.h"
 
 #include "app_spawn_stub.h"
@@ -57,8 +57,7 @@ public:
 HWTEST(AppSpawnClientTest, App_Client_Communication_001, TestSize.Level0)
 {
     OHOS::AppSpawnTestServer testServer("appspawn -mode appspawn", false);
-    testServer.Start([](TestConnection *connection, const uint8_t *buffer, uint32_t buffLen)
-    {
+    testServer.Start([](TestConnection *connection, const uint8_t *buffer, uint32_t buffLen) {
         LE_CloseStreamTask(LE_GetDefaultLoop(), connection->stream);
     });
     int ret = 0;
@@ -83,10 +82,9 @@ HWTEST(AppSpawnClientTest, App_Client_Communication_002, TestSize.Level0)
 {
     OHOS::AppSpawnTestServer testServer("appspawn -mode appspawn", false);
     testServer.Start(
-        [](TestConnection *connection, const uint8_t *buffer, uint32_t buffLen)
-        {
-            connection->SendResponse(reinterpret_cast<AppSpawnMsg *>(const_cast<uint8_t *>(buffer)),
-                                     APPSPAWN_INVALID_MSG, 0);
+        [](TestConnection *connection, const uint8_t *buffer, uint32_t buffLen) {
+            connection->SendResponse(
+                reinterpret_cast<AppSpawnMsg *>(const_cast<uint8_t *>(buffer)), APPSPAWN_MSG_INVALID, 0);
         },
         3000);  // 3000 3s
     int ret = 0;
@@ -97,11 +95,12 @@ HWTEST(AppSpawnClientTest, App_Client_Communication_002, TestSize.Level0)
         AppSpawnReqMsgHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
 
         AppSpawnResult result = {};
-        ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
+        (void)AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
+        ret = result.result;
     } while (0);
     testServer.Stop();
     AppSpawnClientDestroy(clientHandle);
-    ASSERT_EQ(ret, APPSPAWN_INVALID_MSG);
+    ASSERT_EQ(ret, APPSPAWN_MSG_INVALID);
 }
 
 /**
@@ -116,7 +115,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_001, TestSize.Level0)
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        ret = AppSpawnReqMsgCreate(MSG_APP_SPAWN, "com.ohos.dlpmanager", &reqHandle);
+        ret = AppSpawnReqMsgCreate(MSG_APP_SPAWN, "com.example.myapplication", &reqHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         // flags test
@@ -129,7 +128,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_001, TestSize.Level0)
         ret = AppSpawnReqMsgSetAppFlag(reqHandle, MAX_FLAGS_INDEX + 1);
         ASSERT_NE(ret, 0);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         AppSpawnReqMsgNode *reqNode = (AppSpawnReqMsgNode *)reqHandle;
         APPSPAWN_CHECK(reqNode != nullptr, break, "Invalid reqNode");
         APPSPAWN_CHECK(reqNode->msgFlags != nullptr, break, "Invalid reqNode");
@@ -167,7 +166,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_002, TestSize.Level0)
         reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -206,7 +205,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_003, TestSize.Level0)
         reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         void *tlvValue = GetAppProperty(property, TLV_BUNDLE_INFO);
@@ -248,7 +247,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_004, TestSize.Level0)
         ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_RENDER_CMD, renderCmd);
         APPSPAWN_CHECK(ret == 0, break, "Failed to add render cmd %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         DumpNormalProperty(property);
@@ -286,7 +285,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_005, TestSize.Level0)
         ret = AppSpawnReqMsgSetAppOwnerId(reqHandle, ownerId);
         APPSPAWN_CHECK(ret == 0, break, "Failed to add owner %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         void *tlvValue = GetAppProperty(property, TLV_OWNER_INFO);
@@ -320,7 +319,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_006, TestSize.Level0)
         ret = AppSpawnReqMsgSetAppInternetPermissionInfo(reqHandle, 101, 102);  // 101 102 test
         APPSPAWN_CHECK(ret == 0, break, "Failed to add owner %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         void *tlvValue = GetAppProperty(property, TLV_INTERNET_INFO);
@@ -357,7 +356,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_007, TestSize.Level0)
         ret = AppSpawnReqMsgSetAppDomainInfo(reqHandle, 1, apl);
         APPSPAWN_CHECK(ret == 0, break, "Failed to add domain %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         void *tlvValue = GetAppProperty(property, TLV_DOMAIN_INFO);
@@ -406,10 +405,10 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_008, TestSize.Level0)
             reinterpret_cast<uint8_t *>(const_cast<char *>(testData.data())), testData.size());
         APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 1234, 12345678);  // 1234, 12345678
+        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 12345678);  // 12345678
         APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         uint32_t tlvLen = 0;

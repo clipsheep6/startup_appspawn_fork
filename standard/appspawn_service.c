@@ -21,6 +21,8 @@
 #include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include <unistd.h>
 
 #include "appspawn.h"
@@ -38,9 +40,9 @@ static AppSpawnMgr *g_appSpawnMgr = NULL;
 
 static void WaitChildTimeout(const TimerHandle taskHandle, void *context);
 static void ProcessChildResponse(const WatcherHandle taskHandle, int fd, uint32_t *events, const void *context);
-static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen);
-static void ProcessRecvMsg(AppSpawnConnection *connection, AppSpawnMsgReceiverCtx *receiver);
 static void WaitChildDied(pid_t pid);
+static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen);
+static void ProcessRecvMsg(AppSpawnConnection *connection, AppSpawnMsgNode *message);
 
 static void DataExDestroyProc(ListNode *node)
 {
@@ -86,7 +88,7 @@ static inline void DumpStatus(const char *appName, pid_t pid, int status)
 static void HandleDiedPid(pid_t pid, uid_t uid, int status)
 {
     AppSpawnedProcess *appInfo = GetSpawnedProcess(&g_appSpawnMgr->processMgr, pid);
-    if (appInfo == NULL) {
+    if (appInfo == NULL) { // app孵化过程中异常，kill pid，返回失败
         WaitChildDied(pid);
         DumpStatus("unknown", pid, status);
         return;
@@ -131,27 +133,30 @@ APPSPAWN_STATIC void ProcessSignal(const struct signalfd_siginfo *siginfo)
     }
 }
 
-static AppSpawnMsgReceiverCtx *CreateAppSpawnMsgReceiver(void)
-{
-    AppSpawnMsgReceiverCtx *receiver = (AppSpawnMsgReceiverCtx *)calloc(1, sizeof(AppSpawnMsgReceiverCtx));
-    APPSPAWN_CHECK(receiver != NULL, return NULL, "Failed to create receiver");
-    receiver->msgRecvLen = 0;
-    receiver->timer = NULL;
-    receiver->buffer = NULL;
-    receiver->tlvOffset = NULL;
-    (void)memset_s(&receiver->msgHeader, sizeof(receiver->msgHeader), 0, sizeof(receiver->msgHeader));
-    return receiver;
-}
-
 static void OnClose(const TaskHandle taskHandle)
 {
     AppSpawnConnection *connection = (AppSpawnConnection *)LE_GetUserData(taskHandle);
     APPSPAWN_CHECK(connection != NULL, return, "Invalid connection");
     APPSPAWN_LOGI("OnClose connectionId: %{public}u socket %{public}d",
         connection->connectionId, LE_GetSocketFd(taskHandle));
-    DeleteAppSpawnMsgReceiver(connection->receiver);
-    connection->receiver = NULL;
-    AppMgrHandleConnectClose(&g_appSpawnMgr->processMgr, connection);
+    DeleteAppSpawnMsg(connection->receiverCtx.incompleteMsg);
+    connection->receiverCtx.incompleteMsg = NULL;
+    ListNode *node = g_appSpawnMgr->processMgr.appSpawnQueue.next;
+    // 遍历结束所有这个连接下的孵化进程
+    while (node != &g_appSpawnMgr->processMgr.appSpawnQueue) {
+        ListNode *next = node->next;
+        AppSpawningCtx *property = ListEntry(node, AppSpawningCtx, node);
+        if (property->message == NULL || property->message->connection != connection) {
+            node = next;
+            continue;
+        }
+        APPSPAWN_LOGI("Kill process, pid: %{public}d app: %{public}s", property->pid, GetProcessName(property));
+        if (kill(property->pid, SIGKILL) != 0) {
+            APPSPAWN_LOGE("unable to kill process, pid: %{public}d errno: %{public}d", property->pid, errno);
+        }
+        DeleteAppSpawningCtx(property);
+        node = next;
+    }
 }
 
 static void SendMessageComplete(const TaskHandle taskHandle, BufferHandle handle)
@@ -176,7 +181,7 @@ static void SendMessageComplete(const TaskHandle taskHandle, BufferHandle handle
 
 static int SendResponse(const AppSpawnConnection *connection, const AppSpawnMsg *msg, int result, pid_t pid)
 {
-    APPSPAWN_LOGV("SendResponse connectionId %{public}u result: %{public}d pid: %{public}d",
+    APPSPAWN_LOGV("SendResponse connectionId %{public}u result: 0x%{public}x pid: %{public}d",
         connection->connectionId, result, pid);
     uint32_t bufferSize = sizeof(AppSpawnResponseMsg);
     BufferHandle handle = LE_CreateBuffer(LE_GetDefaultLoop(), bufferSize);
@@ -193,132 +198,56 @@ static void WaitMsgCompleteTimeOut(const TimerHandle taskHandle, void *context)
 {
     AppSpawnConnection *connection = (AppSpawnConnection *)context;
     APPSPAWN_LOGE("Long time no msg complete so close connectionId: %{public}u", connection->connectionId);
-    DeleteAppSpawnMsgReceiver(connection->receiver);
-    connection->receiver = NULL;
+    DeleteAppSpawnMsg(connection->receiverCtx.incompleteMsg);
+    connection->receiverCtx.incompleteMsg = NULL;
     LE_CloseStreamTask(LE_GetDefaultLoop(), connection->stream);
 }
 
 static inline int StartTimerForCheckMsg(AppSpawnConnection *connection)
 {
-    if (connection->receiver->timer != NULL) {
+    if (connection->receiverCtx.timer != NULL) {
         return 0;
     }
-    int ret = LE_CreateTimer(LE_GetDefaultLoop(), &connection->receiver->timer, WaitMsgCompleteTimeOut, connection);
+    int ret = LE_CreateTimer(LE_GetDefaultLoop(), &connection->receiverCtx.timer, WaitMsgCompleteTimeOut, connection);
     if (ret == 0) {
-        ret = LE_StartTimer(LE_GetDefaultLoop(), connection->receiver->timer, MAX_WAIT_MSG_COMPLETE, 1);
+        ret = LE_StartTimer(LE_GetDefaultLoop(), connection->receiverCtx.timer, MAX_WAIT_MSG_COMPLETE, 1);
     }
     return ret;
 }
 
-static TaskHandle AcceptClient(const LoopHandle loopHandle, const TaskHandle server, uint32_t flags)
+static int OnConnection(const LoopHandle loopHandle, const TaskHandle server)
 {
+    APPSPAWN_CHECK(server != NULL && loopHandle != NULL, return -1, "Error server");
     static uint32_t connectionId = 0;
     TaskHandle stream;
     LE_StreamInfo info = {};
     info.baseInfo.flags = TASK_STREAM | TASK_PIPE | TASK_CONNECT;
-    info.baseInfo.flags |= flags;
     info.baseInfo.close = OnClose;
     info.baseInfo.userDataSize = sizeof(AppSpawnConnection);
     info.disConnectComplete = NULL;
     info.sendMessageComplete = SendMessageComplete;
     info.recvMessage = OnReceiveRequest;
     LE_STATUS ret = LE_AcceptStreamClient(loopHandle, server, &stream, &info);
-    APPSPAWN_CHECK(ret == 0, return NULL, "Failed to alloc stream");
+    APPSPAWN_CHECK(ret == 0, return -1, "Failed to alloc stream");
 
     AppSpawnConnection *connection = (AppSpawnConnection *)LE_GetUserData(stream);
-    APPSPAWN_CHECK(connection != NULL, return NULL, "Failed to alloc stream");
+    APPSPAWN_CHECK(connection != NULL, return -1, "Failed to alloc stream");
     struct ucred cred = {-1, -1, -1};
     socklen_t credSize = sizeof(struct ucred);
     if ((getsockopt(LE_GetSocketFd(stream), SOL_SOCKET, SO_PEERCRED, &cred, &credSize) < 0) ||
         (cred.uid != DecodeUid("foundation") && cred.uid != DecodeUid("root"))) {
         APPSPAWN_LOGE("Invalid uid %{public}d from client", cred.uid);
         LE_CloseStreamTask(LE_GetDefaultLoop(), stream);
-        return NULL;
+        return -1;
     }
     connection->connectionId = ++connectionId;
     connection->stream = stream;
+    connection->receiverCtx.incompleteMsg = NULL;
+    connection->receiverCtx.timer = NULL;
+    connection->receiverCtx.msgRecvLen = 0;
+    connection->receiverCtx.nextMsgId = 1;
     APPSPAWN_LOGI("OnConnection connectionId: %{public}u fd %{public}d ",
         connection->connectionId, LE_GetSocketFd(stream));
-    return stream;
-}
-
-static int OnConnection(const LoopHandle loopHandle, const TaskHandle server)
-{
-    APPSPAWN_CHECK(server != NULL && loopHandle != NULL, return -1, "Error server");
-    (void)AcceptClient(loopHandle, server, 0);
-    return 0;
-}
-
-static inline int CheckRecvMsg(const AppSpawnMsg *msg)
-{
-    APPSPAWN_CHECK(msg != NULL, return -1, "Invalid msg");
-    APPSPAWN_CHECK(msg->magic == APPSPAWN_MSG_MAGIC, return -1, "Invalid magic 0x%{public}x", msg->magic);
-    APPSPAWN_CHECK(msg->msgLen < MAX_MSG_TOTAL_LENGTH, return -1, "Message too long %{public}u", msg->msgLen);
-    APPSPAWN_CHECK(msg->msgLen >= sizeof(AppSpawnMsg), return -1, "Message too long %{public}u", msg->msgLen);
-    APPSPAWN_CHECK(msg->tlvCount < MAX_TLV_COUNT, return -1, "Message too long %{public}u", msg->tlvCount);
-    APPSPAWN_CHECK(msg->tlvCount < (msg->msgLen / sizeof(AppSpawnTlv)),
-        return -1, "Message too long %{public}u", msg->tlvCount);
-    return 0;
-}
-
-static int AllocBuffer(AppSpawnMsgReceiverCtx *receiver, const AppSpawnMsg *msg)
-{
-    APPSPAWN_CHECK_ONLY_EXPER(CheckRecvMsg(&receiver->msgHeader) == 0, return -1);
-    if (msg->msgLen == sizeof(receiver->msgHeader)) {  // only has msg header
-        return 0;
-    }
-    receiver->buffer = calloc(1, msg->msgLen - sizeof(receiver->msgHeader));
-    APPSPAWN_CHECK(receiver->buffer != NULL, return -1, "Failed to alloc memory for recv message");
-    uint32_t totalCount = msg->tlvCount + TLV_MAX;
-    receiver->tlvOffset = malloc(totalCount * sizeof(uint32_t));
-    APPSPAWN_CHECK(receiver->tlvOffset != NULL, return -1, "Failed to alloc memory for recv message");
-    for (uint32_t i = 0; i < totalCount; i++) {
-        receiver->tlvOffset[i] = INVALID_OFFSET;
-    }
-    return 0;
-}
-
-static int HandleRecvBuffer(AppSpawnMsgReceiverCtx *receiver,
-    const uint8_t *buffer, uint32_t bufferLen, uint32_t *reminder)
-{
-    *reminder = 0;
-    uint32_t reminderLen = bufferLen;
-    const uint8_t *reminderBuffer = buffer;
-    if (receiver->msgRecvLen < sizeof(receiver->msgHeader)) {  // recv partial message
-        if ((bufferLen + receiver->msgRecvLen) >= sizeof(receiver->msgHeader)) {
-            int ret = memcpy_s(((uint8_t *)&receiver->msgHeader) + receiver->msgRecvLen,
-                sizeof(receiver->msgHeader) - receiver->msgRecvLen,
-                buffer, sizeof(receiver->msgHeader) - receiver->msgRecvLen);
-            APPSPAWN_CHECK(ret == EOK, return -1, "Failed to copy recv buffer");
-
-            ret = AllocBuffer(receiver, &receiver->msgHeader);
-            APPSPAWN_CHECK(ret == 0, return -1, "Failed to alloc buffer for receive msg");
-            reminderLen = bufferLen - (sizeof(receiver->msgHeader) - receiver->msgRecvLen);
-            reminderBuffer = buffer + sizeof(receiver->msgHeader) - receiver->msgRecvLen;
-            receiver->msgRecvLen = sizeof(receiver->msgHeader);
-        } else {
-            int ret = memcpy_s(((uint8_t *)&receiver->msgHeader) + receiver->msgRecvLen,
-                sizeof(receiver->msgHeader) - receiver->msgRecvLen, buffer, bufferLen);
-            APPSPAWN_CHECK(ret == EOK, return -1, "Failed to copy recv buffer");
-            receiver->msgRecvLen += bufferLen;
-            return 0;
-        }
-    }
-    // do not copy msg header
-    uint32_t realCopy = (reminderLen + receiver->msgRecvLen) > receiver->msgHeader.msgLen ?
-        receiver->msgHeader.msgLen - receiver->msgRecvLen : reminderLen;
-    if (receiver->buffer == NULL) {  // only has msg header
-        return 0;
-    }
-    APPSPAWN_LOGV("HandleRecvBuffer msgRecvLen: %{public}u reminderLen %{public}u realCopy %{public}u",
-        receiver->msgRecvLen, reminderLen, realCopy);
-    int ret = memcpy_s(receiver->buffer + receiver->msgRecvLen - sizeof(receiver->msgHeader),
-        receiver->msgHeader.msgLen - receiver->msgRecvLen, reminderBuffer, realCopy);
-    APPSPAWN_CHECK(ret == EOK, return -1, "Failed to copy recv buffer");
-    receiver->msgRecvLen += realCopy;
-    if (realCopy < reminderLen) {
-        *reminder = reminderLen - realCopy;
-    }
     return 0;
 }
 
@@ -327,153 +256,56 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
     AppSpawnConnection *connection = (AppSpawnConnection *)LE_GetUserData(taskHandle);
     APPSPAWN_CHECK(connection != NULL, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
         return, "Failed to get client form socket");
-    APPSPAWN_CHECK(buffLen < MAX_MSG_TOTAL_LENGTH, return, "Message too long");
+    APPSPAWN_CHECK(buffLen < MAX_MSG_TOTAL_LENGTH, LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
+        return, "Message too long %{public}u", buffLen);
+
     uint32_t reminder = 0;
     uint32_t currLen = 0;
+    AppSpawnMsgNode *message = connection->receiverCtx.incompleteMsg; // incomplete msg
+    connection->receiverCtx.incompleteMsg = NULL;
     int ret = 0;
     do {
-        if (connection->receiver == NULL) {
-            connection->receiver = CreateAppSpawnMsgReceiver();
-            APPSPAWN_CHECK(connection->receiver != NULL, LE_CloseStreamTask(LE_GetDefaultLoop(), taskHandle);
-                return, "Failed to create receiver");
-        }
-        APPSPAWN_LOGV("OnReceiveRequest buffer: 0x%{public}x buffLen %{public}d",
+        APPSPAWN_LOGV("ProcessReceiveBuffer buffer: 0x%{public}x buffLen %{public}d",
             *(uint32_t *)(buffer + currLen), buffLen - currLen);
-        ret = HandleRecvBuffer(connection->receiver, buffer + currLen, buffLen - currLen, &reminder);
-        if (ret != 0) {
-            LE_CloseStreamTask(LE_GetDefaultLoop(), taskHandle);
-            return;
-        }
-        if (connection->receiver->msgRecvLen == connection->receiver->msgHeader.msgLen) {  // recv complete msg
-            if (connection->receiver->timer) {
-                LE_StopTimer(LE_GetDefaultLoop(), connection->receiver->timer);
-                connection->receiver->timer = NULL;
-            }
-            ProcessRecvMsg(connection, connection->receiver);
-            connection->receiver = NULL;
-        } else {
-            APPSPAWN_CHECK(reminder == 0, return, "reminder must be zero");
+
+        ret = GetAppSpawnMsgFromBuffer(buffer + currLen, buffLen - currLen,
+            &message, &connection->receiverCtx.msgRecvLen, &reminder);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        if (connection->receiverCtx.msgRecvLen != message->msgHeader.msgLen) {  // recv complete msg
+            connection->receiverCtx.incompleteMsg = message;
+            message = NULL;
             break;
         }
+        connection->receiverCtx.msgRecvLen = 0;
+        if (connection->receiverCtx.timer) {
+            LE_StopTimer(LE_GetDefaultLoop(), connection->receiverCtx.timer);
+            connection->receiverCtx.timer = NULL;
+        }
+        // decode msg
+        ret = DecodeAppSpawnMsg(message);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        (void)ProcessRecvMsg(connection, message);
+        message = NULL;
         currLen += buffLen - reminder;
     } while (reminder > 0);
 
-    // 有部分数据，启动检测定时器
-    if (connection->receiver != NULL && connection->receiver->msgRecvLen > 0) {
+    if (message) {
+        DeleteAppSpawnMsg(message);
+    }
+    if (ret != 0) {
+        LE_CloseTask(LE_GetDefaultLoop(), taskHandle);
+        return;
+    }
+    if (connection->receiverCtx.incompleteMsg != NULL) { // 有部分数据，启动检测定时器
         ret = StartTimerForCheckMsg(connection);
         APPSPAWN_CHECK(ret == 0, LE_CloseStreamTask(LE_GetDefaultLoop(), taskHandle);
             return, "Failed to create time for connection");
     }
+    return;
 }
 
-static int CheckMsgReceiver(const AppSpawningCtx *property, const AppSpawnMsgReceiverCtx *receiver)
-{
-    APPSPAWN_CHECK(strlen(receiver->msgHeader.processName) > 0,
-        return APPSPAWN_INVALID_MSG, "Invalid property processName %{public}s", receiver->msgHeader.processName);
-    APPSPAWN_CHECK(receiver->tlvOffset != NULL,
-        return APPSPAWN_INVALID_MSG, "Invalid property tlv offset for %{public}s", receiver->msgHeader.processName);
-    APPSPAWN_CHECK(receiver->buffer != NULL,
-        return APPSPAWN_INVALID_MSG, "Invalid property buffer for %{public}s", receiver->msgHeader.processName);
-
-    if (receiver->tlvOffset[TLV_BUNDLE_INFO] == INVALID_OFFSET ||
-        receiver->tlvOffset[TLV_MSG_FLAGS] == INVALID_OFFSET ||
-        receiver->tlvOffset[TLV_ACCESS_TOKEN_INFO] == INVALID_OFFSET ||
-        receiver->tlvOffset[TLV_DAC_INFO] == INVALID_OFFSET) {
-        APPSPAWN_LOGE("No must tlv: %{public}u %{public}u %{public}u", receiver->tlvOffset[TLV_BUNDLE_INFO],
-            receiver->tlvOffset[TLV_MSG_FLAGS], receiver->tlvOffset[TLV_DAC_INFO]);
-        return APPSPAWN_INVALID_MSG;
-    }
-    AppSpawnMsgBundleInfo *bundleInfo = GetAppProperty(property, TLV_BUNDLE_INFO);
-    if (bundleInfo != NULL) {
-        if (strstr(bundleInfo->bundleName, "\\") != NULL || strstr(bundleInfo->bundleName, "/") != NULL) {
-            APPSPAWN_LOGE("Invalid bundle name %{public}s", bundleInfo->bundleName);
-            return APPSPAWN_INVALID_MSG;
-        }
-    }
-    return 0;
-}
-
-static int CheckExtTlvInfo(const AppSpawnTlv *tlv, uint32_t remainLen)
-{
-    AppSpawnTlvEx *tlvEx = (AppSpawnTlvEx *)(tlv);
-    APPSPAWN_LOGV("Recv type [%{public}s %{public}u] real len: %{public}u",
-        tlvEx->tlvName, tlvEx->tlvLen, tlvEx->dataLen);
-    if (tlvEx->dataLen > tlvEx->tlvLen - sizeof(AppSpawnTlvEx)) {
-        APPSPAWN_LOGE("Invalid tlv [%{public}s %{public}u] real len: %{public}u %{public}u",
-            tlvEx->tlvName, tlvEx->tlvLen, tlvEx->dataLen, sizeof(AppSpawnTlvEx));
-        return APPSPAWN_INVALID_MSG;
-    }
-    return 0;
-}
-
-static int CheckMsgTlv(const AppSpawnTlv *tlv, uint32_t remainLen)
-{
-    uint32_t tlvLen = 0;
-    switch (tlv->tlvType) {
-        case TLV_MSG_FLAGS:
-            tlvLen = ((AppSpawnMsgFlags *)(tlv + 1))->count * sizeof(uint32_t);
-            break;
-        case TLV_ACCESS_TOKEN_INFO:
-            tlvLen = sizeof(AppSpawnMsgAccessToken);
-            break;
-        case TLV_DAC_INFO:
-            tlvLen = sizeof(AppSpawnMsgDacInfo);
-            break;
-        case TLV_BUNDLE_INFO:
-            APPSPAWN_CHECK((tlv->tlvLen - sizeof(AppSpawnTlv)) <= (sizeof(AppSpawnMsgBundleInfo) + APP_LEN_BUNDLE_NAME),
-                return APPSPAWN_INVALID_MSG, "Invalid property tlv %{public}d %{public}d ", tlv->tlvType, tlv->tlvLen);
-            break;
-        case TLV_OWNER_INFO:
-            APPSPAWN_CHECK((tlv->tlvLen - sizeof(AppSpawnTlv)) <= APP_OWNER_ID_LEN,
-                return APPSPAWN_INVALID_MSG, "Invalid property tlv %{public}d %{public}d ", tlv->tlvType, tlv->tlvLen);
-            break;
-        case TLV_DOMAIN_INFO:
-            APPSPAWN_CHECK((tlv->tlvLen - sizeof(AppSpawnTlv)) <= (APP_APL_MAX_LEN + sizeof(AppSpawnMsgDomainInfo)),
-                return APPSPAWN_INVALID_MSG, "Invalid property tlv %{public}d %{public}d ", tlv->tlvType, tlv->tlvLen);
-            break;
-        case TLV_MAX:
-            return CheckExtTlvInfo(tlv, remainLen);
-        default:
-            break;
-    }
-    APPSPAWN_CHECK(tlvLen <= tlv->tlvLen,
-        return APPSPAWN_INVALID_MSG, "Invalid property tlv %{public}d %{public}d ", tlv->tlvType, tlv->tlvLen);
-    return 0;
-}
-
-APPSPAWN_STATIC int DecodeRecvMsg(AppSpawnMsgReceiverCtx *receiver)
-{
-    int ret = 0;
-    uint32_t tlvCount = 0;
-    uint32_t bufferLen = receiver->msgHeader.msgLen - sizeof(AppSpawnMsg);
-    uint32_t currLen = 0;
-    while (currLen < bufferLen) {
-        AppSpawnTlv *tlv = (AppSpawnTlv *)(receiver->buffer + currLen);
-        APPSPAWN_CHECK(tlv->tlvLen <= (bufferLen - currLen), break,
-            "Invalid tlv [%{public}d %{public}d] curr: %{public}u",
-            tlv->tlvType, tlv->tlvLen, currLen + sizeof(AppSpawnMsg));
-        APPSPAWN_LOGV("DecodeRecvMsg tlv %{public}u %{public}u start: %{public}u ",
-            tlv->tlvType, tlv->tlvLen, currLen + sizeof(AppSpawnMsg)); // show in msg offset
-        ret = CheckMsgTlv(tlv, bufferLen - currLen);
-        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
-        if (tlv->tlvType < TLV_MAX) {  // normal
-            receiver->tlvOffset[tlv->tlvType] = currLen;
-            currLen += tlv->tlvLen;
-        } else {
-            APPSPAWN_CHECK((tlvCount + 1) < receiver->msgHeader.tlvCount, break,
-                "Invalid tlv number tlv %{public}d tlvCount: %{public}d", tlv->tlvType, tlvCount);
-            receiver->tlvOffset[TLV_MAX + tlvCount] = currLen;
-            tlvCount++;
-            currLen += tlv->tlvLen;
-        }
-    }
-    APPSPAWN_CHECK_ONLY_EXPER(currLen >= bufferLen, return APPSPAWN_INVALID_MSG);
-    // save real ext tlv count
-    receiver->tlvCount = tlvCount;
-    return 0;
-}
-
-static int CreateAndWatchPipe(AppSpawningCtx *property)
+static int InitForkContext(AppSpawningCtx *property)
 {
     if (pipe(property->forkCtx.fd) == -1) {
         APPSPAWN_LOGE("create pipe fail, errno: %{public}d", errno);
@@ -484,6 +316,13 @@ static int CreateAndWatchPipe(AppSpawningCtx *property)
         (void)fcntl(property->forkCtx.fd[0], F_SETFD, option | O_NONBLOCK);
     }
 
+    if (property->client.flags & APP_COLD_START) { // for cold run, use shared memory to exchange message
+        const uint32_t memSize = (property->message->msgHeader.msgLen % 1024 + 1) * 1024; // 1024
+        property->forkCtx.shmId = shmget(IPC_PRIVATE, memSize, 0600); // 0600 mask
+        APPSPAWN_CHECK(property->forkCtx.shmId >= 0, return APPSPAWN_SYSTEM_ERROR,
+            "Failed to get shm for %{public}s errno %{public}d", GetProcessName(property), errno);
+        property->forkCtx.memSize = memSize;
+    }
     LE_WatchInfo watchInfo = {};
     watchInfo.fd = property->forkCtx.fd[0];
     watchInfo.flags = WATCHER_ONCE;
@@ -497,53 +336,43 @@ static int CreateAndWatchPipe(AppSpawningCtx *property)
     return status == LE_SUCCESS ? 0 : APPSPAWN_SYSTEM_ERROR;
 }
 
-static void ProcessSpawnReqMsg(AppSpawnConnection *connection, AppSpawnMsgReceiverCtx *receiver)
+static void ProcessSpawnReqMsg(AppSpawnConnection *connection, AppSpawnMsgNode *message)
 {
-    AppSpawningCtx *property = CreateAppSpawningCtx(&g_appSpawnMgr->processMgr);
-    APPSPAWN_CHECK_ONLY_EXPER(property != NULL, return);
-    property->connection = connection;  // 由property管理消息
-    property->receiver = receiver;
-    int ret = DecodeRecvMsg(receiver);
-    if (ret == 0) {
-        ret = CheckMsgReceiver(property, receiver);
-    }
+    int ret = CheckAppSpawnMsg(message);
     if (ret != 0) {
-        SendResponse(connection, &receiver->msgHeader, ret, 0);
-        DeleteAppSpawningCtx(property);
+        SendResponse(connection, &message->msgHeader, ret, 0);
         return;
     }
 
-    if (CreateAndWatchPipe(property) != 0) {
-        SendResponse(connection, &receiver->msgHeader, APPSPAWN_SYSTEM_ERROR, 0);
-        DeleteAppSpawningCtx(property);
+    AppSpawningCtx *property = CreateAppSpawningCtx(&g_appSpawnMgr->processMgr);
+    if (property == NULL) {
+        SendResponse(connection, &message->msgHeader, APPSPAWN_SYSTEM_ERROR, 0);
         return;
     }
+
     property->state = APP_STATE_SPAWNING;
-
+    property->message = message;
+    message->connection = connection;
     // mount el2 dir
     // getWrapBundleNameValue
     AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, &g_appSpawnMgr->content, &property->client);
     if (IsDeveloperModeOn(property)) {
         DumpNormalProperty(property);
     }
-    ret = AppSpawnProcessMsg(&g_appSpawnMgr->content, &property->client, &property->pid);
-    if (ret != 0) {  // wait child process result
-        SendResponse(connection, &receiver->msgHeader, ret, 0);
+
+    if (InitForkContext(property) != 0) {
+        SendResponse(connection, &message->msgHeader, APPSPAWN_SYSTEM_ERROR, 0);
         DeleteAppSpawningCtx(property);
         return;
     }
-}
 
-static pid_t GetPidFromTerminationMsg(AppSpawnMsgReceiverCtx *receiver)
-{
-    int ret = DecodeRecvMsg(receiver);
-    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return -1);
-    if (receiver->tlvOffset[TLV_RENDER_TERMINATION_INFO] > 0) {
-        AppSpawnResult *pid = (AppSpawnResult *)(
-            receiver->buffer + receiver->tlvOffset[TLV_RENDER_TERMINATION_INFO] + sizeof(AppSpawnTlv));
-        return pid->pid;
+    clock_gettime(CLOCK_MONOTONIC, &property->spawnStart);
+    ret = AppSpawnProcessMsg(&g_appSpawnMgr->content, &property->client, &property->pid);
+    if (ret != 0) {  // wait child process result
+        SendResponse(connection, &message->msgHeader, ret, 0);
+        DeleteAppSpawningCtx(property);
+        return;
     }
-    return -1;
 }
 
 static void WaitChildDied(pid_t pid)
@@ -552,7 +381,7 @@ static void WaitChildDied(pid_t pid)
     if (property != NULL && property->state == APP_STATE_SPAWNING) {
         APPSPAWN_LOGI("Child process %{public}s fail \'child crash \'pid %{public}d appId: %{public}d",
             GetProcessName(property), property->pid, property->client.id);
-        SendResponse(property->connection, &property->receiver->msgHeader, APPSPAWN_CHILD_CRASH, 0);
+        SendResponse(property->message->connection, &property->message->msgHeader, APPSPAWN_CHILD_CRASH, 0);
         DeleteAppSpawningCtx(property);
     }
 }
@@ -563,9 +392,9 @@ static void WaitChildTimeout(const TimerHandle taskHandle, void *context)
     APPSPAWN_LOGI("Child process %{public}s fail \'wait child timeout \'pid %{public}d appId: %{public}d",
         GetProcessName(property), property->pid, property->client.id);
     if (property->pid > 0) {
-        kill(property->pid, SIGKILL);
+        kill(property->pid, SIGABRT);
     }
-    SendResponse(property->connection, &property->receiver->msgHeader, APPSPAWN_CLIENT_TIMEOUT, 0);
+    SendResponse(property->message->connection, &property->message->msgHeader, APPSPAWN_SPAWN_TIMEOUT, 0);
     DeleteAppSpawningCtx(property);
 }
 
@@ -579,18 +408,23 @@ static void ProcessChildResponse(const WatcherHandle taskHandle, int fd, uint32_
     (void)read(fd, &result, sizeof(result));
     APPSPAWN_LOGI("Child process %{public}s success pid %{public}d appId: %{public}d result: %{public}d",
         GetProcessName(property), property->pid, property->client.id, result);
+    APPSPAWN_CHECK(property->message != NULL, return, "Invalid message in ctx %{public}d", property->client.id);
 
-    if (result == 0) {
-        AppSpawnedProcess *appInfo = AddSpawnedProcess(
-            &g_appSpawnMgr->processMgr, property->pid, GetBundleName(property));
-        if (appInfo) {
-            AppSpawnMsgDacInfo *dacInfo = GetAppProperty(property, TLV_DAC_INFO);
-            appInfo->uid = dacInfo != NULL ? dacInfo->uid : 0;
-            // 添加max信息
-        }
-        AppChangeHookExecute(HOOK_APP_ADD, &g_appSpawnMgr->content, appInfo);
+    if (result != 0) {
+        SendResponse(property->message->connection, &property->message->msgHeader, result, property->pid);
+        DeleteAppSpawningCtx(property);
+        return;
     }
-    SendResponse(property->connection, &property->receiver->msgHeader, result, property->pid);
+    // success
+    AppSpawnedProcess *appInfo = AddSpawnedProcess(&g_appSpawnMgr->processMgr, property->pid, GetBundleName(property));
+    if (appInfo) {
+        AppSpawnMsgDacInfo *dacInfo = GetAppProperty(property, TLV_DAC_INFO);
+        appInfo->uid = dacInfo != NULL ? dacInfo->uid : 0;
+        clock_gettime(CLOCK_MONOTONIC, &appInfo->spawnEnd);
+        // 添加max信息
+    }
+    AppChangeHookExecute(HOOK_APP_ADD, &g_appSpawnMgr->content, appInfo);
+    SendResponse(property->message->connection, &property->message->msgHeader, result, property->pid);
     DeleteAppSpawningCtx(property);
 }
 
@@ -602,7 +436,7 @@ static void NotifyResToParent(AppSpawnContent *content, AppSpawnClient *client, 
         (void)write(fd, &result, sizeof(result));
         (void)close(fd);
     }
-    APPSPAWN_LOGV("NotifyResToParent client id: %{public}u fd %{public}d result: %{public}d", client->id, fd, result);
+    APPSPAWN_LOGV("NotifyResToParent client id: %{public}u result: 0x%{public}x", client->id, result);
 }
 
 static int CreateAppSpawnServer(TaskHandle *server, const char *socketName)
@@ -641,6 +475,7 @@ void AppSpawnDestroyContent(AppSpawnContent *content)
     OH_ListRemoveAll(&appSpawnContent->extData, DataExDestroyProc);
     if (appSpawnContent->server != NULL) {
         LE_CloseStreamTask(LE_GetDefaultLoop(), appSpawnContent->server);
+        appSpawnContent->server = NULL;
     }
     LE_StopLoop(LE_GetDefaultLoop());
     LE_CloseLoop(LE_GetDefaultLoop());
@@ -653,115 +488,82 @@ static int AppSpawnColdStartApp(struct tagAppSpawnContent *content, AppSpawnClie
     AppSpawningCtx *property = (AppSpawningCtx *)client;
     APPSPAWN_LOGI("ColdStartApp::processName: %{public}s", GetProcessName(property));
 
-    char buffer[64] = {0};  // 64 buffer for fd
-    int len = sprintf_s(buffer, sizeof(buffer), " %d %u  ", property->forkCtx.fd[1], property->client.flags);
-    APPSPAWN_CHECK(len > 0, return APPSPAWN_SYSTEM_ERROR, "Invalid to format fd");
-    char *appSpawnPath = "/system/bin/appspawn";
-    if ((client->flags & APP_ASAN_DETECTOR) == APP_ASAN_DETECTOR) {  // asan detector
-        appSpawnPath = "/system/asan/bin/appspawn";
-    }
-
-    char *param = Base64Encode(property->receiver->buffer, property->receiver->msgRecvLen - sizeof(AppSpawnMsg));
-    APPSPAWN_CHECK(param != NULL, return APPSPAWN_SYSTEM_ERROR, "Failed to encode msg");
-    char *msgHeader = Base64Encode((uint8_t *)&property->receiver->msgHeader, sizeof(AppSpawnMsg));
-    APPSPAWN_CHECK(msgHeader != NULL, free(param);
-        return APPSPAWN_SYSTEM_ERROR, "Failed to encode msg");
+    char buffer[3][32] = {0};  // 3 32 buffer for fd
     char *mode = IsNWebSpawnMode((AppSpawnMgr *)content) ? "nweb_cold" : "app_cold";
-    const char *const formatCmds[] = {appSpawnPath, "-mode", mode, "-param", param, "-fd", buffer, msgHeader, NULL};
-    int ret = execv(appSpawnPath, (char **)formatCmds);
+    int len = sprintf_s(buffer[0], sizeof(buffer[0]), " %d ", property->forkCtx.fd[1]);
+    APPSPAWN_CHECK(len > 0, return APPSPAWN_SYSTEM_ERROR, "Invalid to format fd");
+    len = sprintf_s(buffer[1], sizeof(buffer[1]), " %u ", property->client.flags);
+    APPSPAWN_CHECK(len > 0, return APPSPAWN_SYSTEM_ERROR, "Invalid to format flags");
+    len = sprintf_s(buffer[2], sizeof(buffer[2]), " %d ", property->forkCtx.shmId);
+    APPSPAWN_CHECK(len > 0, return APPSPAWN_SYSTEM_ERROR, "Invalid to format shmId ");
+    int ret = SendAppSpawnMsgToChild(&property->forkCtx, property->message);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
+    const char *const formatCmds[] = {
+        property->forkCtx.coldRunPath, "-mode", mode, "-param", "null", "-fd", buffer[0], buffer[1], buffer[2], NULL
+    };
+
+    ret = execv(property->forkCtx.coldRunPath, (char **)formatCmds);
     if (ret) {
-        APPSPAWN_LOGE("Failed to execv, errno = %{public}d", errno);
+        APPSPAWN_LOGE("Failed to execv, errno: %{public}d", errno);
     }
-    free(param);
-    free(msgHeader);
     APPSPAWN_LOGV("ColdStartApp::processName: %{public}s end", GetProcessName(property));
     return 0;
 }
 
-static AppSpawnMsgReceiverCtx *GetAppSpawnMsgReceiverFromArg(AppSpawnMgr *content, int argc, char *const argv[])
-{
-    AppSpawnMsgReceiverCtx *receiver = CreateAppSpawnMsgReceiver();
-    APPSPAWN_CHECK(receiver != NULL, return NULL, "Failed to create receiver");
-
-    uint8_t *msgHeader = NULL;
-    int ret = -1;
-    do {
-        // decode msg header
-        uint32_t msgLen = 0;
-        msgHeader = Base64Decode(argv[MSG_HEADER_INDEX], strlen(argv[MSG_HEADER_INDEX]), &msgLen);
-        APPSPAWN_CHECK(msgHeader != NULL && msgLen == sizeof(AppSpawnMsg), break, "Failed to decode msg header ");
-        ret = memcpy_s(&receiver->msgHeader, sizeof(receiver->msgHeader), msgHeader, msgLen);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to copy msg header");
-
-        // decode msg
-        ret = -1;
-        receiver->buffer = Base64Decode(argv[PARAM_VALUE_INDEX], strlen(argv[PARAM_VALUE_INDEX]), &msgLen);
-        APPSPAWN_CHECK(receiver->buffer != NULL, break, "Failed to decode msg ");
-        APPSPAWN_CHECK(receiver->msgHeader.msgLen == msgLen + sizeof(AppSpawnMsg),
-            break, "Msg length invalid %{public}u %{public}u", receiver->msgHeader.msgLen, msgLen);
-        receiver->msgRecvLen = receiver->msgHeader.msgLen;
-        ret = CheckRecvMsg(&receiver->msgHeader);
-        APPSPAWN_CHECK(ret == 0, break, "Invalid msg");
-
-        uint32_t totalCount = receiver->msgHeader.tlvCount + TLV_MAX;
-        receiver->tlvOffset = malloc(totalCount * sizeof(uint32_t));
-        APPSPAWN_CHECK(receiver->tlvOffset != NULL, break, "Failed to alloc memory for recv message");
-        for (uint32_t i = 0; i < totalCount; i++) {
-            receiver->tlvOffset[i] = INVALID_OFFSET;
-        }
-    } while (0);
-    if (msgHeader) {
-        free(msgHeader);
-    }
-    if (ret != 0) {
-        DeleteAppSpawnMsgReceiver(receiver);
-        receiver = NULL;
-    }
-    return receiver;
-}
-
 static void AppSpawnColdRun(AppSpawnContent *content, int argc, char *const argv[])
 {
-    APPSPAWN_CHECK(argc > MSG_HEADER_INDEX, return, "Invalid arg for cold start %{public}d", argc);
+    APPSPAWN_CHECK(argc > SHM_ID_INDEX, return, "Invalid arg for cold start %{public}d", argc);
     AppSpawnMgr *appSpawnContent = (AppSpawnMgr *)content;
     APPSPAWN_CHECK(appSpawnContent != NULL, return, "Invalid appspawn content");
 
-    AppSpawnMsgReceiverCtx *receiver = GetAppSpawnMsgReceiverFromArg(appSpawnContent, argc, argv);
-    APPSPAWN_CHECK_ONLY_EXPER(receiver != NULL, return);
     AppSpawningCtx *property = CreateAppSpawningCtx(&g_appSpawnMgr->processMgr);
-    if (property == NULL) {
-        DeleteAppSpawnMsgReceiver(receiver);
-        return;
-    }
+    APPSPAWN_CHECK(property != NULL, return, "Create app spawning ctx fail");
     property->forkCtx.fd[1] = atoi(argv[FD_VALUE_INDEX]);
+    property->forkCtx.shmId = atoi(argv[SHM_ID_INDEX]);
     property->client.flags = atoi(argv[FLAGS_VALUE_INDEX]);
     property->client.flags &= ~APP_COLD_START;
-    property->receiver = receiver;
-    int ret = DecodeRecvMsg(receiver);
-    if (ret == 0) {
-        ret = CheckMsgReceiver(property, receiver);
-    }
+
+    AppSpawnMsgNode *message = NULL;
+    int ret = APPSPAWN_SYSTEM_ERROR;
+    do {
+        uint8_t *buffer = (uint8_t *)shmat(property->forkCtx.shmId, NULL, 0);
+        APPSPAWN_CHECK(buffer != (uint8_t *)(-1), break, "Failed to attach shm errno %{public}d", errno);
+
+        uint32_t msgRecvLen = 0;
+        uint32_t remainLen = 0;
+        ret = GetAppSpawnMsgFromBuffer(buffer, ((AppSpawnMsg *)buffer)->msgLen, &message, &msgRecvLen, &remainLen);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        ret = DecodeAppSpawnMsg(message);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        ret = CheckAppSpawnMsg(message);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        property->message = message;
+        message = NULL;
+        if (IsDeveloperModeOn(property)) {
+            DumpNormalProperty(property);
+        }
+        ret = AppSpawnHookExecute(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_STOP_WHEN_ERROR, content, &property->client);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        NotifyResToParent(content, &property->client, 0);
+
+        (void)AppSpawnHookExecute(HOOK_SPAWN_COMPLETED, 0, content, &property->client);
+    } while (0);
     if (ret != 0) {
-        APPSPAWN_LOGE("decode message fail, result = %{public}d", ret);
         NotifyResToParent(content, &property->client, ret);
         DeleteAppSpawningCtx(property);
+        DeleteAppSpawnMsg(message);
         return;
     }
-
-    ret = AppSpawnHookExecute(HOOK_SPAWN_SECOND, HOOK_STOP_WHEN_ERROR, content, &property->client);
-    if (ret != 0) {
-        NotifyResToParent(content, &property->client, ret);
-        DeleteAppSpawningCtx(property);
-        return;
-    }
-    NotifyResToParent(content, &property->client, 0);
-
-    AppSpawnHookExecute(HOOK_SPAWN_POST, 0, content, &property->client);
+    ret = -1;
     if (content->runChildProcessor != NULL) {
-        content->runChildProcessor(content, &property->client);
+        ret = content->runChildProcessor(content, &property->client);
+    }
+    if (ret != 0) { // clear env
+        AppSpawnEnvClear(content, &property->client);
     }
     APPSPAWN_LOGI("AppSpawnColdRun exit %{public}d.", getpid());
-    DeleteAppSpawningCtx(property);
 }
 
 static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
@@ -778,6 +580,7 @@ static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
 
     LE_RunLoop(LE_GetDefaultLoop());
     APPSPAWN_LOGI("AppSpawnRun exit mode: %{public}d ", content->mode);
+    AppSpawnDestroyContent(content);
 }
 
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t nameLen, int mode)
@@ -867,18 +670,21 @@ AppSpawnContent *StartSpawnService(uint32_t argvSize, int argc, char *const argv
     return content;
 }
 
-static void ProcessRecvMsg(AppSpawnConnection *connection, AppSpawnMsgReceiverCtx *receiver)
+static void ProcessRecvMsg(AppSpawnConnection *connection, AppSpawnMsgNode *message)
 {
-    AppSpawnMsg *msg = &receiver->msgHeader;
-    APPSPAWN_LOGV("Recv message header magic 0x%{public}x type %{public}u id %{public}u len %{public}u %{public}s",
+    AppSpawnMsg *msg = &message->msgHeader;
+    APPSPAWN_LOGI("Recv message header magic 0x%{public}x type %{public}u id %{public}u len %{public}u %{public}s",
         msg->magic, msg->msgType, msg->msgId, msg->msgLen, msg->processName);
+    APPSPAWN_CHECK_ONLY_LOG(connection->receiverCtx.nextMsgId == msg->msgId,
+        "Invalid msg id %{public}u %{public}u", connection->receiverCtx.nextMsgId, msg->msgId);
+    connection->receiverCtx.nextMsgId++;
+
     switch (msg->msgType) {
         case MSG_GET_RENDER_TERMINATION_STATUS: {  // get status
-            pid_t pid = 0;
-            int ret = 0;
+            pid_t pid = GetPidFromTerminationMsg(message);
+            int ret = APPSPAWN_MSG_INVALID;
             if (IsNWebSpawnMode(g_appSpawnMgr)) {
                 // get render process termination status, only nwebspawn need this logic.
-                pid = GetPidFromTerminationMsg(receiver);
                 ret = GetProcessTerminationStatus(&g_appSpawnMgr->processMgr, pid);
             }
             SendResponse(connection, msg, ret, pid);
@@ -886,8 +692,8 @@ static void ProcessRecvMsg(AppSpawnConnection *connection, AppSpawnMsgReceiverCt
         }
         case MSG_SPAWN_NATIVE_PROCESS:  // spawn msg
         case MSG_APP_SPAWN: {
-            ProcessSpawnReqMsg(connection, receiver);
-            receiver = NULL;
+            ProcessSpawnReqMsg(connection, message);
+            message = NULL;
             break;
         }
         case MSG_DUMP:
@@ -895,9 +701,8 @@ static void ProcessRecvMsg(AppSpawnConnection *connection, AppSpawnMsgReceiverCt
             SendResponse(connection, msg, 0, 0);
             break;
         default:
-            SendResponse(connection, msg, APPSPAWN_INVALID_MSG, 0);
+            SendResponse(connection, msg, APPSPAWN_MSG_INVALID, 0);
             break;
     }
-    DeleteAppSpawnMsgReceiver(receiver);
-    connection->receiver = NULL;
+    DeleteAppSpawnMsg(message);
 }

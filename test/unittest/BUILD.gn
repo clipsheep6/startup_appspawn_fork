@@ -44,7 +44,7 @@ if (!defined(ohos_lite)) {
       "setresuid=SetresuidStub",
       "setuid=SetuidStub",
       "setgid=SetgidStub",
-      "execvp=ExecvpStub"
+      "execvp=ExecvpStub",
     ]
     include_dirs = [
       "${appspawn_path}",
@@ -85,11 +85,12 @@ if (!defined(ohos_lite)) {
       "${appspawn_path}/common/appspawn_server.c",
       "${appspawn_path}/modules/modulemgr/appspawn_modulemgr.c",
       "${appspawn_path}/standard/appspawn_appmgr.c",
+      "${appspawn_path}/standard/appspawn_msgmgr.c",
       "${appspawn_path}/standard/appspawn_service.c",
       "${appspawn_path}/standard/nwebspawn_launcher.c",
       "${appspawn_path}/util/src/appspawn_base64.c",
       "${appspawn_path}/util/src/appspawn_utils.c",
-      "${appspawn_path}/util/src/sandbox_utils.cpp",
+      "${appspawn_path}/util/src/json_utils.cpp",
     ]
 
     # modules sources

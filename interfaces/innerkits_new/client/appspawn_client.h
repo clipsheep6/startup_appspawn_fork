@@ -32,22 +32,11 @@ extern "C" {
 #define TIMEOUT_DEF 2
 #endif
 
-#define ARRAY_LENGTH(array) (uint32_t)(sizeof(array) / sizeof((array)[0]))
-#define SELECT_TIMEOUT (500 * 1000)
-#define MAX_RETRY_COUNT_MSG_SEND 10
-#define GID_FILE_ACCESS 1006  // only used for ExternalFileManager.hap
+// only used for ExternalFileManager.hap
+#define GID_FILE_ACCESS 1006
 #define GID_USER_DATA_RW 1008
-#define MAX_DATA_IN_TLV 2
-#define TEST_REQ_NODE_STATE(reqNode, s) ((uint32_t)atomic_load(&(reqNode)->state) == (s))
 
-#define APPSPAWN_SOCKET_RETRY 100               // 100ms
-#define APPSPAWN_SOCKET_CLOSE (60 * 10 * 1000)  // 10m
-#define CLIENT_SEND_KEEP (60 * 10)              // 60 * 10s
-#ifndef APPSPAWN_TEST
-#define KEEK_LIVE_TIMEOUT 2
-#else
-#define KEEK_LIVE_TIMEOUT 1
-#endif
+#define MAX_DATA_IN_TLV 2
 
 struct tagAppSpawnReqMsgNode;
 typedef enum {
@@ -55,15 +44,6 @@ typedef enum {
     CLIENT_FOR_NWEBSPAWN,
     CLIENT_NAX
 } AppSpawnClientType;
-
-typedef enum {
-    MSG_STATE_IDLE,
-    MSG_STATE_COLLECTION,
-    MSG_STATE_SEND,
-    MSG_STATE_WAITING,
-    MSG_STATE_FINISH,
-    MSG_STATE_TIMEOUT
-} AppSpawnMsgState;
 
 typedef struct {
     struct ListNode node;
@@ -75,16 +55,15 @@ typedef struct {
 typedef struct tagAppSpawnReqMsgMgr {
     AppSpawnClientType type;
     uint32_t maxRetryCount;
-    uint32_t msgId;
+    uint32_t msgNextId;
     int socketId;
     pthread_mutex_t mutex;
-    AppSpawnMsgBlock recvBlock;
+    AppSpawnMsgBlock recvBlock; // 消息接收缓存
 } AppSpawnReqMsgMgr;
 
 typedef struct tagAppSpawnReqMsgNode {
     struct ListNode node;
     uint32_t reqId;
-    uint32_t state;
     uint32_t retryCount;
     AppSpawnMsgFlags *msgFlags;
     AppSpawnMsgFlags *permissionFlags;
@@ -92,7 +71,6 @@ typedef struct tagAppSpawnReqMsgNode {
     struct ListNode msgBlocks;  // 保存实际的消息数据
 } AppSpawnReqMsgNode;
 
-#define DATA_TYPE_STRING 1
 typedef struct {
     uint8_t *data;
     uint16_t dataLen;

@@ -110,7 +110,7 @@ static int AppendPermissionGid(const AppSpawnSandbox *sandbox, AppSpawningCtx *p
 {
     // 根据permission列表，获取gid，加入到gidTable
     AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
-    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_NO_TLV,
+    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_TLV_NONE,
         "No tlv %{public}d in msg %{public}s", TLV_DAC_INFO, GetProcessName(property));
 
     ListNode *node = sandbox->permissionNodeQueue.front.next;
@@ -153,7 +153,7 @@ static int32_t DoDlpAppMountStrategy(const SandboxContext *context, const MountA
         "open /dev/fuse failed, errno: %{public}d sandbox path %{public}s", errno, args->destinationPath);
 
     AppSpawnMsgDacInfo *info = (AppSpawnMsgDacInfo *)GetAppProperty(context->property, TLV_DAC_INFO);
-    APPSPAWN_CHECK(info != NULL, close(fd); return -APPSPAWN_NO_TLV,
+    APPSPAWN_CHECK(info != NULL, close(fd); return -APPSPAWN_TLV_NONE,
         "No tlv %{public}d in msg %{public}s", TLV_DAC_INFO, GetProcessName(context->property));
 
     char options[FUSE_OPTIONS_MAX_LEN];
@@ -249,7 +249,7 @@ static int DoSandboxMountNode(const SandboxContext *context,
     args.destinationPath = GetSandboxRealVar(
         context, 1, sandboxNode->target, context->realRootPath, context->permissionCfg);
     APPSPAWN_CHECK(args.originPath != NULL && args.destinationPath != NULL,
-        return APPSPAWN_INVALID_ARG, "Invalid path %{public}s %{public}s", args.originPath, args.destinationPath);
+        return APPSPAWN_ARG_INVALID, "Invalid path %{public}s %{public}s", args.originPath, args.destinationPath);
 
     /* dlp application mount strategy */
     /* dlp is an example, we should change to real bundle name later */
@@ -572,7 +572,7 @@ static int SetDefaultSandboxContext(
     const AppSpawningCtx *property, const AppSpawnSandbox *sandbox, SandboxContext *context)
 {
     AppSpawnMsgFlags *msgFlags = (AppSpawnMsgFlags *)GetAppProperty(property, TLV_MSG_FLAGS);
-    APPSPAWN_CHECK(msgFlags != NULL, return APPSPAWN_NO_TLV,
+    APPSPAWN_CHECK(msgFlags != NULL, return APPSPAWN_TLV_NONE,
         "No msg flags in msg %{public}s", GetProcessName(property));
 
     context->bundleName = GetBundleName(property);

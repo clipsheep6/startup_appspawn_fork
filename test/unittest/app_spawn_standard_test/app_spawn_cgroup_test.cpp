@@ -27,8 +27,8 @@
 #include "appspawn_modulemgr.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
+#include "json_utils.h"
 #include "parameter.h"
-#include "sandbox_utils.h"
 #include "securec.h"
 
 #include "app_spawn_stub.h"
@@ -51,7 +51,8 @@ public:
 
 static AppSpawnedProcess *CreateTestAppInfo(const char *name)
 {
-    AppSpawnedProcess *appInfo = reinterpret_cast<AppSpawnedProcess *>(malloc(sizeof(AppSpawnedProcess) + strlen(name) + 1));
+    AppSpawnedProcess *appInfo = reinterpret_cast<AppSpawnedProcess *>(
+        malloc(sizeof(AppSpawnedProcess) + strlen(name) + 1));
     APPSPAWN_CHECK(appInfo != nullptr, return nullptr, "Failed to create appInfo");
     appInfo->pid = 33;                 // 33
     appInfo->uid = 200000 * 200 + 21;  // 200000 200 21

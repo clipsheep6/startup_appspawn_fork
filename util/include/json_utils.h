@@ -21,9 +21,9 @@
 
 namespace OHOS {
 namespace AppSpawn {
-class SandboxUtils {
+class JsonUtils {
 public:
-    static std::vector<std::string> split(std::string &str, const std::string &pattern);
+    static std::vector<std::string> split(const std::string &str, const std::string &pattern);
     static int GetSandboxConfigs(std::vector<nlohmann::json> &jsonConfigs);
     static bool GetJsonObjFromJson(nlohmann::json &jsonObj, const std::string &jsonPath);
     static std::string GetStringFromJson(const nlohmann::json &json, const std::string &key);

@@ -31,21 +31,7 @@ typedef void *AppSpawnClientHandle;
 #define INVALID_REQ_HANDLE NULL
 #define NWEBSPAWN_SERVER_NAME "nwebspawn"
 #define APPSPAWN_SERVER_NAME "appspawn"
-
-#define APP_LEN_PROC_NAME 256    // process name length
-#define APP_LEN_BUNDLE_NAME 256  // bundle name length
-#define APP_LEN_SO_PATH 256      // load so lib
-#define APP_MAX_GIDS 64
-#define APP_APL_MAX_LEN 32
-#define APP_RENDER_CMD_MAX_LEN 1024
-#define APP_OWNER_ID_LEN 64
-#define APP_USER_NAME 64
-
-#define MSG_EXT_NAME_RENDER_CMD "render-cmd"
-#define MSG_EXT_NAME_HSP_LIST "HspList"
-#define MSG_EXT_NAME_OVERLAY "Overlay"
-#define MSG_EXT_NAME_DATA_GROUP "DataGroup"
-#define MSG_EXT_NAME_APP_ENV "AppEnv"
+#define MAX_RETRY_SEND_COUNT 3 // 3 max retry count
 
 /*
 flags bit definition
@@ -72,16 +58,9 @@ typedef enum {
 #endif
 } AppFlagsIndex;
 
-typedef enum {
-    MSG_APP_SPAWN = 0,
-    MSG_GET_RENDER_TERMINATION_STATUS,
-    MSG_SPAWN_NATIVE_PROCESS,
-    MSG_KEEPALIVE,
-    MSG_DUMP,
-    MAX_TYPE_INVALID
-} AppSpawnMsgType;
-
 #pragma pack(4)
+#define APP_MAX_GIDS 64
+#define APP_USER_NAME 64
 typedef struct {
     uint32_t uid;       // the UNIX uid that the child process setuid() to after fork()
     uint32_t gid;       // the UNIX gid that the child process setgid() to after fork()
@@ -122,15 +101,32 @@ int AppSpawnClientDestroy(AppSpawnClientHandle handle);
  */
 int AppSpawnClientSendMsg(AppSpawnClientHandle handle, AppSpawnReqMsgHandle reqHandle, AppSpawnResult *result);
 
+typedef enum {
+    MSG_APP_SPAWN = 0,
+    MSG_SPAWN_NATIVE_PROCESS,
+    MSG_GET_RENDER_TERMINATION_STATUS,
+    MSG_DUMP,
+    MAX_TYPE_INVALID
+} AppSpawnMsgType;
+
 /**
- * @brief create request
+ * @brief create spawn request
  *
- * @param msgType msg type AppSpawnMsgType
+ * @param msgType msg type MSG_APP_SPAWN,MSG_SPAWN_NATIVE_PROCESS
  * @param processName process name
  * @param reqHandle handle for request
  * @return int
  */
 int AppSpawnReqMsgCreate(uint32_t msgType, const char *processName, AppSpawnReqMsgHandle *reqHandle);
+
+/**
+ * @brief create request
+ *
+ * @param pid process pid
+ * @param reqHandle handle for request
+ * @return int
+ */
+int AppSpawnTerminateMsgCreate(pid_t pid, AppSpawnReqMsgHandle *reqHandle);
 
 /**
  * @brief destroy request
@@ -192,11 +188,10 @@ int AppSpawnReqMsgSetAppInternetPermissionInfo(AppSpawnReqMsgHandle reqHandle, u
  *
  * @param handle handle for client
  * @param reqHandle handle for request
- * @param accessTokenId access tokenId
  * @param accessTokenIdEx access tokenId
  * @return int
  */
-int AppSpawnReqMsgSetAppAccessToken(AppSpawnReqMsgHandle reqHandle, uint32_t accessTokenId, uint64_t accessTokenIdEx);
+int AppSpawnReqMsgSetAppAccessToken(AppSpawnReqMsgHandle reqHandle, uint64_t accessTokenIdEx);
 
 /**
  * @brief set owner info
@@ -215,16 +210,7 @@ int AppSpawnReqMsgSetAppOwnerId(AppSpawnReqMsgHandle reqHandle, const char *owne
  * @param permission permission name
  * @return int
  */
-int AppSpawnReqMsgSetPermission(AppSpawnReqMsgHandle reqHandle, const char *permission);
-
-/**
- * @brief create request
- *
- * @param pid process pid
- * @param reqHandle handle for request
- * @return int
- */
-int AppSpawnTerminateMsgCreate(pid_t pid, AppSpawnReqMsgHandle *reqHandle);
+int AppSpawnReqMsgAddPermission(AppSpawnReqMsgHandle reqHandle, const char *permission);
 
 /**
  * @brief add extend info
@@ -236,8 +222,17 @@ int AppSpawnTerminateMsgCreate(pid_t pid, AppSpawnReqMsgHandle *reqHandle);
  * @param valueLen extend value length
  * @return int
  */
+#define MSG_EXT_NAME_RENDER_CMD "render-cmd"
+#define MSG_EXT_NAME_HSP_LIST "HspList"
+#define MSG_EXT_NAME_OVERLAY "Overlay"
+#define MSG_EXT_NAME_DATA_GROUP "DataGroup"
+#define MSG_EXT_NAME_APP_ENV "AppEnv"
+
 int AppSpawnReqMsgAddExtInfo(AppSpawnReqMsgHandle reqHandle, const char *name, const uint8_t *value, uint32_t valueLen);
 int AppSpawnReqMsgAddStringInfo(AppSpawnReqMsgHandle reqHandle, const char *name, const char *value);
+
+
+
 
 int AppSpawnReqMsgSetFlags(AppSpawnReqMsgHandle reqHandle, uint32_t tlv, uint32_t flags);
 

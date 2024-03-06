@@ -16,6 +16,7 @@
 #ifndef APPSPAWN_SERVICE_H
 #define APPSPAWN_SERVICE_H
 
+#include <limits.h>
 #include <stdbool.h>
 #include <unistd.h>
 
@@ -37,7 +38,7 @@ extern "C" {
 #define FD_ID_INDEX 5
 #define FD_VALUE_INDEX 6
 #define FLAGS_VALUE_INDEX 7
-#define MSG_HEADER_INDEX 8
+#define SHM_ID_INDEX 8
 
 #define INVALID_OFFSET 0xffffffff
 
@@ -49,7 +50,7 @@ extern "C" {
 #define WAIT_CHILD_RESPONSE_TIMEOUT 500
 #else
 #define MAX_WAIT_MSG_COMPLETE (5 * 1000)  // 5s
-#define WAIT_CHILD_RESPONSE_TIMEOUT 5000
+#define WAIT_CHILD_RESPONSE_TIMEOUT 3000  //3s
 #endif
 
 #define APP_HASH_BUTT 32
@@ -60,36 +61,46 @@ extern "C" {
 
 typedef struct tagAppSpawnContent AppSpawnContent;
 typedef struct tagAppSpawnClient AppSpawnClient;
+typedef struct tagAppSpawnConnection AppSpawnConnection;
 
-typedef struct tagAppSpawnMsgReceiverCtx {
-    uint32_t msgRecvLen;    // 已经接收的长度
-    AppSpawnMsg msgHeader;  // 保存不完整的消息，额外保存消息头信息
-    TimerHandle timer;      // 测试消息完整
+typedef struct tagAppSpawnMsgNode {
+    AppSpawnConnection *connection;
+    AppSpawnMsg msgHeader;
     uint32_t tlvCount;
     uint32_t *tlvOffset;  // 记录属性的在msg中的偏移，不完全拷贝试消息完整
     uint8_t *buffer;
+} AppSpawnMsgNode;
+
+typedef struct tagAppSpawnMsgReceiverCtx {
+    uint32_t nextMsgId;              // 校验消息id
+    uint32_t msgRecvLen;             // 已经接收的长度
+    TimerHandle timer;               // 测试消息完整
+    AppSpawnMsgNode *incompleteMsg;  // 保存不完整的消息，额外保存消息头信息
 } AppSpawnMsgReceiverCtx;
 
 typedef struct tagAppSpawnConnection {
     uint32_t connectionId;
     TaskHandle stream;
-    AppSpawnMsgReceiverCtx *receiver;
+    AppSpawnMsgReceiverCtx receiverCtx;
 } AppSpawnConnection;
 
 typedef struct {
     int32_t fd[2];  // 2 fd count
     WatcherHandle watcherHandle;
     TimerHandle timer;
+    int shmId;
+    uint32_t memSize;
+    char coldRunPath[PATH_MAX];
 } AppSpawnForkCtx;
 
 typedef struct tagAppSpawningCtx {
     AppSpawnClient client;
     struct ListNode node;
     AppSpawnForkCtx forkCtx;
-    AppSpawnMsgReceiverCtx *receiver;
-    AppSpawnConnection *connection;
+    AppSpawnMsgNode *message;
     pid_t pid;
     int state;
+    struct timespec spawnStart;
 } AppSpawningCtx;
 
 typedef struct tagAppSpawnedProcess {
@@ -98,6 +109,8 @@ typedef struct tagAppSpawnedProcess {
     pid_t pid;
     uint32_t max;
     int exitStatus;
+    struct timespec spawnStart;
+    struct timespec spawnEnd;
     char name[0];
 } AppSpawnedProcess;
 
@@ -113,6 +126,8 @@ typedef struct tagAppSpawnMgr {
     TaskHandle server;
     SignalHandle sigHandler;
     AppSpawnedProcessMgr processMgr;
+    struct timespec perLoadStart;
+    struct timespec perLoadEnd;
     struct ListNode extData;
 } AppSpawnMgr;
 
@@ -123,11 +138,9 @@ AppSpawnedProcess *GetSpawnedProcess(AppSpawnedProcessMgr *mgr, pid_t pid);
 AppSpawnedProcess *GetSpawnedProcessByName(AppSpawnedProcessMgr *mgr, const char *name);
 void HandleProcessTerminate(AppSpawnedProcessMgr *mgr, AppSpawnedProcess *node, int nwebspawn);
 int GetProcessTerminationStatus(AppSpawnedProcessMgr *mgr, pid_t pid);
-void AppMgrHandleConnectClose(AppSpawnedProcessMgr *mgr, const AppSpawnConnection *connection);
 
 AppSpawningCtx *GetAppSpawningCtxByPid(AppSpawnedProcessMgr *mgr, pid_t pid);
 AppSpawningCtx *CreateAppSpawningCtx(AppSpawnedProcessMgr *mgr);
-void DeleteAppSpawnMsgReceiver(AppSpawnMsgReceiverCtx *receiver);
 void DeleteAppSpawningCtx(AppSpawningCtx *property);
 
 pid_t NWebSpawnLaunch(void);
@@ -138,6 +151,14 @@ void AppSpawnDestroyContent(AppSpawnContent *content);
 // dump
 void DumpApSpawn(const AppSpawnMgr *content);
 void DumpNormalProperty(const AppSpawningCtx *property);
+
+pid_t GetPidFromTerminationMsg(AppSpawnMsgNode *message);
+void DeleteAppSpawnMsg(AppSpawnMsgNode *msgNode);
+int CheckAppSpawnMsg(const AppSpawnMsgNode *message);
+int DecodeAppSpawnMsg(AppSpawnMsgNode *message);
+int GetAppSpawnMsgFromBuffer(const uint8_t *buffer, uint32_t bufferLen,
+    AppSpawnMsgNode **outMsg, uint32_t *msgRecvLen, uint32_t *reminder);
+int SendAppSpawnMsgToChild(AppSpawnForkCtx *forkCtx, AppSpawnMsgNode *message);
 
 // for stub
 bool may_init_gwp_asan(bool forceInit);

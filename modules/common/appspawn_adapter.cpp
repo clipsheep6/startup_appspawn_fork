@@ -42,10 +42,10 @@ int SetAppAccessToken(const AppSpawnMgr *content, const AppSpawningCtx *property
     int32_t ret = 0;
     uint64_t tokenId = 0;
     AppSpawnMsgAccessToken *tokenInfo = (AppSpawnMsgAccessToken *)GetAppProperty(property, TLV_ACCESS_TOKEN_INFO);
-    APPSPAWN_CHECK(tokenInfo != NULL, return APPSPAWN_INVALID_MSG,
+    APPSPAWN_CHECK(tokenInfo != NULL, return APPSPAWN_MSG_INVALID,
         "No access token in msg %{public}s", GetProcessName(property));
-    APPSPAWN_LOGV("AppSpawnServer::set access token %{public}" PRId64 ", accessTokenId  %{public}u %{public}d",
-        tokenInfo->accessTokenIdEx, tokenInfo->accessTokenId, IsNWebSpawnMode(content));
+    APPSPAWN_LOGV("AppSpawnServer::set access token %{public}" PRId64 " %{public}d",
+        tokenInfo->accessTokenIdEx, IsNWebSpawnMode(content));
 
     if (IsNWebSpawnMode(content)) {
         TokenIdKit tokenIdKit;
@@ -54,7 +54,7 @@ int SetAppAccessToken(const AppSpawnMgr *content, const AppSpawningCtx *property
         tokenId = tokenInfo->accessTokenIdEx;
     }
     ret = SetSelfTokenID(tokenId);
-    APPSPAWN_CHECK(ret == 0, return APPSPAWN_INVALID_ACCESS_TOKEN,
+    APPSPAWN_CHECK(ret == 0, return APPSPAWN_ACCESS_TOKEN_INVALID,
         "set access token id failed, ret: %{public}d %{public}s", ret, GetProcessName(property));
 
     APPSPAWN_LOGV("SetAppAccessToken success for %{public}s", GetProcessName(property));
@@ -68,7 +68,7 @@ int SetSelinuxCon(const AppSpawnMgr *content, const AppSpawningCtx *property)
     if (GetAppPropertyCode(property) == MSG_SPAWN_NATIVE_PROCESS) {
         if (!IsDeveloperModeOn(property)) {
             APPSPAWN_LOGE("Denied Launching a native process: not in developer mode");
-            return APPSPAWN_NOT_SUPPORT_NATIVE;
+            return APPSPAWN_NATIVE_NOT_SUPPORT;
         }
         return 0;
     }
@@ -77,7 +77,7 @@ int SetSelinuxCon(const AppSpawnMgr *content, const AppSpawningCtx *property)
         return 0;
     }
     AppSpawnMsgDomainInfo *msgDomainInfo = (AppSpawnMsgDomainInfo *)GetAppProperty(property, TLV_DOMAIN_INFO);
-    APPSPAWN_CHECK(msgDomainInfo != NULL, return APPSPAWN_NO_TLV,
+    APPSPAWN_CHECK(msgDomainInfo != NULL, return APPSPAWN_TLV_NONE,
         "No domain info in req form %{public}s", GetProcessName(property))
     HapContext hapContext;
     HapDomainInfo hapDomainInfo;
@@ -91,7 +91,7 @@ int SetSelinuxCon(const AppSpawnMgr *content, const AppSpawningCtx *property)
     if (TestAppMsgFlagsSet(property, APP_FLAGS_ASANENABLED)) {
         ret = 0;
     }
-    APPSPAWN_CHECK(ret == 0, return APPSPAWN_INVALID_ACCESS_TOKEN,
+    APPSPAWN_CHECK(ret == 0, return APPSPAWN_ACCESS_TOKEN_INVALID,
         "Set domain context failed, ret: %{public}d %{public}s", ret, GetProcessName(property));
     APPSPAWN_LOGV("SetSelinuxCon success for %{public}s", GetProcessName(property));
 #endif

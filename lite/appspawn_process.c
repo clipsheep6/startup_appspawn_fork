@@ -185,7 +185,7 @@ void SetContentFunction(AppSpawnContent *content)
 
 int AppSpawnHookExecute(int stage, uint32_t flags, AppSpawnContent *content, AppSpawnClient *client)
 {
-    if (stage != HOOK_SPAWN_SECOND) {
+    if (stage != HOOK_SPAWN_SET_CHILD_PROPERTY) {
         return 0;
     }
 

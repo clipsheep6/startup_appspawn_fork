@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "sandbox_utils.h"
+#include "json_utils.h"
 
 #include <climits>
 #include <fstream>
@@ -30,10 +30,10 @@ using namespace OHOS;
 namespace OHOS {
 namespace AppSpawn {
 namespace {
-const std::string APP_JSON_CONFIG("/appdata-sandbox.json");
+    const std::string APP_JSON_CONFIG("/appdata-sandbox.json");
 }
 
-std::string SandboxUtils::GetStringFromJson(const nlohmann::json &json, const std::string &key)
+std::string JsonUtils::GetStringFromJson(const nlohmann::json &json, const std::string &key)
 {
     APPSPAWN_CHECK(json.is_object(), return "", "json is not object.");
     bool isRet = json.find(key) != json.end() && json.at(key).is_string();
@@ -43,7 +43,7 @@ std::string SandboxUtils::GetStringFromJson(const nlohmann::json &json, const st
     return "";
 }
 
-bool SandboxUtils::GetBoolValueFromJson(const nlohmann::json &config, const std::string &key, bool def)
+bool JsonUtils::GetBoolValueFromJson(const nlohmann::json &config, const std::string &key, bool def)
 {
     if (config.find(key) != config.end()) {
         std::string v = config[key].get<std::string>();
@@ -54,7 +54,7 @@ bool SandboxUtils::GetBoolValueFromJson(const nlohmann::json &config, const std:
     return def;
 }
 
-uint32_t SandboxUtils::GetIntValueFromJson(const nlohmann::json &config, const std::string &key, uint32_t def)
+uint32_t JsonUtils::GetIntValueFromJson(const nlohmann::json &config, const std::string &key, uint32_t def)
 {
     if (config.find(key) != config.end()) {
         return config[key].get<uint32_t>();
@@ -62,28 +62,37 @@ uint32_t SandboxUtils::GetIntValueFromJson(const nlohmann::json &config, const s
     return def;
 }
 
-std::vector<std::string> SandboxUtils::split(std::string &str, const std::string &pattern)
+std::vector<std::string> JsonUtils::split(const std::string &str, const std::string &pattern)
 {
     std::string::size_type pos;
     std::vector<std::string> result;
-    str += pattern;
-    size_t size = str.size();
-
-    for (unsigned int i = 0; i < size; i++) {
-        pos = str.find(pattern, i);
-        if (pos < size) {
-            std::string tempStr = str.substr(i, pos - i);
-            tempStr = tempStr.substr(tempStr.find_first_not_of(" \n\r\t"));
-            tempStr = tempStr.substr(0, tempStr.find_last_not_of(" \n\r\t") + 1);
-            result.push_back(tempStr);
-            i = pos + pattern.size() - 1;
+    std::string tempStr = str;
+    size_t size = tempStr.size();
+    size_t patternSize = pattern.size();
+    std::string::size_type i = 0;
+    do {
+        pos = tempStr.find(pattern, i);
+        if (pos == std::string::npos) {  // end
+            std::string temp = tempStr.substr(i, size);
+            temp = temp.substr(temp.find_first_not_of(" \n\r\t"));
+            temp = temp.substr(0, temp.find_last_not_of(" \n\r\t") + 1);
+            result.push_back(temp);
+            break;
         }
-    }
-
+        if (pos == i) {
+            i += patternSize;
+        } else {
+            std::string temp = tempStr.substr(i, pos - i);
+            temp = temp.substr(temp.find_first_not_of(" \n\r\t"));
+            temp = temp.substr(0, temp.find_last_not_of(" \n\r\t") + 1);
+            result.push_back(temp);
+            i = pos + patternSize;
+        }
+    } while (i < size);
     return result;
 }
 
-bool SandboxUtils::GetJsonObjFromJson(nlohmann::json &jsonObj, const std::string &jsonPath)
+bool JsonUtils::GetJsonObjFromJson(nlohmann::json &jsonObj, const std::string &jsonPath)
 {
     APPSPAWN_CHECK(jsonPath.length() <= PATH_MAX, return false, "jsonPath is too long");
     std::ifstream jsonFileStream;
@@ -100,13 +109,13 @@ bool SandboxUtils::GetJsonObjFromJson(nlohmann::json &jsonObj, const std::string
     return true;
 }
 
-int SandboxUtils::GetSandboxConfigs(std::vector<nlohmann::json> &jsonConfigs)
+int JsonUtils::GetSandboxConfigs(std::vector<nlohmann::json> &jsonConfigs)
 {
     // load sandbox config
     nlohmann::json appSandboxConfig;
     CfgFiles *files = GetCfgFiles("etc/sandbox");
     if (files == nullptr) {
-        return APPSPAWN_NO_SANDBOX;
+        return APPSPAWN_SANDBOX_NONE;
     }
     for (int i = 0; i < MAX_CFG_POLICY_DIRS_CNT; ++i) {
         if (files->paths[i] == nullptr) {
@@ -116,8 +125,8 @@ int SandboxUtils::GetSandboxConfigs(std::vector<nlohmann::json> &jsonConfigs)
         path += APP_JSON_CONFIG;
         APPSPAWN_LOGI("LoadAppSandboxConfig %{public}s", path.c_str());
         bool rc = GetJsonObjFromJson(appSandboxConfig, path);
-        APPSPAWN_CHECK(rc, return APPSPAWN_LOAD_SANDBOX_FAIL,
-            "Failed to load app data sandbox config %{public}s", path.c_str());
+        APPSPAWN_CHECK(rc, return APPSPAWN_SANDBOX_LOAD_FAIL, "Failed to load app data sandbox config %{public}s",
+                        path.c_str());
         jsonConfigs.push_back(appSandboxConfig);
     }
     FreeCfgFiles(files);

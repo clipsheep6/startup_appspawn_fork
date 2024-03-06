@@ -39,7 +39,7 @@ typedef struct tagAppSpawnExtData AppSpawnDataEx;
 typedef struct tagSandboxContext SandboxContext;
 typedef struct tagAppSpawnedProcess AppSpawnedProcess;
 typedef struct tagAppSpawnForkArg AppSpawnForkArg;
-typedef struct tagAppSpawnMsgReceiverCtx AppSpawnMsgReceiverCtx;
+typedef struct tagAppSpawnMsgNode AppSpawnMsgNode;
 
 void SetHapDomainSetcontextResult(int result);
 
@@ -47,8 +47,6 @@ void ProcessSignal(const struct signalfd_siginfo *siginfo);
 
 int CreateClientSocket(uint32_t type, int block);
 void CloseClientSocket(int socketId);
-
-int DecodeRecvMsg(AppSpawnMsgReceiverCtx *receiver);
 
 void AppSpawnSandboxFree(AppSpawnDataEx *data);
 AppSpawnSandbox *CreateAppSpawnSandbox(void);

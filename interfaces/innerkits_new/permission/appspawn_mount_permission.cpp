@@ -20,7 +20,7 @@
 
 #include "appspawn_sandbox.h"
 #include "appspawn_utils.h"
-#include "sandbox_utils.h"
+#include "json_utils.h"
 
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int32_t g_maxPermissionIndex = -1;
@@ -47,7 +47,7 @@ static int DecodePermissionConfig(const nlohmann::json &permissionConfigs)
 static int LoadPermissionConfig(void)
 {
     std::vector<nlohmann::json> jsonConfigs;
-    int ret = OHOS::AppSpawn::SandboxUtils::GetSandboxConfigs(jsonConfigs);
+    int ret = OHOS::AppSpawn::JsonUtils::GetSandboxConfigs(jsonConfigs);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
     for (auto config : jsonConfigs) {
         if (config.find("permission") == config.end()) {

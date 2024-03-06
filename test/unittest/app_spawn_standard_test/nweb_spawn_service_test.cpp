@@ -27,8 +27,8 @@
 #include "appspawn_modulemgr.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
+#include "json_utils.h"
 #include "parameter.h"
-#include "sandbox_utils.h"
 #include "securec.h"
 
 #include "app_spawn_stub.h"
@@ -113,7 +113,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_002, TestSize.Level0)
         APPSPAWN_CHECK(ret == 0, break, "Failed to set pid %{public}s", NWEBSPAWN_SERVER_NAME);
         ret = AppSpawnClientSendMsg(clientHandle, reqHandle2, &result);
         APPSPAWN_LOGV("Send MSG_GET_RENDER_TERMINATION_STATUS %{public}d", ret);
-        ret = 0; // ut can not get result
+        ret = 0;  // ut can not get result
     } while (0);
     testServer.Stop();
     AppSpawnClientDestroy(clientHandle);
@@ -178,7 +178,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_001, TestSize.Level0)
 
         PreloadHookExecute(content);  // 预加载，解析sandbox
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -218,7 +218,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_002, TestSize.Level0)
 
         PreloadHookExecute(content);  // 预加载，解析sandbox
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_DEBUGGABLE);
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_NATIVEDEBUG);
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
@@ -272,7 +272,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_004, TestSize.Level0)
 
         PreloadHookExecute(content);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -319,7 +319,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_005, TestSize.Level0)
 
         PreloadHookExecute(content);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 

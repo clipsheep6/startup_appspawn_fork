@@ -27,7 +27,7 @@ static int VarPackageNameIndexReplace(const SandboxContext *sandboxContext,
 {
     AppSpawnMsgBundleInfo *bundleInfo = (
         AppSpawnMsgBundleInfo *)GetAppProperty(sandboxContext->property, TLV_BUNDLE_INFO);
-    APPSPAWN_CHECK(bundleInfo != NULL, return APPSPAWN_NO_TLV,
+    APPSPAWN_CHECK(bundleInfo != NULL, return APPSPAWN_TLV_NONE,
         "No tlv %{public}d in msg %{public}s", TLV_BUNDLE_INFO, GetProcessName(sandboxContext->property));
     int len = 0;
     if (bundleInfo->bundleIndex > 0) {
@@ -55,7 +55,7 @@ static int VarCurrentUseIdReplace(const SandboxContext *sandboxContext,
     const uint8_t *buffer, uint32_t bufferLen, uint32_t *realLen, int permission)
 {
     AppSpawnMsgDacInfo *info = (AppSpawnMsgDacInfo *)GetAppProperty(sandboxContext->property, TLV_DAC_INFO);
-    APPSPAWN_CHECK(info != NULL, return APPSPAWN_NO_TLV,
+    APPSPAWN_CHECK(info != NULL, return APPSPAWN_TLV_NONE,
         "No tlv %{public}d in msg %{public}s", TLV_DAC_INFO, GetProcessName(sandboxContext->property));
     int len = 0;
     if (!permission) {

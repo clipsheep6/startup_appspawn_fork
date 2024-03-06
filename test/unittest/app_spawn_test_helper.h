@@ -103,6 +103,8 @@ public:
     static CmdArgs *ToCmdList(const char *cmd);
 
 private:
+    AppSpawnMsgNode *CreateAppSpawnMsg(AppSpawnMsg *msg);
+
     std::string processName_ = {};
     uid_t defaultTestUid_;
     gid_t defaultTestGid_;
@@ -147,9 +149,8 @@ private:
 
     static uint32_t serverId;
     static void *ServiceThread(void *arg);
-    static void WaitChildTimeout(const TimerHandle taskHandle, void *context);
-    static void ChildLoopRun(AppSpawnContent *content, AppSpawnClient *client);
     static void ProcessIdle(const IdleHandle taskHandle, void *context);
+    static int ChildLoopRun(AppSpawnContent *content, AppSpawnClient *client);
 
     AppSpawnContent *content_ = nullptr;
     std::atomic<long> appPid_{-1};

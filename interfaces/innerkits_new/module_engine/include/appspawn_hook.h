@@ -100,7 +100,7 @@ __attribute__((always_inline)) inline int SetAppPermissionFlags(const AppSpawnin
     return SetAppPropertyFlags(property, TLV_PERMISSION, index);
 }
 
-typedef void (*ChildLoop)(AppSpawnContent *content, AppSpawnClient *client);
+typedef int (*ChildLoop)(AppSpawnContent *content, AppSpawnClient *client);
 /**
  * @brief 注册子进程run函数
  *

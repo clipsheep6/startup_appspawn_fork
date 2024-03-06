@@ -27,9 +27,10 @@
     AppSpawnReqMsgSetAppRenderCmd;
     AppSpawnReqMsgSetAppAccessToken;
     AppSpawnReqMsgAddExtInfo;
-    AppSpawnReqMsgSetPermission;
+    AppSpawnReqMsgAddPermission;
     AppSpawnReqMsgSetFlags;
     AppSpawnReqMsgAddStringInfo;
+    AppSpawnTerminateMsgCreate;
   local:
     *;
 };

@@ -53,12 +53,13 @@ AppSpawnTestServer::~AppSpawnTestServer()
     }
 }
 
-void AppSpawnTestServer::ChildLoopRun(AppSpawnContent *content, AppSpawnClient *client)
+int AppSpawnTestServer::ChildLoopRun(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGV("ChildLoopRun ...");
     while (1) {
         pause();
     }
+    return 0;
 }
 
 void *AppSpawnTestServer::ServiceThread(void *arg)
@@ -93,8 +94,6 @@ void *AppSpawnTestServer::ServiceThread(void *arg)
         if (pid != getpid()) {  // 子进程退出
             exit(0);
         } else {
-            // exit delete content
-            AppSpawnDestroyContent(server->content_);
             server->content_ = nullptr;
         }
     } else {
@@ -117,7 +116,6 @@ void AppSpawnTestServer::Start(RecvMsgProcess process, uint32_t time)
     protectTime_ = time;
     if (threadId_ == 0) {
         clock_gettime(CLOCK_MONOTONIC, &startTime_);
-        APPSPAWN_LOGV("Start: %{public}u %{public}u", startTime_.tv_sec, startTime_.tv_nsec / (1000 * 1000));
         recvMsgProcess_ = process;
         int ret = pthread_create(&threadId_, nullptr, ServiceThread, static_cast<void *>(this));
         if (ret != 0) {
@@ -139,7 +137,7 @@ void AppSpawnTestServer::Stop()
 
 void AppSpawnTestServer::KillNWebSpawnServer()
 {
-    APPSPAWN_LOGV("Kill nwebspawn pid: %{public}d %{public}d", appPid_.load(), serverId_);
+    APPSPAWN_LOGV("Kill nwebspawn %{public}d", serverId_);
     if (appPid_ > 0) {
         kill(appPid_, SIGKILL);
     }
@@ -174,8 +172,7 @@ void AppSpawnTestServer::ProcessIdle(const IdleHandle taskHandle, void *context)
     clock_gettime(CLOCK_MONOTONIC, &end);
     uint64_t diff = DiffTime(&server->startTime_, &end);
     if (diff >= (server->protectTime_ * 1000)) {  // 1000 ms -> us
-        APPSPAWN_LOGV("AppSpawnTestServer::ProcessIdle: %{public}u %{public}u %{public}llu",
-            server->protectTime_, end.tv_sec, diff);
+        APPSPAWN_LOGV("AppSpawnTestServer::ProcessIdle: %{public}u %{public}llu", server->protectTime_, diff);
         server->StopSpawnService();
         return;
     }
@@ -345,6 +342,7 @@ AppSpawnReqMsgHandle AppSpawnTestHelper::CreateMsg(AppSpawnClientHandle handle, 
     AppSpawnReqMsgHandle reqHandle = 0;
     int ret = AppSpawnReqMsgCreate(msgType, processName_.c_str(), &reqHandle);
     APPSPAWN_CHECK(ret == 0, return INVALID_REQ_HANDLE, "Failed to create req %{public}s", processName_.c_str());
+    APPSPAWN_CHECK_ONLY_EXPER(msgType == MSG_APP_SPAWN || msgType == MSG_SPAWN_NATIVE_PROCESS, return reqHandle);
     do {
         ret = AppSpawnReqMsgSetBundleInfo(reqHandle, 100, processName_.c_str());  // 100 test index
         APPSPAWN_CHECK(ret == 0, break, "Failed to add bundle info req %{public}s", processName_.c_str());
@@ -359,7 +357,7 @@ AppSpawnReqMsgHandle AppSpawnTestHelper::CreateMsg(AppSpawnClientHandle handle, 
         ret = AppSpawnReqMsgSetAppDacInfo(reqHandle, &dacInfo);
         APPSPAWN_CHECK(ret == 0, break, "Failed to add dac %{public}s", processName_.c_str());
 
-        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 1234, 12345678);  // 1234, 12345678
+        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 12345678);  // 12345678
         APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", processName_.c_str());
 
         if (base) {
@@ -371,7 +369,7 @@ AppSpawnReqMsgHandle AppSpawnTestHelper::CreateMsg(AppSpawnClientHandle handle, 
         APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", processName_.c_str());
         size_t count = permissions_.size();
         for (size_t i = 0; i < count; i++) {
-            ret = AppSpawnReqMsgSetPermission(reqHandle, permissions_[i]);
+            ret = AppSpawnReqMsgAddPermission(reqHandle, permissions_[i]);
             APPSPAWN_CHECK(ret == 0, break, "Failed to permission %{public}s", permissions_[i]);
         }
 
@@ -392,26 +390,24 @@ AppSpawnReqMsgHandle AppSpawnTestHelper::CreateMsg(AppSpawnClientHandle handle, 
     return INVALID_REQ_HANDLE;
 }
 
-static AppSpawnMsgReceiverCtx *CreateAppSpawnMsgReceiver(AppSpawnMsg *msg)
+AppSpawnMsgNode *AppSpawnTestHelper::CreateAppSpawnMsg(AppSpawnMsg *msg)
 {
-    AppSpawnMsgReceiverCtx *receiver = static_cast<AppSpawnMsgReceiverCtx *>(calloc(1, sizeof(AppSpawnMsgReceiverCtx)));
-    APPSPAWN_CHECK(receiver != NULL, return NULL, "Failed to create receiver");
-    receiver->msgRecvLen = msg->msgLen;
-    receiver->timer = NULL;
-    int ret = memcpy_s(&receiver->msgHeader, sizeof(receiver->msgHeader), msg, sizeof(receiver->msgHeader));
-    APPSPAWN_CHECK(ret == 0, free(receiver);
+    AppSpawnMsgNode *msgNode = static_cast<AppSpawnMsgNode *>(calloc(1, sizeof(AppSpawnMsgNode)));
+    APPSPAWN_CHECK(msgNode != NULL, return NULL, "Failed to create receiver");
+    int ret = memcpy_s(&msgNode->msgHeader, sizeof(msgNode->msgHeader), msg, sizeof(msgNode->msgHeader));
+    APPSPAWN_CHECK(ret == 0, free(msgNode);
         return nullptr, "Failed to memcpy msg");
-    receiver->buffer = static_cast<uint8_t *>(malloc(msg->msgLen));
-    APPSPAWN_CHECK(receiver->buffer != NULL, free(receiver);
+    msgNode->buffer = static_cast<uint8_t *>(malloc(msg->msgLen));
+    APPSPAWN_CHECK(msgNode->buffer != NULL, free(msgNode);
         return nullptr, "Failed to memcpy msg");
     uint32_t totalCount = msg->tlvCount + TLV_MAX;
-    receiver->tlvOffset = static_cast<uint32_t *>(malloc(totalCount * sizeof(uint32_t)));
-    APPSPAWN_CHECK(receiver->tlvOffset != NULL, free(receiver);
+    msgNode->tlvOffset = static_cast<uint32_t *>(malloc(totalCount * sizeof(uint32_t)));
+    APPSPAWN_CHECK(msgNode->tlvOffset != NULL, free(msgNode);
         return nullptr, "Failed to alloc memory for recv message");
     for (uint32_t i = 0; i < totalCount; i++) {
-        receiver->tlvOffset[i] = INVALID_OFFSET;
+        msgNode->tlvOffset[i] = INVALID_OFFSET;
     }
-    return receiver;
+    return msgNode;
 }
 
 AppSpawningCtx *AppSpawnTestHelper::GetAppProperty(AppSpawnClientHandle handle, AppSpawnReqMsgHandle reqHandle)
@@ -420,56 +416,45 @@ AppSpawningCtx *AppSpawnTestHelper::GetAppProperty(AppSpawnClientHandle handle, 
     APPSPAWN_CHECK(reqNode != nullptr && reqNode->msg != nullptr, AppSpawnReqMsgFree(reqHandle);
         return nullptr, "Invalid reqNode");
 
-    AppSpawnMsgReceiverCtx *receiver = CreateAppSpawnMsgReceiver(reqNode->msg);
-    APPSPAWN_CHECK(receiver != nullptr, return nullptr, "Failed to alloc for msg");
+    AppSpawnMsgNode *msgNode = CreateAppSpawnMsg(reqNode->msg);
+    APPSPAWN_CHECK(msgNode != nullptr, return nullptr, "Failed to alloc for msg");
+
     uint32_t bufferSize = reqNode->msg->msgLen;
     uint32_t currIndex = 0;
     uint32_t bufferStart = sizeof(AppSpawnMsg);
     ListNode *node = reqNode->msgBlocks.next;
     while (node != &reqNode->msgBlocks) {
         AppSpawnMsgBlock *block = ListEntry(node, AppSpawnMsgBlock, node);
-        APPSPAWN_LOGV("GetAppProperty currIndex %{public}u currentIndex %{public}u %u", currIndex, block->currentIndex, bufferStart);
-        int ret = memcpy_s(receiver->buffer + currIndex, bufferSize - currIndex,
+        int ret = memcpy_s(msgNode->buffer + currIndex, bufferSize - currIndex,
             block->buffer + bufferStart, block->currentIndex - bufferStart);
         if (ret != 0) {
             AppSpawnReqMsgFree(reqHandle);
-            DeleteAppSpawnMsgReceiver(receiver);
+            DeleteAppSpawnMsg(msgNode);
             return nullptr;
         }
         currIndex += block->currentIndex - bufferStart;
         bufferStart = 0;
-        AppSpawnTlv *tlv = (AppSpawnTlv *)(block->buffer + 4056);
-        APPSPAWN_LOGV("GetAppProperty tlv %{public}u %{public}u %x", tlv->tlvType, tlv->tlvLen, block->buffer);
         node = node->next;
     }
     APPSPAWN_LOGV("GetAppProperty header magic 0x%{public}x type %{public}u id %{public}u len %{public}u %{public}s",
-        receiver->msgHeader.magic, receiver->msgHeader.msgType,
-        receiver->msgHeader.msgId, receiver->msgHeader.msgLen, receiver->msgHeader.processName);
+        msgNode->msgHeader.magic, msgNode->msgHeader.msgType,
+        msgNode->msgHeader.msgId, msgNode->msgHeader.msgLen, msgNode->msgHeader.processName);
 
     // delete reqHandle
     AppSpawnReqMsgFree(reqHandle);
-    AppSpawningCtx *property = nullptr;
-    while (receiver != nullptr) {
-        AppSpawnedProcessMgr appMgr;
-        int ret = AppSpawnedProcessMgrInit(&appMgr);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to init mgr req");
-        property = CreateAppSpawningCtx(&appMgr);
-        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
-        property->receiver = receiver;
-        OH_ListRemove(&property->node);
-        OH_ListInit(&property->node);
-        ret = DecodeRecvMsg(property->receiver);
-        receiver = nullptr;
-        APPSPAWN_CHECK(ret == 0, break, "Decode msg fail");
-        return property;
-    }
-    DeleteAppSpawningCtx(property);
-    return nullptr;
+    int ret = DecodeAppSpawnMsg(msgNode);
+    APPSPAWN_CHECK(ret == 0, DeleteAppSpawnMsg(msgNode);
+        return nullptr, "Decode msg fail");
+    AppSpawningCtx *property = CreateAppSpawningCtx(nullptr);
+    APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, DeleteAppSpawnMsg(msgNode);
+        return nullptr);
+    property->message = msgNode;
+    return property;
 }
 
 void AppSpawnTestHelper::SetDefaultTestData()
 {
-    processName_ = std::string("com.ohos.dlpmanager");
+    processName_ = std::string("com.example.myapplication");
     defaultTestUid_ = 20010029;       // 20010029 test
     defaultTestGid_ = 20010029;       // 20010029 test
     defaultTestGidGroup_ = 20010029;  // 20010029 test
@@ -555,7 +540,7 @@ int AppSpawnTestHelper::AddBaseTlv(uint8_t *buffer, uint32_t bufferLen, uint32_t
     currLen += tlv.tlvLen;
     tlvCount++;
 
-    AppSpawnMsgAccessToken token = {1234, 12345678};  // 1234, 12345678
+    AppSpawnMsgAccessToken token = {12345678};  // 12345678
     tlv.tlvType = TLV_ACCESS_TOKEN_INFO;
     tlv.tlvLen = sizeof(AppSpawnTlv) + sizeof(token);
     ret = AddOneTlv(buffer + currLen, bufferLen - currLen, tlv, (uint8_t *)&token);

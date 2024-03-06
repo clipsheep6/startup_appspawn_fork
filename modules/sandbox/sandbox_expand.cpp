@@ -14,22 +14,21 @@
  */
 
 #include <cerrno>
-#include <sstream>
 #include <fstream>
-#include <string>
 #include <set>
-#include <vector>
+#include <sstream>
+#include <string>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <vector>
 
 #include "appspawn_msg.h"
 #include "appspawn_sandbox.h"
 #include "appspawn_utils.h"
-#include "nlohmann/json.hpp"
+#include "json_utils.h"
 #include "securec.h"
-#include "sandbox_utils.h"
 
 using namespace std;
 
@@ -46,13 +45,13 @@ const std::string OVERLAY_SOCKET_TYPE = "|Overlay|";
 const std::string DATA_GROUP_SOCKET_TYPE = "|DataGroup|";
 const std::string g_sandboxGroupPath = "/data/storage/el2/group/";
 const std::string g_sandboxHspInstallPath = "/data/storage/el1/bundle/";
-const char* g_fileSeparator = "/";
+const char *g_fileSeparator = "/";
 
-static inline bool CheckPath(const std::string& name)
+static inline bool CheckPath(const std::string &name)
 {
     return !name.empty() && name != "." && name != ".." && name.find("/") == std::string::npos;
 }
-}
+}  // namespace
 
 namespace OHOS {
 namespace AppSpawn {
@@ -147,7 +146,7 @@ public:
         std::string sandboxPackagePath = context.sandboxPackagePath;
         set<string> mountedSrcSet;
         std::string overlayString(overlayInfo);
-        vector<string> splits = SandboxUtils::split(overlayString, "|");
+        vector<string> splits = JsonUtils::split(overlayString, "|");
         std::string sandboxOverlayPath = sandboxPackagePath + g_overlayPath;
         for (auto hapPath : splits) {
             size_t pathIndex = hapPath.find_last_of(g_fileSeparator);
@@ -174,8 +173,8 @@ public:
         return ret;
     }
 }; // for class
-}
-}
+}  // namespace AppSpawn
+}  // namespace OHOS
 
 static int ProcessHSPListConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name)
 {
@@ -210,7 +209,7 @@ static int ProcessOverlayAppConfig(const SandboxContext *context, const AppSpawn
     return OHOS::AppSpawn::SandboxExpand::SetOverlayAppSandboxConfig(*context, extInfo);
 }
 
-struct ListNode g_sandboxExpandCfgList = { &g_sandboxExpandCfgList, &g_sandboxExpandCfgList };
+struct ListNode g_sandboxExpandCfgList = {&g_sandboxExpandCfgList, &g_sandboxExpandCfgList};
 static int AppSandboxExpandAppCfgCompareName(ListNode *node, void *data)
 {
     AppSandboxExpandAppCfgNode *varNode = ListEntry(node, AppSandboxExpandAppCfgNode, node);
@@ -236,7 +235,7 @@ static const AppSandboxExpandAppCfgNode *GetAppSandboxExpandAppCfg(const char *n
 
 int RegisterExpandSandboxCfgHandler(const char *name, int prio, ProcessExpandSandboxCfg handleExpandCfg)
 {
-    APPSPAWN_CHECK_ONLY_EXPER(name != nullptr && handleExpandCfg != nullptr, return APPSPAWN_INVALID_ARG);
+    APPSPAWN_CHECK_ONLY_EXPER(name != nullptr && handleExpandCfg != nullptr, return APPSPAWN_ARG_INVALID);
     if (GetAppSandboxExpandAppCfg(name) != nullptr) {
         return APPSPAWN_NODE_EXIST;
     }
@@ -258,8 +257,8 @@ int RegisterExpandSandboxCfgHandler(const char *name, int prio, ProcessExpandSan
 
 int ProcessExpandAppSandboxConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name)
 {
-    APPSPAWN_CHECK_ONLY_EXPER(context != nullptr && appSandBox != nullptr, return APPSPAWN_INVALID_ARG);
-    APPSPAWN_CHECK_ONLY_EXPER(name != nullptr, return APPSPAWN_INVALID_ARG);
+    APPSPAWN_CHECK_ONLY_EXPER(context != nullptr && appSandBox != nullptr, return APPSPAWN_ARG_INVALID);
+    APPSPAWN_CHECK_ONLY_EXPER(name != nullptr, return APPSPAWN_ARG_INVALID);
     APPSPAWN_LOGV("ProcessExpandAppSandboxConfig %{public}s.", name);
     const AppSandboxExpandAppCfgNode *node = GetAppSandboxExpandAppCfg(name);
     if (node != nullptr && node->cfgHandle != nullptr) {
@@ -272,11 +271,10 @@ void AddDefaultExpandAppSandboxConfigHandle(void)
 {
     RegisterExpandSandboxCfgHandler("HspList", 0, ProcessHSPListConfig);
     RegisterExpandSandboxCfgHandler("DataGroup", 1, ProcessDataGroupConfig);
-    RegisterExpandSandboxCfgHandler("Overlay", 2, ProcessOverlayAppConfig); // 2 priority
+    RegisterExpandSandboxCfgHandler("Overlay", 2, ProcessOverlayAppConfig);  // 2 priority
 }
 
 void ClearExpandAppSandboxConfigHandle(void)
 {
     OH_ListRemoveAll(&g_sandboxExpandCfgList, nullptr);
 }
-

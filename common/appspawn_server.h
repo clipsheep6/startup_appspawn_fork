@@ -46,7 +46,7 @@ typedef struct tagAppSpawnContent {
     // system
     void (*runAppSpawn)(struct tagAppSpawnContent *content, int argc, char *const argv[]);
     void (*notifyResToParent)(struct tagAppSpawnContent *content, AppSpawnClient *client, int result);
-    void (*runChildProcessor)(struct tagAppSpawnContent *content, AppSpawnClient *client);
+    int (*runChildProcessor)(struct tagAppSpawnContent *content, AppSpawnClient *client);
     // for cold start
     int (*coldStartApp)(struct tagAppSpawnContent *content, AppSpawnClient *client);
 } AppSpawnContent;
@@ -59,6 +59,18 @@ typedef struct tagAppSpawnForkArg {
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int cold);
 int AppSpawnHookExecute(int stage, uint32_t flags, AppSpawnContent *content, AppSpawnClient *client);
 int AppSpawnProcessMsg(AppSpawnContent *content, AppSpawnClient *client, pid_t *childPid);
+/**
+ * @brief 清空子进程继承的appspawn的环境信息
+ *
+ * @param content
+ * @param client
+ * @return int
+ */
+__attribute__((always_inline)) inline void AppSpawnEnvClear(AppSpawnContent *content, AppSpawnClient *client)
+{
+    (void)AppSpawnHookExecute(HOOK_SPAWN_POST, 0, content, client);
+}
+
 #ifdef __cplusplus
 }
 #endif

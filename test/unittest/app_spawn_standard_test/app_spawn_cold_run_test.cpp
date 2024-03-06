@@ -21,14 +21,16 @@
 #include <unistd.h>
 
 #include <gtest/gtest.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 #include "appspawn_modulemgr.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
+#include "json_utils.h"
 #include "parameter.h"
-#include "sandbox_utils.h"
 #include "securec.h"
 
 #include "app_spawn_stub.h"
@@ -105,8 +107,6 @@ static int HandleExecvStub(const char *pathName, char *const argv[])
     }
     content->runAppSpawn(content, args->argc, args->argv);
     free(args);
-    // exit delete content
-    AppSpawnDestroyContent(content);
     APPSPAWN_LOGV("HandleExecvStub %{public}s exit", pathName);
     return 0;
 }
@@ -174,22 +174,18 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_002, TestSize.Level0)
     ASSERT_EQ(ret, 0);
 }
 
-static CmdArgs *GetColdRunArgs(const AppSpawningCtx *property, const char *arg)
+static CmdArgs *GetColdRunArgs(AppSpawningCtx *property, const char *arg)
 {
     std::string argStr = arg;
-    char *param = Base64Encode(property->receiver->buffer, property->receiver->msgRecvLen - sizeof(AppSpawnMsg));
-    APPSPAWN_CHECK(param != nullptr, return nullptr, "Failed to encode msg");
-    char *header = Base64Encode(reinterpret_cast<uint8_t *>(&property->receiver->msgHeader), sizeof(AppSpawnMsg));
-    if (header != nullptr) {
-        argStr += param;
-        argStr += "  -fd -1 0  ";
-        argStr += header;
-        free(header);
-    } else {
-        free(param);
-        return nullptr;
-    }
-    free(param);
+    const uint32_t memSize = (property->message->msgHeader.msgLen % 1024 + 1) * 1024;  // 1024
+    property->forkCtx.shmId = shmget(IPC_PRIVATE, memSize, 0600);                      // 0600 mask
+    APPSPAWN_CHECK(property->forkCtx.shmId >= 0, return nullptr,
+        "Failed to get shm for %{public}s errno %{public}d", GetProcessName(property), errno);
+    property->forkCtx.memSize = memSize;
+    SendAppSpawnMsgToChild(&property->forkCtx, property->message);
+    argStr += "null";
+    argStr += "  -fd -1 0  ";
+    argStr += std::to_string(property->forkCtx.shmId);
     return AppSpawnTestHelper::ToCmdList(argStr.c_str());
 }
 
@@ -209,7 +205,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_003, TestSize.Level0)
         // set cold start flags
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_COLD_BOOT);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -221,7 +217,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_003, TestSize.Level0)
 
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
-        AppSpawnHookExecute(HOOK_SPAWN_FIRST, 0, content, &property->client);
+        AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, 0, content, &property->client);
         content->runAppSpawn(content, args->argc, args->argv);
         ret = 0;
     } while (0);
@@ -230,7 +226,6 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_003, TestSize.Level0)
     }
     DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
-    AppSpawnDestroyContent(content);
     ASSERT_EQ(ret, 0);
 }
 
@@ -250,7 +245,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_004, TestSize.Level0)
         // set cold start flags
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_COLD_BOOT);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -263,7 +258,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_004, TestSize.Level0)
 
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
-        AppSpawnHookExecute(HOOK_SPAWN_FIRST, 0, content, &property->client);
+        AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, 0, content, &property->client);
         content->runAppSpawn(content, args->argc, args->argv);
         ret = 0;
     } while (0);
@@ -272,7 +267,6 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_004, TestSize.Level0)
     }
     DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
-    AppSpawnDestroyContent(content);
     ASSERT_EQ(ret, 0);
 }
 
@@ -298,7 +292,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_005, TestSize.Level0)
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ASANENABLED);
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_GWP_ENABLED_FORCE);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -311,7 +305,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_005, TestSize.Level0)
 
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
-        AppSpawnHookExecute(HOOK_SPAWN_FIRST, 0, content, &property->client);
+        AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, 0, content, &property->client);
         content->runAppSpawn(content, args->argc, args->argv);
         ret = 0;
     } while (0);
@@ -320,7 +314,6 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_005, TestSize.Level0)
     }
     DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
-    AppSpawnDestroyContent(content);
     ASSERT_EQ(ret, 0);
 }
 
@@ -346,7 +339,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ASANENABLED);
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_GWP_ENABLED_NORMAL);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -361,7 +354,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
         DumpApSpawn(reinterpret_cast<AppSpawnMgr *>(content));
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
-        AppSpawnHookExecute(HOOK_SPAWN_FIRST, 0, content, &property->client);
+        AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, 0, content, &property->client);
         content->runAppSpawn(content, args->argc, args->argv);
         property = nullptr;
         ret = 0;
@@ -371,7 +364,6 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
     }
     DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
-    AppSpawnDestroyContent(content);
     ASSERT_EQ(ret, 0);
 }
 
@@ -403,7 +395,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_007, TestSize.Level0)
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ASANENABLED);
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_GWP_ENABLED_NORMAL);
 
-        ret = APPSPAWN_INVALID_ARG;
+        ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
@@ -426,7 +418,6 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_007, TestSize.Level0)
     node->flags &= ~STUB_NEED_CHECK;
     DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
-    AppSpawnDestroyContent(content);
     ASSERT_EQ(ret, 0);
 }
 

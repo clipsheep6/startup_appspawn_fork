@@ -229,7 +229,7 @@ int AccessStub(const char *pathName, int mode)
     if (strstr(pathName, "/data/app/el2/50/base") != NULL) {
         return -1;
     }
-    if (strstr(pathName, "/mnt/sandbox/50/com.ohos.dlpmanager/data/storage/el2") != NULL) {
+    if (strstr(pathName, "/mnt/sandbox/50/com.example.myapplication/data/storage/el2") != NULL) {
         return -1;
     }
     return 0;

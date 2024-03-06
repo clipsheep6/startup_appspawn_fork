@@ -52,7 +52,7 @@ public:
 
             AppSpawnReqMsgSetAppFlag(reqHandle, 10); // 10 test
 
-            ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 1234, 12345678);  // 1234, 12345678
+            ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 12345678);  // 12345678
             APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", APPSPAWN_SERVER_NAME);
 
             static const char *permissions[] = {
@@ -63,7 +63,7 @@ public:
             };
             size_t count = sizeof(permissions) / sizeof(permissions[0]);
             for (size_t i = 0; i < count; i++) {
-                ret = AppSpawnReqMsgSetPermission(reqHandle, permissions[i]);
+                ret = AppSpawnReqMsgAddPermission(reqHandle, permissions[i]);
                 APPSPAWN_CHECK(ret == 0, break, "Failed to create req %{public}s", bundleName);
             }
             return reqHandle;

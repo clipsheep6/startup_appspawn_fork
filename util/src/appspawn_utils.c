@@ -122,13 +122,13 @@ void SetDumpFlags(uint32_t flags)
 }
 
 #if defined(__clang__)
-#  pragma clang diagnostic push
-#  pragma clang diagnostic ignored "-Wvarargs"
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wvarargs"
 #elif defined(__GNUC__)
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wvarargs"
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wvarargs"
 #elif defined(_MSC_VER)
-#  pragma warning(push)
+#    pragma warning(push)
 #endif
 
 void AppSpawnDump(const char *fmt, ...)
@@ -136,7 +136,7 @@ void AppSpawnDump(const char *fmt, ...)
     if (!g_dumpToConsole) {
         return;
     }
-    char format[128] = {0}; // 128 max buffer for format
+    char format[128] = {0};  // 128 max buffer for format
     uint32_t size = strlen(fmt);
     int curr = 0;
     for (uint32_t index = 0; index < size; index++) {
@@ -159,9 +159,9 @@ void AppSpawnDump(const char *fmt, ...)
 }
 
 #if defined(__clang__)
-#  pragma clang diagnostic pop
+#    pragma clang diagnostic pop
 #elif defined(__GNUC__)
-#  pragma GCC diagnostic pop
+#    pragma GCC diagnostic pop
 #elif defined(_MSC_VER)
-#  pragma warning(pop)
+#    pragma warning(pop)
 #endif

@@ -61,15 +61,16 @@ static bool SetSeccompPolicyForRenderer(void *nwebRenderHandle)
     return true;
 }
 
-static void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
+static int RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGI("RunChildProcessorNweb");
     uint32_t len = 0;
     char *renderCmd = reinterpret_cast<char *>(GetAppPropertyEx(
         reinterpret_cast<AppSpawningCtx *>(client), MSG_EXT_NAME_RENDER_CMD, &len));
-    if (renderCmd == NULL) {
-        return;
+    if (renderCmd == nullptr) {
+        return -1;
     }
+    std::string renderStr(renderCmd);
     void *webEngineHandle = nullptr;
     void *nwebRenderHandle = nullptr;
 
@@ -98,20 +99,22 @@ static void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 
     if (nwebRenderHandle == nullptr) {
         APPSPAWN_LOGE("Fail to dlopen libnweb_render.so, errno: %{public}d", errno);
-        return;
+        return -1;
     }
 
     if (!SetSeccompPolicyForRenderer(nwebRenderHandle)) {
-        return;
+        return -1;
     }
     using FuncType = void (*)(const char *cmd);
 
     FuncType funcNWebRenderMain = reinterpret_cast<FuncType>(dlsym(nwebRenderHandle, "NWebRenderMain"));
     if (funcNWebRenderMain == nullptr) {
         APPSPAWN_LOGE("webviewspawn dlsym errno: %{public}d", errno);
-        return;
+        return -1;
     }
-    funcNWebRenderMain(renderCmd);
+    AppSpawnEnvClear(content, client);
+    funcNWebRenderMain(renderStr.c_str());
+    return 0;
 }
 
 static int NWebSpawnPreload(AppSpawnMgr *content)

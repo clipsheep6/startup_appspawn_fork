@@ -87,6 +87,11 @@ static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
     if (CheckSupportColdStart(GetBundleName(property)) == 0) {
         property->client.flags |= APP_COLD_START;
         property->client.flags |= APP_ASAN_DETECTOR;
+        int ret = strcpy_s(property->forkCtx.coldRunPath,
+            sizeof(property->forkCtx.coldRunPath), "/system/asan/bin/appspawn");
+        if (ret != 0) {
+             APPSPAWN_LOGE("Failed to set asan exec path %{public}s", GetProcessName(property));
+        }
     }
 #endif
     return 0;
@@ -109,6 +114,6 @@ static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load asan module ...");
-    AddAppSpawnHook(HOOK_SPAWN_FIRST, HOOK_PRIO_STEP2, AppSpawnSpawnPrepare);
+    AddAppSpawnHook(HOOK_SPAWN_CLEAR_ENV, HOOK_PRIO_STEP2, AppSpawnSpawnPrepare);
     AddAppSpawnHook(HOOK_SPAWN_PREPARE, HOOK_PRIO_STEP2, AppSpawnPreSpawn);
 }

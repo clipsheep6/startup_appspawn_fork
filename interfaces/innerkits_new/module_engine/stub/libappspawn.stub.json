@@ -2,6 +2,7 @@
     { "name": "AddPreloadHook" },
     { "name": "AddAppChangeHook" },
     { "name": "AddAppSpawnHook" },
+    { "name": "AppSpawnHookExecute" },
     { "name": "GetAppPropertyEx" },
     { "name": "TestAppPropertyFlags" },
     { "name": "SetAppPropertyFlags" },

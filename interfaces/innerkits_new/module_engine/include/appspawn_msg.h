@@ -39,6 +39,13 @@ extern "C" {
 #define MAX_TLV_COUNT 128
 #define APPSPAWN_MSG_MAGIC 0xEF201234
 
+#define APP_LEN_PROC_NAME 256    // process name length
+#define APP_LEN_BUNDLE_NAME 256  // bundle name length
+#define APP_LEN_SO_PATH 256      // load so lib
+#define APP_APL_MAX_LEN 32
+#define APP_RENDER_CMD_MAX_LEN 1024
+#define APP_OWNER_ID_LEN 64
+
 typedef enum {
     TLV_BUNDLE_INFO = 0,
     TLV_MSG_FLAGS,
@@ -52,14 +59,16 @@ typedef enum {
     TLV_MAX
 } AppSpawnMsgTlvType;
 
+#define DATA_TYPE_STRING 1
+
 #if defined(__clang__)
-#  pragma clang diagnostic push
-#  pragma clang diagnostic ignored "-Wextern-c-compat"
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wextern-c-compat"
 #elif defined(__GNUC__)
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wextern-c-compat"
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wextern-c-compat"
 #elif defined(_MSC_VER)
-#  pragma warning(push)
+#    pragma warning(push)
 #endif
 
 #pragma pack(4)
@@ -84,7 +93,6 @@ typedef struct {
 } AppSpawnMsgFlags;
 
 typedef struct {
-    uint32_t accessTokenId; // 这个字段目前没有使用，是否删除
     uint64_t accessTokenIdEx;
 } AppSpawnMsgAccessToken;
 
@@ -94,7 +102,7 @@ typedef struct {
 
 typedef struct {
     uint8_t setAllowInternet;
-    uint8_t allowInternet; // hap sockect allowed
+    uint8_t allowInternet;  // hap sockect allowed
 } AppSpawnMsgInternetInfo;
 
 typedef struct {
@@ -123,11 +131,11 @@ typedef struct {
 #pragma pack()
 
 #if defined(__clang__)
-#  pragma clang diagnostic pop
+#    pragma clang diagnostic pop
 #elif defined(__GNUC__)
-#  pragma GCC diagnostic pop
+#    pragma GCC diagnostic pop
 #elif defined(_MSC_VER)
-#  pragma warning(pop)
+#    pragma warning(pop)
 #endif
 
 __attribute__((always_inline)) inline int CalcFlagsUnits(uint32_t maxIndex)
@@ -149,4 +157,4 @@ __attribute__((always_inline)) inline int SetAppSpawnMsgFlags(AppSpawnMsgFlags *
 #ifdef __cplusplus
 }
 #endif
-#endif // APPSPAWN_CLIENT_MSG_H
+#endif  // APPSPAWN_CLIENT_MSG_H

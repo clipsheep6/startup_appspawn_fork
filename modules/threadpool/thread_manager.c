@@ -46,11 +46,11 @@ typedef struct {
     uint32_t taskId;
     ListNode node;
     ListNode executorList;
-    TaskFinishProcessor finishProcess;
     uint32_t totalTask;
     atomic_uint taskFlags;  // 表示任务是否被取消，各线程检查后决定任务线程是否结束
     atomic_uint finishTaskCount;
     const ThreadContext *context;
+    TaskFinishProcessor finishProcess;
     pthread_mutex_t mutex;  // 保护执行队列
     pthread_cond_t cond;    // 同步执行时，等待确认
 } TaskNode;
@@ -345,6 +345,7 @@ int ThreadMgrAddTask(ThreadMgr instance, ThreadTaskHandle *taskHandle)
     APPSPAWN_CHECK(task != NULL, return -1, "Failed to create thread task");
 
     task->context = NULL;
+    task->finishProcess = NULL;
     task->totalTask = 0;
     atomic_init(&task->taskFlags, 0);
     atomic_init(&task->finishTaskCount, 0);

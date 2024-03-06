@@ -443,7 +443,7 @@ static int LoadSandbox(AppSpawnMgr *content)
     return 0;
 }
 
-int RunSandboxConfig(AppSpawnMgr *content, AppSpawningCtx *property)
+int SandboxConfigSet(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     AppSpawnSandbox *appSandBox = GetAppSpawnSandbox(content);
     APPSPAWN_CHECK(appSandBox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));
@@ -455,7 +455,11 @@ int RunSandboxConfig(AppSpawnMgr *content, AppSpawningCtx *property)
             return ret;
         }
     }
-    return SetSandboxConfigs(appSandBox, property, IsNWebSpawnMode(content));
+    int ret = SetSandboxConfigs(appSandBox, property, IsNWebSpawnMode(content));
+    if (ret != 0) {
+        return APPSPAWN_SANDBOX_LOAD_FAIL;
+    }
+    return 0;
 }
 
 MODULE_CONSTRUCTOR(void)
@@ -464,7 +468,7 @@ MODULE_CONSTRUCTOR(void)
     AddPreloadHook(HOOK_PRIO_SANDBOX, LoadSandbox);
     // fork
     AddAppSpawnHook(HOOK_SPAWN_PREPARE, HOOK_PRIO_SANDBOX, PrepareSandbox);
-    AddAppSpawnHook(HOOK_SPAWN_SECOND, HOOK_PRIO_SANDBOX, RunSandboxConfig);
+    AddAppSpawnHook(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_PRIO_SANDBOX, SandboxConfigSet);
 }
 
 MODULE_DESTRUCTOR(void)

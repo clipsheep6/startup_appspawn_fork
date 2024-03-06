@@ -65,7 +65,7 @@ static int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
     APPSPAWN_CHECK(content != NULL && client != NULL, return -1, "Invalid arg for appspawn child");
     APPSPAWN_LOGI("AppSpawnChild %{public}u flags: 0x%{public}x", client->id, client->flags);
 
-    int ret = AppSpawnHookExecute(HOOK_SPAWN_FIRST, HOOK_STOP_WHEN_ERROR, content, client);
+    int ret = AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, HOOK_STOP_WHEN_ERROR, content, client);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0,
         NotifyResToParent(content, client, ret);
         return 0);
@@ -76,7 +76,7 @@ static int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
             return 0;
         }
     }
-    ret = AppSpawnHookExecute(HOOK_SPAWN_SECOND, HOOK_STOP_WHEN_ERROR, content, client);
+    ret = AppSpawnHookExecute(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_STOP_WHEN_ERROR, content, client);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0,
         NotifyResToParent(content, client, ret);
         return 0);
@@ -84,14 +84,16 @@ static int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
     // notify success to father process and start app process
     NotifyResToParent(content, client, 0);
 
-    (void)AppSpawnHookExecute(HOOK_SPAWN_THIRD, 0, content, client);
-
-    AppSpawnHookExecute(HOOK_SPAWN_POST, 0, content, client);
+    (void)AppSpawnHookExecute(HOOK_SPAWN_COMPLETED, 0, content, client);
 
     if (content->runChildProcessor != NULL) {
-        content->runChildProcessor(content, client);
+        ret = content->runChildProcessor(content, client);
     } else {
+        ret = -1;
         APPSPAWN_LOGE("No child processor to run %{public}u", client->id);
+    }
+    if (ret != 0) { // clear env
+        AppSpawnEnvClear(content, client);
     }
     return 0;
 }
@@ -127,7 +129,7 @@ int AppSpawnProcessMsg(AppSpawnContent *content, AppSpawnClient *client, pid_t *
             ProcessExit(AppSpawnChild(content, client));
         }
     }
-    APPSPAWN_CHECK(pid >= 0, return errno, "fork child process error: %{public}d", errno);
+    APPSPAWN_CHECK(pid >= 0, return APPSPAWN_FORK_FAIL, "fork child process error: %{public}d", errno);
     *childPid = pid;
     return 0;
 }

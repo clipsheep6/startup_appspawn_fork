@@ -186,7 +186,7 @@ static int AddBaseTlv(AppSpawnClientHandle clientHandle, const AppParameter *par
         ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_RENDER_CMD, parameter->renderCmd);
         APPSPAWN_CHECK(ret == 0, return -1, "Failed to add renderCmd ");
     }
-    ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, parameter->accessTokenId, parameter->accessTokenIdEx);
+    ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, parameter->accessTokenIdEx);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to add ownerId info");
     return 0;
 }

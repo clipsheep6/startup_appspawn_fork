@@ -98,7 +98,7 @@ static int SetKeepCapabilities(const AppSpawnMgr *content, const AppSpawningCtx 
 {
     APPSPAWN_LOGV("Process step %{public}s processName:  %{public}s", "SetKeepCapabilities", GetProcessName(property));
     AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
-    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_NO_TLV,
+    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_TLV_NONE,
         "No tlv %{public}d in msg %{public}s", TLV_DOMAIN_INFO, GetProcessName(property));
 
     // set keep capabilities when user not root.
@@ -216,7 +216,7 @@ static int SetUidGid(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Process step %{public}s processName:  %{public}s", "SetUidGid", GetProcessName(property));
     AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
-    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_NO_TLV,
+    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_TLV_NONE,
         "No tlv %{public}d in msg %{public}s", TLV_DAC_INFO, GetProcessName(property));
 
     // set gids
@@ -363,7 +363,7 @@ static int MountAppEl2Dir(const AppSpawningCtx *property)
     const char rootPath[] = APPSPAWN_BASE_DIR "/mnt/sandbox/";
     const char el2Path[] = "/data/storage/el2";
     AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
-    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_NO_TLV, "No dac info in msg %{public}s", GetProcessName(property));
+    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_TLV_NONE, "No dac info in msg %{public}s", GetProcessName(property));
 
     if (IsUnlockStatus(dacInfo->uid)) {
         return 0;
@@ -483,6 +483,13 @@ static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
     if (TestAppMsgFlagsSet(property, APP_FLAGS_COLD_BOOT)) {
         // check cold start
         property->client.flags |= CheckEnabled("startup.appspawn.cold.boot", "true") ? APP_COLD_START : 0;
+        ssize_t nread = readlink("/proc/self/exe",
+            property->forkCtx.coldRunPath, sizeof(property->forkCtx.coldRunPath) - 1);
+        if (nread <= 0) {
+             APPSPAWN_LOGE("Failed to set asan exec path %{public}s", GetProcessName(property));
+             return -1;
+        }
+        property->forkCtx.coldRunPath[nread] = '\0';
     }
     // check developer mode
     property->client.flags |= CheckEnabled("const.security.developermode.state", "true") ? APP_DEVELOPER_MODE : 0;
@@ -492,6 +499,7 @@ static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
 
 static int EnablePidNs(AppSpawnMgr *content)
 {
+    APPSPAWN_LOGV("EnablePidNs %d %d", IsNWebSpawnMode(content), IsColdRunMode(content));
     if (IsNWebSpawnMode(content) || IsColdRunMode(content)) {
         return 0;
     }
@@ -524,8 +532,8 @@ MODULE_CONSTRUCTOR(void)
     AddPreloadHook(HOOK_PRIO_STEP6, EnablePidNs);
 
     AddAppSpawnHook(HOOK_SPAWN_PREPARE, HOOK_PRIO_STEP1, AppSpawnPreSpawn);
-    AddAppSpawnHook(HOOK_SPAWN_FIRST, HOOK_PRIO_STEP1, AppSpawnSpawnPrepare);
-    AddAppSpawnHook(HOOK_SPAWN_SECOND, HOOK_PRIO_STEP1, AppSpawnSpawnStep1);
-    AddAppSpawnHook(HOOK_SPAWN_SECOND, HOOK_PRIO_STEP6, AppSpawnSpawnStep6);
-    AddAppSpawnHook(HOOK_SPAWN_THIRD, HOOK_PRIO_STEP1, AppSpawnSpawnAfter);
+    AddAppSpawnHook(HOOK_SPAWN_CLEAR_ENV, HOOK_PRIO_STEP1, AppSpawnSpawnPrepare);
+    AddAppSpawnHook(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_PRIO_STEP1, AppSpawnSpawnStep1);
+    AddAppSpawnHook(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_PRIO_STEP6, AppSpawnSpawnStep6);
+    AddAppSpawnHook(HOOK_SPAWN_COMPLETED, HOOK_PRIO_STEP1, AppSpawnSpawnAfter);
 }

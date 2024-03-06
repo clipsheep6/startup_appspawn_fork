@@ -26,17 +26,17 @@
 #include "appspawn_server.h"
 #include "appspawn_service.h"
 #include "appspawn_utils.h"
+#include "command_lexer.h"
 #include "config_policy_utils.h"
 #include "hitrace_meter.h"
 #include "js_runtime.h"
+#include "json_utils.h"
 #include "parameters.h"
-#include "command_lexer.h"
 #include "resource_manager.h"
-#include "sandbox_utils.h"
 #ifndef APPSPAWN_TEST
-#include "runtime.h"
-#include "foundation/ability/ability_runtime/interfaces/kits/native/appkit/app/main_thread.h"
 #include "ace_forward_compatibility.h"
+#include "foundation/ability/ability_runtime/interfaces/kits/native/appkit/app/main_thread.h"
+#include "runtime.h"
 #endif
 
 using namespace OHOS::AppSpawn;
@@ -53,7 +53,7 @@ static void GetPreloadModules(const std::string &configName, std::set<std::strin
 {
     // Preload napi module
     nlohmann::json preloadJson;
-    bool rc = SandboxUtils::GetJsonObjFromJson(preloadJson, configName);
+    bool rc = JsonUtils::GetJsonObjFromJson(preloadJson, configName);
     APPSPAWN_CHECK_ONLY_EXPER(rc, return);
     // no config
     if (preloadJson.find("napi") == preloadJson.end()) {
@@ -132,8 +132,9 @@ static void LoadExtendLib(void)
     APPSPAWN_LOGI("LoadExtendLib: End preload JS VM");
 }
 
-static void RunChildThread(const AppSpawnMgr *content, const AppSpawningCtx *property)
+static int RunChildThread(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
+    AppSpawnEnvClear((AppSpawnContent *)&content->content, (AppSpawnClient *)&property->client);
     std::string checkExit;
     if (OHOS::system::GetBoolParameter("persist.init.debug.checkexit", true)) {
         checkExit = std::to_string(getpid());
@@ -141,48 +142,53 @@ static void RunChildThread(const AppSpawnMgr *content, const AppSpawningCtx *pro
     setenv(APPSPAWN_CHECK_EXIT, checkExit.c_str(), true);
     OHOS::AppExecFwk::MainThread::Start();
     unsetenv(APPSPAWN_CHECK_EXIT);
+    return 0;
 }
 
-static void RunChildByRenderCmd(const AppSpawnMgr *content, const AppSpawningCtx *property)
+static int RunChildByRenderCmd(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     uint32_t len = 0;
     char *renderCmd = reinterpret_cast<char *>(GetAppPropertyEx(property, MSG_EXT_NAME_RENDER_CMD, &len));
     if (renderCmd == NULL || !IsDeveloperModeOn(property)) {
         APPSPAWN_LOGE("Denied launching a native process: not in developer mode");
-        return;
+        return -1;
     }
     APPSPAWN_LOGI("renderCmd %{public}s", renderCmd);
     std::vector<std::string> args;
     std::string command(renderCmd);
     CommandLexer lexer(command);
     if (!lexer.GetAllArguments(args)) {
-        return;
+        return -1;
     }
     if (args.empty()) {
         APPSPAWN_LOGE("Failed to run a native process: empty command %{public}s", renderCmd);
-        return;
+        return -1;
     }
     std::vector<char *> options;
     for (const auto &arg : args) {
         options.push_back(const_cast<char *>(arg.c_str()));
     }
     options.push_back(nullptr);
+    // clear appspawn env, do not user any content and property
+    AppSpawnEnvClear((AppSpawnContent *)&content->content, (AppSpawnClient *)&property->client);
     execvp(args[0].c_str(), options.data());
     // If it succeeds calling execvp, it never returns.
     int err = errno;
     APPSPAWN_LOGE("Failed to launch a native process with execvp: %{public}s", strerror(err));
-    return;
+    return 0;
 }
 
-static void RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
+static int RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
-    APPSPAWN_CHECK(client != NULL && content != NULL, return, "Invalid client");
+    APPSPAWN_CHECK(client != NULL && content != NULL, return -1, "Invalid client");
     AppSpawningCtx *property = reinterpret_cast<AppSpawningCtx *>(client);
+    int ret = 0;
     if (GetAppPropertyCode(property) == MSG_SPAWN_NATIVE_PROCESS) {
-        RunChildByRenderCmd(reinterpret_cast<AppSpawnMgr *>(content), property);
+        ret = RunChildByRenderCmd(reinterpret_cast<AppSpawnMgr *>(content), property);
     } else {
-        RunChildThread(reinterpret_cast<AppSpawnMgr *>(content), property);
+        ret = RunChildThread(reinterpret_cast<AppSpawnMgr *>(content), property);
     }
+    return 0;
 }
 
 static int AppSpawnPreload(AppSpawnMgr *content)

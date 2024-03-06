@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include <sys/mount.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
@@ -148,10 +150,9 @@ int GetProcessTerminationStatus(AppSpawnedProcessMgr *mgr, pid_t pid)
         APPSPAWN_LOGE("unable to kill render process, pid: %{public}d ret %{public}d", pid, errno);
     }
 
-    pid_t exitPid = waitpid(pid, &exitStatus, WNOHANG);
+    pid_t exitPid = waitpid(pid, &exitStatus, 0);
     if (exitPid != pid) {
-        APPSPAWN_LOGE("waitpid failed, return : %{public}d, pid: %{public}d, status: %{public}d",
-            exitPid, pid, exitStatus);
+        APPSPAWN_LOGE("waitpid failed, pid: %{public}d %{public}d, status: %{public}d", exitPid, pid, exitStatus);
         return -1;
     }
     return exitStatus;
@@ -168,40 +169,21 @@ AppSpawningCtx *CreateAppSpawningCtx(AppSpawnedProcessMgr *mgr)
     property->forkCtx.timer = NULL;
     property->forkCtx.fd[0] = -1;
     property->forkCtx.fd[1] = -1;
-    property->connection = NULL;
-    property->receiver = NULL;
+    property->forkCtx.shmId = -1;
+    property->message = NULL;
     property->pid = 0;
     property->state = APP_STATE_IDLE;
     OH_ListInit(&property->node);
-    OH_ListAddTail(&mgr->appSpawnQueue, &property->node);
+    if (mgr) {
+        OH_ListAddTail(&mgr->appSpawnQueue, &property->node);
+    }
     return property;
-}
-
-void DeleteAppSpawnMsgReceiver(AppSpawnMsgReceiverCtx *receiver)
-{
-    if (receiver == NULL) {
-        return;
-    }
-    if (receiver->buffer) {
-        free(receiver->buffer);
-        receiver->buffer = NULL;
-    }
-    if (receiver->tlvOffset) {
-        free(receiver->tlvOffset);
-        receiver->tlvOffset = NULL;
-    }
-    if (receiver->timer) {
-        LE_StopTimer(LE_GetDefaultLoop(), receiver->timer);
-        receiver->timer = NULL;
-    }
-    receiver->msgRecvLen = 0;
-    free(receiver);
 }
 
 void DeleteAppSpawningCtx(AppSpawningCtx *property)
 {
     APPSPAWN_CHECK_ONLY_EXPER(property != NULL, return);
-    DeleteAppSpawnMsgReceiver(property->receiver);
+    DeleteAppSpawnMsg(property->message);
     OH_ListRemove(&property->node);
     if (property->forkCtx.timer) {
         LE_StopTimer(LE_GetDefaultLoop(), property->forkCtx.timer);
@@ -217,16 +199,11 @@ void DeleteAppSpawningCtx(AppSpawningCtx *property)
     if (property->forkCtx.fd[1] >= 0) {
         close(property->forkCtx.fd[1]);
     }
-    free(property);
-}
-
-static int AppPropertyCompareConnection(ListNode *node, void *data)
-{
-    AppSpawningCtx *property = ListEntry(node, AppSpawningCtx, node);
-    if (property->connection == (AppSpawnConnection *)data) {
-        return 0;
+    if (property->forkCtx.shmId >= 0) {
+        (void)shmctl(property->forkCtx.shmId, IPC_RMID, NULL);
+        property->forkCtx.shmId = -1;
     }
-    return 1;
+    free(property);
 }
 
 static int AppPropertyComparePid(ListNode *node, void *data)
@@ -236,21 +213,6 @@ static int AppPropertyComparePid(ListNode *node, void *data)
         return 0;
     }
     return 1;
-}
-
-void AppMgrHandleConnectClose(AppSpawnedProcessMgr *mgr, const AppSpawnConnection *connection)
-{
-    ListNode *node = OH_ListFind(&mgr->appSpawnQueue, (void *)connection, AppPropertyCompareConnection);
-    APPSPAWN_CHECK_ONLY_EXPER(node != NULL, return);
-
-    AppSpawningCtx *property = ListEntry(node, AppSpawningCtx, node);
-    if (property->state == APP_STATE_SPAWNING) {
-        APPSPAWN_LOGI("Kill process, pid: %{public}d app: %{public}s", property->pid, GetProcessName(property));
-        if (kill(property->pid, SIGKILL) != 0) {
-            APPSPAWN_LOGE("unable to kill process, pid: %{public}d errno: %{public}d", property->pid, errno);
-        }
-        DeleteAppSpawningCtx(property);
-    }
 }
 
 AppSpawningCtx *GetAppSpawningCtxByPid(AppSpawnedProcessMgr *mgr, pid_t pid)
@@ -293,75 +255,16 @@ int IsDeveloperModeOn(const AppSpawningCtx *property)
     return (property->client.flags & APP_DEVELOPER_MODE) == APP_DEVELOPER_MODE;
 }
 
-int GetAppPropertyCode(const struct tagAppSpawningCtx *appProperty)
-{
-    return (appProperty != NULL && appProperty->receiver != NULL) ?
-        appProperty->receiver->msgHeader.msgType : MAX_TYPE_INVALID;
-}
-
-const char *GetProcessName(const struct tagAppSpawningCtx *property)
-{
-    if (property == NULL || property->receiver == NULL) {
-        return NULL;
-    }
-    return property->receiver->msgHeader.processName;
-}
-
-const char *GetBundleName(const struct tagAppSpawningCtx *property)
-{
-    AppSpawnMsgBundleInfo *info = GetAppProperty(property, TLV_BUNDLE_INFO);
-    if (info != NULL) {
-        return info->bundleName;
-    }
-    return NULL;
-}
-
-void *GetAppProperty(const struct tagAppSpawningCtx *property, uint32_t type)
-{
-    APPSPAWN_CHECK(type < TLV_MAX, return NULL, "Invalid tlv type %{public}u", type);
-    APPSPAWN_CHECK(property != NULL && property->receiver != NULL && property->receiver->buffer != NULL,
-        return NULL, "Invalid property for type %{public}u", type);
-    APPSPAWN_CHECK(property->receiver->tlvOffset[type] < (property->receiver->msgHeader.msgLen - sizeof(AppSpawnMsg)),
-        return NULL, "Invalid tlv tlvOffset %{public}u", property->receiver->tlvOffset[type]);
-    return (void *)(property->receiver->buffer + property->receiver->tlvOffset[type] + sizeof(AppSpawnTlv));
-}
-
-uint8_t *GetAppPropertyEx(const struct tagAppSpawningCtx *property, const char *name, uint32_t *len)
-{
-    APPSPAWN_CHECK(name != NULL, return NULL, "Invalid name ");
-    APPSPAWN_CHECK(property != NULL && property->receiver != NULL && property->receiver->buffer != NULL,
-        return NULL, "Invalid property for name %{public}s", name);
-
-    APPSPAWN_LOGV("GetAppPropertyEx tlvCount %{public}d name %{public}s", property->receiver->tlvCount, name);
-    for (uint32_t index = TLV_MAX; index < (TLV_MAX + property->receiver->tlvCount); index++) {
-        if (property->receiver->tlvOffset[index] >= (property->receiver->msgHeader.msgLen - sizeof(AppSpawnMsg))) {
-            return NULL;
-        }
-        uint8_t *data = property->receiver->buffer + property->receiver->tlvOffset[index];
-        if (((AppSpawnTlv *)data)->tlvType != TLV_MAX) {
-            continue;
-        }
-        AppSpawnTlvEx *tlv = (AppSpawnTlvEx *)data;
-        if (strcmp(tlv->tlvName, name) != 0) {
-            continue;
-        }
-        if (len != NULL) {
-            *len = tlv->dataLen;
-        }
-        return data + sizeof(AppSpawnTlvEx);
-    }
-    return NULL;
-}
-
 static void DumpAppProperty(const AppSpawningCtx *property, const char *info)
 {
     APPSPAPWN_DUMP("%{public}s app property id: %{public}u flags: %{public}x",
         info, property->client.id, property->client.flags);
     APPSPAPWN_DUMP("%{public}s app property state: %{public}d", info, property->state);
-    if (property->receiver) {
+    if (property->message) {
         APPSPAPWN_DUMP("%{public}s app property msgId: %{public}u msgLen: %{public}u tlvCount: %{public}u",
-            info, property->receiver->msgHeader.msgId, property->receiver->msgHeader.msgLen, property->receiver->tlvCount);
-        APPSPAPWN_DUMP("%{public}s app property process name: %{public}s", info, property->receiver->msgHeader.processName);
+            info, property->message->msgHeader.msgId, property->message->msgHeader.msgLen, property->message->tlvCount);
+        APPSPAPWN_DUMP("%{public}s app property process name: %{public}s",
+            info, property->message->msgHeader.processName);
     }
     DumpNormalProperty(property);
 }
@@ -376,9 +279,10 @@ static int DumpAppSpawnQueue(ListNode *node, void *data)
 static int DumpAppQueue(ListNode *node, void *data)
 {
     AppSpawnedProcess *appInfo = ListEntry(node, AppSpawnedProcess, node);
+    int64_t diff = DiffTime(&appInfo->spawnStart, &appInfo->spawnEnd);
     APPSPAPWN_DUMP("APP in %{public}s info uid: %{public}u pid: %{public}x", (char *)data, appInfo->uid, appInfo->pid);
-    APPSPAPWN_DUMP("APP in %{public}s info name: %{public}s exitStatus: %{public}d",
-        (char *)data, appInfo->name, appInfo->exitStatus);
+    APPSPAPWN_DUMP("APP in %{public}s info name: %{public}s exitStatus: %{public}d spawn time: %{public}" PRId64 " ns ",
+        (char *)data, appInfo->name, appInfo->exitStatus, diff);
     return 0;
 }
 
@@ -400,62 +304,4 @@ void DumpApSpawn(const AppSpawnMgr *content)
     OH_ListTraversal((ListNode *)&content->processMgr.diedQueue, "App died queue", DumpAppQueue, 0);
     APPSPAPWN_DUMP("Ext data: ");
     OH_ListTraversal((ListNode *)&content->extData, "Ext data", DumpExtData, 0);
-}
-
-static inline void DumpMsgFlags(const char *info, const AppSpawnMsgFlags *msgFlags)
-{
-    APPSPAPWN_DUMP("%{public}s count: %{public}u ", info, msgFlags->count);
-    for (uint32_t i = 0; i < msgFlags->count; i++) {
-        APPSPAPWN_DUMP("%{public}s flags: 0x%{public}x", info, msgFlags->flags[i]);
-    }
-}
-
-void DumpNormalProperty(const AppSpawningCtx *property)
-{
-    APPSPAWN_CHECK_ONLY_EXPER(property != NULL && property->receiver != NULL, return);
-    for (uint32_t i = 0; i < TLV_MAX + property->receiver->tlvCount; i++) {
-        if (property->receiver->tlvOffset[i] == INVALID_OFFSET) {
-            continue;
-        }
-        AppSpawnTlv *tlv = (AppSpawnTlv *)(property->receiver->buffer + property->receiver->tlvOffset[i]);
-        switch (tlv->tlvType) {
-            case TLV_MSG_FLAGS:
-                DumpMsgFlags("property flags", (AppSpawnMsgFlags *)(tlv + 1));
-                break;
-            case TLV_PERMISSION:
-                DumpMsgFlags("permission flags", (AppSpawnMsgFlags *)(tlv + 1));
-                break;
-            case TLV_ACCESS_TOKEN_INFO:
-                APPSPAPWN_DUMP("App accessTokenId: %{public}u %{public}" PRId64 "",
-                    ((AppSpawnMsgAccessToken *)(tlv + 1))->accessTokenId,
-                    ((AppSpawnMsgAccessToken *)(tlv + 1))->accessTokenIdEx);
-                break;
-            case TLV_DAC_INFO: {
-                AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)(tlv + 1);
-                APPSPAPWN_DUMP("App dac info uid: %{public}d gid: %{public}d count: %{public}d userName: %{public}s",
-                    dacInfo->uid, dacInfo->gid, dacInfo->gidCount, dacInfo->userName);
-                break;
-            }
-            case TLV_BUNDLE_INFO:
-                APPSPAPWN_DUMP("bundle info bundleName: \"%{public}s\" %{public}d",
-                    ((AppSpawnMsgBundleInfo *)(tlv + 1))->bundleName,
-                    ((AppSpawnMsgBundleInfo *)(tlv + 1))->bundleIndex);
-                break;
-            case TLV_OWNER_INFO:
-                APPSPAPWN_DUMP("owner info: \"%{public}s\" ", ((AppSpawnMsgOwnerId *)(tlv + 1))->ownerId);
-                break;
-            case TLV_DOMAIN_INFO:
-                APPSPAPWN_DUMP("domain info hap flags: 0x%{public}x apl: \"%{public}s\"",
-                    ((AppSpawnMsgDomainInfo *)(tlv + 1))->hapFlags, ((AppSpawnMsgDomainInfo *)(tlv + 1))->apl);
-                break;
-            case TLV_MAX: {
-                AppSpawnTlvEx *tlvEx = (AppSpawnTlvEx *)(tlv);
-                APPSPAPWN_DUMP("App extend tlv name: %{public}s %{public}u '%{public}s'",
-                    tlvEx->tlvName, tlvEx->dataLen, (char *)(tlvEx + 1));
-                break;
-            }
-            default:
-                break;
-        }
-    }
 }
