@@ -85,6 +85,7 @@ do { \
         (clientExt)->property.bundleName, (clientExt)->property.soPath);                            \
     APPSPAWN_LOGI("Access token apl %{public}s renderCmd %{public}s ownerId %{public}s",            \
         (clientExt)->property.apl, (clientExt)->property.renderCmd, (clientExt)->property.ownerId); \
+    APPSPAWN_LOGI("provisionType %{public}s", (clientExt)->property.provisionType);                 \
     APPSPAWN_LOGI("uid %{public}u %{public}u gid count %{public}u",                                 \
         (clientExt)->property.uid, (clientExt)->property.gid, (clientExt)->property.gidCount);      \
     APPSPAWN_LOGI("setAllowInternet %{public}d allowInternet %{public}d ",                          \
