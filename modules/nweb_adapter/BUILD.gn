@@ -24,8 +24,7 @@ ohos_shared_library("appspawn_nweb") {
 
   defines = []
   cflags = []
-  deps =
-      [ "${appspawn_innerkits_path}/module_engine:libappspawn_module_engine" ]
+  deps = [ "${appspawn_path}/modules/module_engine:libappspawn_module_engine" ]
   if (target_cpu == "arm64") {
     defines += [ "webview_arm64" ]
   }

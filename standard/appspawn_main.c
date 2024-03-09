@@ -20,6 +20,7 @@
 #include "appspawn_hook.h"
 #include "appspawn_modulemgr.h"
 #include "appspawn_service.h"
+#include "parameter.h"
 #include "securec.h"
 
 #define APPSPAWN_PRELOAD "libappspawn_helper.z.so"
@@ -44,45 +45,50 @@ static void CheckPreload(char *const argv[])
     APPSPAWN_LOGE("execv fail: %{public}s: %{public}d: %{public}d", buf, errno, ret);
 }
 
-
-static int AppSpawnSpawnPost(AppSpawnMgr *content, AppSpawningCtx *property)
-{
-    APPSPAWN_LOGI("AppSpawnSpawnPost clear all appspawn content");
-    // delete all hook
-    /*
-    AppSpawnModuleMgrUnInstall(MODULE_DEFAULT);
-    AppSpawnModuleMgrUnInstall(MODULE_APPSPAWN);
-    AppSpawnModuleMgrUnInstall(MODULE_NWEBSPAWN);
-    AppSpawnModuleMgrUnInstall(MODULE_COMMON);
-    DeleteAppSpawnHookMgr();
-    DeleteAppSpawningCtx(property);
-    AppSpawnDestroyContent(&content->content);
-    */
-    return 0;
-}
-
 // appspawn -mode appspawn | cold | nwebspawn -param app_property -fd clientFd
 int main(int argc, char *const argv[])
 {
     if (argc <= 0) {
         return 0;
     }
-    SetDumpFlags(0);
     uintptr_t start = (uintptr_t)argv[0];
     uintptr_t end = (uintptr_t)strchr(argv[argc - 1], 0);
     if (end == 0) {
         return 0;
     }
-    uint32_t argvSize = end - start;
-    if (argvSize < APP_LEN_PROC_NAME) {
-        return 0;
-    }
-    APPSPAWN_LOGV("Start appspawn ...");
     CheckPreload(argv);
     (void)signal(SIGPIPE, SIG_IGN);
-    AppSpawnContent *content = StartSpawnService(argvSize, argc, argv);
+    uint32_t argvSize = end - start;
+    AppSpawnStartArg arg = {};
+    arg.mode = MODE_FOR_APP_SPAWN;
+    arg.socketName = APPSPAWN_SOCKET_NAME;
+    arg.serviceName = APPSPAWN_SERVER_NAME;
+    arg.moduleType = MODULE_APPSPAWN;
+    arg.initArg = 1;
+    if (argc <= MODE_VALUE_INDEX) {  // appspawn start
+        arg.mode = MODE_FOR_APP_SPAWN;
+    } else if (strcmp(argv[MODE_VALUE_INDEX], "app_cold") == 0) {  // cold start
+        APPSPAWN_CHECK(argc > PARAM_VALUE_INDEX, return 0, "Invalid arg for cold start %{public}d", argc);
+        arg.mode = MODE_FOR_APP_COLD_RUN;
+        arg.initArg = 0;
+    } else if (strcmp(argv[MODE_VALUE_INDEX], "nweb_cold") == 0) {  // cold start
+        APPSPAWN_CHECK(argc > PARAM_VALUE_INDEX, return 0, "Invalid arg for cold start %{public}d", argc);
+        arg.mode = MODE_FOR_NWEB_COLD_RUN;
+        arg.serviceName = NWEBSPAWN_SERVER_NAME;
+        arg.initArg = 0;
+    } else if (strcmp(argv[MODE_VALUE_INDEX], NWEBSPAWN_SERVER_NAME) == 0) {  // nweb spawn start
+        APPSPAWN_CHECK(argvSize >= APP_LEN_PROC_NAME,
+            return 0, "Invalid arg size for service %{public}s", arg.serviceName);
+        arg.mode = MODE_FOR_NWEB_SPAWN;
+        arg.moduleType = MODULE_NWEBSPAWN;
+        arg.socketName = NWEBSPAWN_SOCKET_NAME;
+        arg.serviceName = NWEBSPAWN_SERVER_NAME;
+    } else {
+        APPSPAWN_CHECK(argvSize >= APP_LEN_PROC_NAME,
+            return 0, "Invalid arg size for service %{public}s", arg.serviceName);
+    }
+    AppSpawnContent *content = StartSpawnService(&arg, argvSize, argc, argv);
     if (content != NULL) {
-        AddAppSpawnHook(HOOK_SPAWN_POST, HOOK_PRIO_STEP7, AppSpawnSpawnPost);
         content->runAppSpawn(content, argc, argv);
     }
     return 0;

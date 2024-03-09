@@ -25,38 +25,25 @@
 extern "C" {
 #endif
 
+/**
+ * @brief appspawn请求消息构造句柄，不支持多线程消息构建
+ *
+ * 根据业务使用AppSpawnReqMsgCreate/AppSpawnTerminateMsgCreate 构建消息
+ * 如果调用AppSpawnClientSendMsg后，消息句柄不需要处理
+ * 否则需要调用 AppSpawnReqMsgFree 释放句柄
+ *
+ */
 typedef void *AppSpawnReqMsgHandle;
+
+/**
+ * @brief 支持多线程获取句柄，这个是线程安全的。使用时，全局创建一个句柄，支持多线程发送对应线程的消息请求
+ *
+ */
 typedef void *AppSpawnClientHandle;
 
 #define INVALID_REQ_HANDLE NULL
 #define NWEBSPAWN_SERVER_NAME "nwebspawn"
 #define APPSPAWN_SERVER_NAME "appspawn"
-#define MAX_RETRY_SEND_COUNT 3 // 3 max retry count
-
-/*
-flags bit definition
-    use TestAppMsgFlagsSet to test
-    use AppSpawnReqMsgSetAppFlag to set
-*/
-typedef enum {
-    APP_FLAGS_COLD_BOOT = 0,
-    APP_FLAGS_BACKUP_EXTENSION = 1,
-    APP_FLAGS_DLP_MANAGER = 2,
-    APP_FLAGS_DEBUGGABLE = 3,
-    APP_FLAGS_ASANENABLED = 4,
-    APP_FLAGS_ACCESS_BUNDLE_DIR = 5,
-    APP_FLAGS_NATIVEDEBUG = 6,
-    APP_FLAGS_NO_SANDBOX = 7,
-    APP_FLAGS_OVERLAY = 8,
-    APP_FLAGS_BUNDLE_RESOURCES = 9,
-    APP_FLAGS_GWP_ENABLED_FORCE,   // APP_GWP_ENABLED_FORCE 0x400
-    APP_FLAGS_GWP_ENABLED_NORMAL,  // APP_GWP_ENABLED_NORMAL 0x800
-#ifndef APPSPAWN_TEST
-    MAX_FLAGS_INDEX,
-#else
-    MAX_FLAGS_INDEX = 63,
-#endif
-} AppFlagsIndex;
 
 #pragma pack(4)
 #define APP_MAX_GIDS 64
@@ -80,14 +67,14 @@ typedef struct {
  *
  * @param serviceName service name, eg: nwebspawn、appspawn
  * @param handle handle for client
- * @return int
+ * @return if succeed return 0,else return other value
  */
 int AppSpawnClientInit(const char *serviceName, AppSpawnClientHandle *handle);
 /**
  * @brief destroy client
  *
  * @param handle handle for client
- * @return int
+ * @return if succeed return 0,else return other value
  */
 int AppSpawnClientDestroy(AppSpawnClientHandle handle);
 
@@ -97,7 +84,7 @@ int AppSpawnClientDestroy(AppSpawnClientHandle handle);
  * @param handle handle for client
  * @param reqHandle handle for request
  * @param result result from appspawn service
- * @return int
+ * @return if succeed return 0,else return other value
  */
 int AppSpawnClientSendMsg(AppSpawnClientHandle handle, AppSpawnReqMsgHandle reqHandle, AppSpawnResult *result);
 
@@ -112,19 +99,19 @@ typedef enum {
 /**
  * @brief create spawn request
  *
- * @param msgType msg type MSG_APP_SPAWN,MSG_SPAWN_NATIVE_PROCESS
- * @param processName process name
- * @param reqHandle handle for request
- * @return int
+ * @param msgType msg type. eg: MSG_APP_SPAWN,MSG_SPAWN_NATIVE_PROCESS
+ * @param processName process name, max length is 255
+ * @param reqHandle handle for request message
+ * @return if succeed return 0,else return other value
  */
-int AppSpawnReqMsgCreate(uint32_t msgType, const char *processName, AppSpawnReqMsgHandle *reqHandle);
+int AppSpawnReqMsgCreate(AppSpawnMsgType msgType, const char *processName, AppSpawnReqMsgHandle *reqHandle);
 
 /**
  * @brief create request
  *
  * @param pid process pid
- * @param reqHandle handle for request
- * @return int
+ * @param reqHandle handle for request message
+ * @return if succeed return 0,else return other value
  */
 int AppSpawnTerminateMsgCreate(pid_t pid, AppSpawnReqMsgHandle *reqHandle);
 
@@ -138,89 +125,102 @@ void AppSpawnReqMsgFree(AppSpawnReqMsgHandle reqHandle);
 /**
  * @brief set bundle info
  *
- * @param reqHandle handle for request
- * @param bundleIndex
- * @param bundleName
- * @return int
+ * @param reqHandle handle for request message
+ * @param bundleIndex bundle index
+ * @param bundleName bundle name, max length is 255
+ * @return if succeed return 0,else return other value
  */
-int AppSpawnReqMsgSetBundleInfo(AppSpawnReqMsgHandle reqHandle, int32_t bundleIndex, const char *bundleName);
+int AppSpawnReqMsgSetBundleInfo(AppSpawnReqMsgHandle reqHandle, uint32_t bundleIndex, const char *bundleName);
 
 /**
  * @brief set app flags info
  *
- * @param reqHandle handle for request
+ * @param reqHandle handle for request message
  * @param flagIndex flags index from AppFlagsIndex
- * @return int
+ * @return if succeed return 0,else return other value
  */
-int AppSpawnReqMsgSetAppFlag(AppSpawnReqMsgHandle reqHandle, uint32_t flagIndex);
+typedef enum {
+    APP_FLAGS_COLD_BOOT = 0,
+    APP_FLAGS_BACKUP_EXTENSION = 1,
+    APP_FLAGS_DLP_MANAGER = 2,
+    APP_FLAGS_DEBUGGABLE = 3,
+    APP_FLAGS_ASANENABLED = 4,
+    APP_FLAGS_ACCESS_BUNDLE_DIR = 5,
+    APP_FLAGS_NATIVEDEBUG = 6,
+    APP_FLAGS_NO_SANDBOX = 7,
+    APP_FLAGS_OVERLAY = 8,
+    APP_FLAGS_BUNDLE_RESOURCES = 9,
+    APP_FLAGS_GWP_ENABLED_FORCE,   // APP_GWP_ENABLED_FORCE 0x400
+    APP_FLAGS_GWP_ENABLED_NORMAL,  // APP_GWP_ENABLED_NORMAL 0x800
+    MAX_FLAGS_INDEX = 63,
+} AppFlagsIndex;
+
+int AppSpawnReqMsgSetAppFlag(AppSpawnReqMsgHandle reqHandle, AppFlagsIndex flagIndex);
 
 /**
  * @brief set dac info
  *
- * @param reqHandle handle for request
+ * @param reqHandle handle for request message
  * @param dacInfo dac info from AppDacInfo
- * @return int
+ * @return if succeed return 0,else return other value
  */
 int AppSpawnReqMsgSetAppDacInfo(AppSpawnReqMsgHandle reqHandle, const AppDacInfo *dacInfo);
 
 /**
  * @brief set domain info
  *
- * @param reqHandle handle for request
- * @param hapFlags
- * @param apl
- * @return int
+ * @param reqHandle handle for request message
+ * @param hapFlags hap of flags
+ * @param apl apl value, max length is 31
+ * @return if succeed return 0,else return other value
  */
 int AppSpawnReqMsgSetAppDomainInfo(AppSpawnReqMsgHandle reqHandle, uint32_t hapFlags, const char *apl);
 
 /**
  * @brief set internet permission info
  *
- * @param reqHandle handle for request
+ * @param reqHandle handle for request message
  * @param allowInternet
  * @param setAllowInternet
- * @return int
+ * @return if succeed return 0,else return other value
  */
 int AppSpawnReqMsgSetAppInternetPermissionInfo(AppSpawnReqMsgHandle reqHandle, uint8_t allow, uint8_t setAllow);
 
 /**
  * @brief set access token info
  *
- * @param handle handle for client
- * @param reqHandle handle for request
+ * @param reqHandle handle for request message
  * @param accessTokenIdEx access tokenId
- * @return int
+ * @return if succeed return 0,else return other value
  */
 int AppSpawnReqMsgSetAppAccessToken(AppSpawnReqMsgHandle reqHandle, uint64_t accessTokenIdEx);
 
 /**
  * @brief set owner info
  *
- * @param handle handle for client
- * @param reqHandle handle for request
- * @param ownerId
- * @return int
+ * @param reqHandle handle for request message
+ * @param ownerId owner id, max length is 63
+ * @return if succeed return 0,else return other value
  */
 int AppSpawnReqMsgSetAppOwnerId(AppSpawnReqMsgHandle reqHandle, const char *ownerId);
 
 /**
- * @brief set permission
+ * @brief add permission to message
  *
- * @param reqHandle handle for request
+ * @param reqHandle handle for request message
  * @param permission permission name
- * @return int
+ * @return if succeed return 0,else return other value
  */
 int AppSpawnReqMsgAddPermission(AppSpawnReqMsgHandle reqHandle, const char *permission);
 
 /**
- * @brief add extend info
+ * @brief add extend info to message
  *
- * @param reqHandle handle for request
- * @param name extend name
- *
- * @param value extend value
+ * @param reqHandle handle for request message
+ * @param name extend name, max length is 31
+ * @param value extend value, max length is 32768
  * @param valueLen extend value length
- * @return int
+ * @return if succeed return 0,else return other value
  */
 #define MSG_EXT_NAME_RENDER_CMD "render-cmd"
 #define MSG_EXT_NAME_HSP_LIST "HspList"
@@ -229,6 +229,15 @@ int AppSpawnReqMsgAddPermission(AppSpawnReqMsgHandle reqHandle, const char *perm
 #define MSG_EXT_NAME_APP_ENV "AppEnv"
 
 int AppSpawnReqMsgAddExtInfo(AppSpawnReqMsgHandle reqHandle, const char *name, const uint8_t *value, uint32_t valueLen);
+
+/**
+ * @brief add extend info to message
+ *
+ * @param reqHandle handle for request message
+ * @param name extend name, max length is 31
+ * @param value extend value, max length is 32767
+ * @return if succeed return 0,else return other value
+ */
 int AppSpawnReqMsgAddStringInfo(AppSpawnReqMsgHandle reqHandle, const char *name, const char *value);
 
 

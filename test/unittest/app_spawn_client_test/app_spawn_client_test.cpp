@@ -119,13 +119,13 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_001, TestSize.Level0)
         APPSPAWN_CHECK(ret == 0, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
         // flags test
-        const uint32_t testFlags[] = {10, 20, 31, 32, 34, MAX_FLAGS_INDEX};
+        const uint32_t testFlags[] = {10, 20, 31, 32, 34};
         uint32_t max = sizeof(testFlags) / sizeof(testFlags[0]);
         for (size_t i = 0; i < max; i++) {
-            ret = AppSpawnReqMsgSetAppFlag(reqHandle, testFlags[i]);
+            ret = AppSpawnReqMsgSetAppFlag(reqHandle, static_cast<AppFlagsIndex>(testFlags[i]));
             ASSERT_EQ(ret, 0);
         }
-        ret = AppSpawnReqMsgSetAppFlag(reqHandle, MAX_FLAGS_INDEX + 1);
+        ret = AppSpawnReqMsgSetAppFlag(reqHandle, MAX_FLAGS_INDEX);
         ASSERT_NE(ret, 0);
 
         ret = APPSPAWN_ARG_INVALID;
@@ -252,7 +252,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_004, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         DumpNormalProperty(property);
         uint32_t len = 0;
-        char *renderCmdMsg = reinterpret_cast<char *>(GetAppPropertyEx(property, MSG_EXT_NAME_RENDER_CMD, &len));
+        char *renderCmdMsg = reinterpret_cast<char *>(GetAppPropertyExt(property, MSG_EXT_NAME_RENDER_CMD, &len));
         APPSPAWN_CHECK(renderCmdMsg != nullptr, break, "Can not find render cmd in msg");
         APPSPAWN_LOGV("info->bundleName %{public}s", renderCmdMsg);
         APPSPAWN_CHECK(strcmp(renderCmdMsg, renderCmd) == 0,
@@ -412,7 +412,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_008, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         uint32_t tlvLen = 0;
-        uint8_t *tlvValue = GetAppPropertyEx(property, tlvName, &tlvLen);
+        uint8_t *tlvValue = GetAppPropertyExt(property, tlvName, &tlvLen);
         APPSPAWN_CHECK(tlvValue != nullptr, break, "Can not find tlv in msg");
         APPSPAWN_CHECK(tlvLen == testData.size(), break, "Invalid tlv len %{public}u", tlvLen);
         APPSPAWN_CHECK(strncmp(reinterpret_cast<char *>(tlvValue), testData.data(), testData.size()) == 0,

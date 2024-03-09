@@ -36,6 +36,7 @@ extern "C" {
 #define PHYSICAL_APP_INSTALL_PATH "/data/app/el1/bundle/public/"
 #define APL_SYSTEM_CORE "system_core"
 #define APL_SYSTEM_BASIC "system_basic"
+#define MODULE_TEST_BUNDLE_NAME "moduleTestProcessName"
 
 #define PARAMETER_PACKAGE_NAME "<PackageName>"
 #define PARAMETER_USER_ID "<currentUserId>"
@@ -103,7 +104,7 @@ typedef struct tagSandboxSection {
 } SandboxSection;
 
 #ifndef APPSPAWN_CLIENT
-typedef struct tagPermissionNode {
+typedef struct TagPermissionNode {
     SandboxNode sandboxNode;
     SandboxSection section;
     int32_t permissionIndex;
@@ -112,7 +113,7 @@ typedef struct tagPermissionNode {
     gid_t gidTable[0];  // "gids": [1006, 1008],
 } SandboxPermissionNode;
 #else
-typedef struct tagPermissionNode {
+typedef struct TagPermissionNode {
     SandboxNode sandboxNode;
     uint32_t permissionIndex;
     char name[0];
@@ -125,8 +126,8 @@ typedef struct PathIndividualNode {
     char name[0];
 } SandboxPrivateNode;
 
-typedef struct tagAppSpawnSandbox {
-    AppSpawnDataEx extData;
+typedef struct TagAppSpawnSandbox {
+    AppSpawnExtData extData;
     SandboxSection section;
     SandboxSection permissionNodeQueue;
     SandboxSection privateNodeQueue;
@@ -140,7 +141,7 @@ typedef struct tagAppSpawnSandbox {
     char defaultRootPath[0];     // "sandbox-root" : "/mnt/sandbox/<PackageName>",
 } AppSpawnSandbox;
 
-typedef struct tagSandboxContext {
+typedef struct TagSandboxContext {
     uint32_t bufferLen;
     char *buffer[2];
     char *realRootPath;

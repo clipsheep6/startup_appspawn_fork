@@ -31,50 +31,65 @@ extern "C" {
 #endif
 #endif
 
-typedef struct tagAppSpawnMgr AppSpawnMgr;
-typedef struct tagAppSpawningCtx AppSpawningCtx;
-typedef struct tagAppSpawnContent AppSpawnContent;
-typedef struct tagAppSpawnClient AppSpawnClient;
-typedef struct tagAppSpawnedProcess AppSpawnedProcess;
+typedef struct TagAppSpawnMgr AppSpawnMgr;
+typedef struct TagAppSpawningCtx AppSpawningCtx;
+typedef struct TagAppSpawnContent AppSpawnContent;
+typedef struct TagAppSpawnClient AppSpawnClient;
+typedef struct TagAppSpawnedProcess AppSpawnedProcess;
 
 typedef enum {
     EXT_DATA_SANDBOX
 } ExtDataType;
 
-struct tagAppSpawnExtData;
-typedef void (*AppSpawnDataExFree)(struct tagAppSpawnExtData *data);
-typedef void (*AppSpawnDataExDump)(struct tagAppSpawnExtData *data);
-typedef struct tagAppSpawnExtData {
+struct TagAppSpawnExtData;
+typedef void (*AppSpawnExtDataFree)(struct TagAppSpawnExtData *data);
+typedef void (*AppSpawnExtDataDump)(struct TagAppSpawnExtData *data);
+typedef struct TagAppSpawnExtData {
     ListNode node;
     uint32_t dataId;
-    AppSpawnDataExFree freeNode;
-    AppSpawnDataExDump dumpNode;
-} AppSpawnDataEx;
+    AppSpawnExtDataFree freeNode;
+    AppSpawnExtDataDump dumpNode;
+} AppSpawnExtData;
+
+typedef enum TagAppSpawnHookStage {
+    // run in init
+    HOOK_PRELOAD  = 10,
+    // run before fork
+    HOOK_SPAWN_PREPARE = 20,
+    // run in child process
+    HOOK_SPAWN_CLEAR_ENV = 30, // clear env, set token HOOK_SPAWN_CLEAR_ENV
+    HOOK_SPAWN_SET_CHILD_PROPERTY,
+    HOOK_SPAWN_COMPLETED,
+    HOOK_SPAWN_POST = 40,
+    // for app change
+    HOOK_APP_ADD = 50,
+    HOOK_APP_DIED,
+} AppSpawnHookStage;
 
 typedef int (*PreloadHook)(AppSpawnMgr *content);
 typedef int (*AppSpawnHook)(AppSpawnMgr *content, AppSpawningCtx *property);
 typedef int (*ProcessChangeHook)(const AppSpawnMgr *content, const AppSpawnedProcess *appInfo);
 int AddPreloadHook(int prio, PreloadHook hook);
-int AddAppSpawnHook(int stage, int prio, AppSpawnHook hook);
-int AddAppChangeHook(int stage, int prio, ProcessChangeHook hook);
+int AddAppSpawnHook(AppSpawnHookStage stage, int prio, AppSpawnHook hook);
+int AddAppChangeHook(AppSpawnHookStage stage, int prio, ProcessChangeHook hook);
 
 int IsNWebSpawnMode(const AppSpawnMgr *content);
 int IsColdRunMode(const AppSpawnMgr *content);
 
-int GetAppPropertyCode(const AppSpawningCtx *appProperty);
+int GetAppSpawnMsgType(const AppSpawningCtx *property);
 const char *GetBundleName(const AppSpawningCtx *property);
 void *GetAppProperty(const AppSpawningCtx *property, uint32_t type);
 const char *GetProcessName(const AppSpawningCtx *property);
 
 /**
- * @brief Get the App Property Ex object
+ * @brief Get the App Property Ex info
  *
  * @param property app 属性信息
  * @param name 变量名
  * @param len 返回变量长度
  * @return uint8_t* 返回变量值
  */
-uint8_t *GetAppPropertyEx(const AppSpawningCtx *property, const char *name, uint32_t *len);
+uint8_t *GetAppPropertyExt(const AppSpawningCtx *property, const char *name, uint32_t *len);
 
 /**
  * @brief 检查app属性参数的flags是否设置
@@ -84,16 +99,16 @@ uint8_t *GetAppPropertyEx(const AppSpawningCtx *property, const char *name, uint
  * @param index flags index
  * @return int
  */
-int TestAppPropertyFlags(const AppSpawningCtx *property, uint32_t type, uint32_t index);
+int CheckAppPropertyFlags(const AppSpawningCtx *property, uint32_t type, uint32_t index);
 int SetAppPropertyFlags(const AppSpawningCtx *property, uint32_t type, uint32_t index);
 
 __attribute__((always_inline)) inline int TestAppMsgFlagsSet(const AppSpawningCtx *property, uint32_t index)
 {
-    return TestAppPropertyFlags(property, TLV_MSG_FLAGS, index);
+    return CheckAppPropertyFlags(property, TLV_MSG_FLAGS, index);
 }
 __attribute__((always_inline)) inline int TestAppPermissionFlags(const AppSpawningCtx *property, uint32_t index)
 {
-    return TestAppPropertyFlags(property, TLV_PERMISSION, index);
+    return CheckAppPropertyFlags(property, TLV_PERMISSION, index);
 }
 __attribute__((always_inline)) inline int SetAppPermissionFlags(const AppSpawningCtx *property, uint32_t index)
 {
@@ -136,7 +151,7 @@ int SandboxMountPath(const MountArg *arg);
 int IsDeveloperModeOn(const AppSpawningCtx *property);
 
 // 扩展变量
-typedef struct tagSandboxContext SandboxContext;
+typedef struct TagSandboxContext SandboxContext;
 typedef int (*ReplaceVarHandler)(const SandboxContext *context,
     const uint8_t *buffer, uint32_t bufferLen, uint32_t *realLen, int permission);
 /**
@@ -148,7 +163,7 @@ typedef int (*ReplaceVarHandler)(const SandboxContext *context,
  */
 int AddVariableReplaceHandler(const char *name, ReplaceVarHandler handler);
 
-typedef struct tagAppSpawnSandbox AppSpawnSandbox;
+typedef struct TagAppSpawnSandbox AppSpawnSandbox;
 typedef int (*ProcessExpandSandboxCfg)(const SandboxContext *context,
     const AppSpawnSandbox *appSandBox, const char *name);
 #define EXPAND_CFG_HANDLER_PRIO_START 3

@@ -27,17 +27,15 @@
 #include "appspawn_server.h"
 #include "appspawn_service.h"
 #include "appspawn_utils.h"
+#include "appspawn_mount_permission.h"
 #include "json_utils.h"
-#include "nlohmann/json.hpp"
+#include "cJSON.h"
 
 #include "app_spawn_stub.h"
 #include "app_spawn_test_helper.h"
-#include "appspawn_mount_permission.h"
 
 using namespace testing;
 using namespace testing::ext;
-using namespace OHOS::AppSpawn;
-using nlohmann::json;
 
 namespace OHOS {
 static const std::string g_commonConfig = "{ \
@@ -204,43 +202,36 @@ static const std::string g_testConfig = "{ \
     \"individual\": [] \
 }";
 
-namespace AppSpawn {
-    class SandboxLoad {
-    public:
-        static int DecodeAppSandboxConfig(AppSpawnSandbox &sandbox, const nlohmann::json &appSandboxConfig);
-    };
-
-    static inline PathMountNode *GetFirstPathNodeInQueue(const SandboxSection *section)
-    {
-        ListNode *node = section->front.next;
-        if (node == &section->front) {
-            return NULL;
-        }
-        SandboxPrivateNode *privateNode = reinterpret_cast<SandboxPrivateNode *>(ListEntry(node, SandboxNode, node));
-        node = privateNode->section.front.next;
-        if (node == &privateNode->section.front) {
-            return NULL;
-        }
-        return reinterpret_cast<PathMountNode *>(ListEntry(node, SandboxNode, node));
+static inline PathMountNode *GetFirstPathNodeInQueue(const SandboxSection *section)
+{
+    ListNode *node = section->front.next;
+    if (node == &section->front) {
+        return NULL;
     }
-
-    static inline PathMountNode *GetNextPathNode(const SandboxSection *section, PathMountNode *pathNode)
-    {
-        if (pathNode->sandboxNode.node.next == &section->front) {
-            return NULL;
-        }
-        return reinterpret_cast<PathMountNode *>(ListEntry(pathNode->sandboxNode.node.next, SandboxNode, node));
+    SandboxPrivateNode *privateNode = reinterpret_cast<SandboxPrivateNode *>(ListEntry(node, SandboxNode, node));
+    node = privateNode->section.front.next;
+    if (node == &privateNode->section.front) {
+        return NULL;
     }
+    return reinterpret_cast<PathMountNode *>(ListEntry(node, SandboxNode, node));
+}
 
-    static inline SandboxNode *GetFirstSectionNode(const SandboxSection *section)
-    {
-        ListNode *node = section->front.next;
-        if (node == &section->front) {
-            return NULL;
-        }
-        return reinterpret_cast<SandboxNode *>(ListEntry(node, SandboxNode, node));
+static inline PathMountNode *GetNextPathNode(const SandboxSection *section, PathMountNode *pathNode)
+{
+    if (pathNode->sandboxNode.node.next == &section->front) {
+        return NULL;
     }
-}  // namespace AppSpawn
+    return reinterpret_cast<PathMountNode *>(ListEntry(pathNode->sandboxNode.node.next, SandboxNode, node));
+}
+
+static inline SandboxNode *GetFirstSectionNode(const SandboxSection *section)
+{
+    ListNode *node = section->front.next;
+    if (node == &section->front) {
+        return NULL;
+    }
+    return reinterpret_cast<SandboxNode *>(ListEntry(node, SandboxNode, node));
+}
 
 AppSpawnTestHelper g_testHelper;
 class AppSpawnSandboxTest : public testing::Test {
@@ -251,9 +242,25 @@ public:
     void TearDown() {}
 };
 
+static int TestParseAppSandboxConfig(AppSpawnSandbox *sandbox, const char *buffer)
+{
+    cJSON *config = cJSON_Parse(buffer);
+    int ret = ParseAppSandboxConfig(config, sandbox);
+    cJSON_Delete(config);
+    return ret;
+}
+
+static int HandleSplitString(const char *str, void *context)
+{
+    std::vector<std::string> *results = reinterpret_cast<std::vector<std::string> *>(context);
+    results->push_back(std::string(str));
+    return 0;
+}
+
 static int TestJsonUtilSplit(const char *args[], uint32_t argc, const std::string &input, const std::string &pattern)
 {
-    std::vector<std::string> results = OHOS::AppSpawn::JsonUtils::split(input, pattern);
+    std::vector<std::string> results;
+    StringSplit(input.c_str(), pattern.c_str(), reinterpret_cast<void *>(&results), HandleSplitString);
     if (argc != results.size()) {
         return -1;
     }
@@ -369,7 +376,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Permission_01, TestSize.Level0)
 static int ProcessTestExpandConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name)
 {
     uint32_t size = 0;
-    char *extInfo = (char *)GetAppPropertyEx(context->property, name, &size);
+    char *extInfo = (char *)GetAppPropertyExt(context->property, name, &size);
     if (size == 0 || extInfo == NULL) {
         return 0;
     }
@@ -400,7 +407,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_01, TestSize.Level0)
             \"modules\":[\"module1\", \"module2\"], \
             \"versions\":[\"v10001\", \"v10002\"] \
         }";
-        ret = AppSpawnReqMsgAddExtInfo( reqHandle, "HspList",
+        ret = AppSpawnReqMsgAddExtInfo(reqHandle, "HspList",
             reinterpret_cast<uint8_t *>(const_cast<char *>(hspListStr)), strlen(hspListStr) + 1);
         APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", hspListStr);
 
@@ -581,10 +588,9 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_02, TestSize.Level0)
     do {
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
-
-        nlohmann::json config = nlohmann::json::parse(g_commonConfig.c_str());
-        AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+        TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
         APPSPAWN_LOGV("sandbox->section.rootPath: %{public}s", sandbox->section.rootPath);
+
         ASSERT_EQ(sandbox->topSandboxSwitch == 1, 1);
         ASSERT_EQ(strcmp(sandbox->section.rootPath, "/mnt/sandbox/<currentUserId>/<PackageName>"), 0);
         // check mount path
@@ -622,8 +628,9 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_03, TestSize.Level0)
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
 
-        nlohmann::json config = nlohmann::json::parse(g_individualConfig.c_str());
-        AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+        TestParseAppSandboxConfig(sandbox, g_individualConfig.c_str());
+        APPSPAWN_LOGV("sandbox->section.rootPath: %{public}s", sandbox->section.rootPath);
+
         // top check
         ASSERT_EQ(sandbox->topSandboxSwitch == 0, 1);  // not set
         ASSERT_EQ((sandbox->sandboxNsFlags[1] & (CLONE_NEWPID | CLONE_NEWNET)) == (CLONE_NEWPID | CLONE_NEWNET), 1);
@@ -673,8 +680,9 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_04, TestSize.Level0)
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
 
-        nlohmann::json config = nlohmann::json::parse(g_permissionConfig.c_str());
-        AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+        TestParseAppSandboxConfig(sandbox, g_permissionConfig.c_str());
+        APPSPAWN_LOGV("sandbox->section.rootPath: %{public}s", sandbox->section.rootPath);
+
         // top check
         ASSERT_EQ(sandbox->topSandboxSwitch == 0, 1);  // not set
 
@@ -721,9 +729,8 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_05, TestSize.Level0)
     do {
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
+        TestParseAppSandboxConfig(sandbox, g_flagsPointConfig.c_str());
 
-        nlohmann::json config = nlohmann::json::parse(g_flagsPointConfig.c_str());
-        AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
         // top check
         ASSERT_EQ(sandbox->topSandboxSwitch == 0, 1);  // not set
         ASSERT_EQ(sandbox->sandboxNsFlags[1] == 0, 1);
@@ -751,14 +758,14 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_05, TestSize.Level0)
         ASSERT_EQ((pathNode->options != nullptr) && (strcmp(pathNode->options, "support_overwrite=1") == 0), 1);
         ASSERT_EQ((pathNode->fsType != nullptr) && (strcmp(pathNode->fsType, "sharefs") == 0), 1);
         ASSERT_EQ((pathNode->appAplName != nullptr) && (strcmp(pathNode->appAplName, "system") == 0), 1);
-        ASSERT_EQ(TEST_FLAGS_BY_INDEX(pathNode->flagsPoint, APP_FLAGS_DLP_MANAGER), 1);
+        ASSERT_EQ(CHECK_FLAGS_BY_INDEX(pathNode->flagsPoint, APP_FLAGS_DLP_MANAGER), 1);
 
         // check other path node
         pathNode = GetNextPathNode(&sandbox->permissionNodeQueue, pathNode);
         ASSERT_EQ(pathNode != NULL, 1);
         ASSERT_EQ(pathNode->checkErrorFlag == 1, 1);
         ASSERT_EQ((pathNode->mountFlags & (MS_BIND | MS_REC)) == (MS_BIND | MS_REC), 1);
-        ASSERT_EQ(TEST_FLAGS_BY_INDEX(pathNode->flagsPoint, APP_FLAGS_BACKUP_EXTENSION), 1);
+        ASSERT_EQ(CHECK_FLAGS_BY_INDEX(pathNode->flagsPoint, APP_FLAGS_BACKUP_EXTENSION), 1);
         ret = 0;
     } while (0);
     if (sandbox) {
@@ -790,8 +797,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_10, TestSize.Level0)
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
-        nlohmann::json config = nlohmann::json::parse(g_commonConfig.c_str());
-        ret = AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+        ret = TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
         // set check point
@@ -839,8 +845,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_11, TestSize.Level0)
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
-        nlohmann::json config = nlohmann::json::parse(g_commonConfig.c_str());
-        ret = AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+        ret = TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
         // set check point
@@ -890,8 +895,8 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_12, TestSize.Level0)
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
-        nlohmann::json config = nlohmann::json::parse(g_commonConfig.c_str());
-        ret = AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+
+        ret = TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
         ListNode *node = sandbox->section.front.next;
         ASSERT_EQ(node != &sandbox->section.front, 1);
@@ -946,8 +951,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_13, TestSize.Level0)
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
-        nlohmann::json config = nlohmann::json::parse(g_individualConfig.c_str());
-        ret = AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+        ret = TestParseAppSandboxConfig(sandbox, g_individualConfig.c_str());
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
         // set check point
@@ -995,8 +999,8 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_14, TestSize.Level0)
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
-        nlohmann::json config = nlohmann::json::parse(g_individualConfig.c_str());
-        ret = AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+
+        ret = TestParseAppSandboxConfig(sandbox, g_individualConfig.c_str());
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
         // set check point
@@ -1046,8 +1050,8 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_15, TestSize.Level0)
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
-        nlohmann::json config = nlohmann::json::parse(g_permissionConfig.c_str());
-        ret = AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+
+        ret = TestParseAppSandboxConfig(sandbox, g_permissionConfig.c_str());
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
         // set check point
@@ -1101,8 +1105,8 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_16, TestSize.Level0)
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
-        nlohmann::json config = nlohmann::json::parse(g_individualConfig.c_str());
-        ret = AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+
+        ret = TestParseAppSandboxConfig(sandbox, g_individualConfig.c_str());
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
         // set check point
@@ -1151,8 +1155,8 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_17, TestSize.Level0)
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
-        nlohmann::json config = nlohmann::json::parse(g_individualConfig.c_str());
-        ret = AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+
+        ret = TestParseAppSandboxConfig(sandbox, g_individualConfig.c_str());
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
         PathMountNode *pathNode = GetFirstPathNodeInQueue(&sandbox->privateNodeQueue);
@@ -1205,8 +1209,8 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_18, TestSize.Level0)
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
-        nlohmann::json config = nlohmann::json::parse(g_testConfig.c_str());
-        ret = AppSpawn::SandboxLoad::DecodeAppSandboxConfig(*sandbox, config);
+
+        ret = TestParseAppSandboxConfig(sandbox, g_testConfig.c_str());
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
         ret = -1;

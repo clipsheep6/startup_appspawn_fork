@@ -241,7 +241,7 @@ int AddPathNode(SandboxNode *node, SandboxSection *queue)
     return 0;
 }
 
-APPSPAWN_STATIC void AppSpawnSandboxFree(AppSpawnDataEx *data)
+APPSPAWN_STATIC void AppSpawnSandboxFree(AppSpawnExtData *data)
 {
     AppSpawnSandbox *sandbox = (AppSpawnSandbox *)data;
     OH_ListRemove(&sandbox->extData.node);
@@ -261,7 +261,7 @@ APPSPAWN_STATIC void AppSpawnSandboxFree(AppSpawnDataEx *data)
 
 static int AppSpawnExtDataCompareDataId(ListNode *node, void *data)
 {
-    AppSpawnDataEx *extData = (AppSpawnDataEx *)ListEntry(node, AppSpawnDataEx, node);
+    AppSpawnExtData *extData = (AppSpawnExtData *)ListEntry(node, AppSpawnExtData, node);
     return extData->dataId - *(uint32_t *)data;
 }
 
@@ -308,8 +308,8 @@ int DumpSandboxNode(ListNode *node, void *data)
             DumpMountFlags("        sandbox node customizedFlags: ", pathNode->customizedFlags);
             DumpMode("        sandbox node destMode: ", pathNode->destMode);
             APPSPAPWN_DUMP("        sandbox node flagsPoint: %{public}s",
-                (TEST_FLAGS_BY_INDEX(pathNode->flagsPoint, APP_FLAGS_BACKUP_EXTENSION)) ? "START_FLAGS_BACKUP" :
-                (TEST_FLAGS_BY_INDEX(pathNode->flagsPoint, APP_FLAGS_DLP_MANAGER)) ? "DLP_MANAGER" : "null");
+                (CHECK_FLAGS_BY_INDEX(pathNode->flagsPoint, APP_FLAGS_BACKUP_EXTENSION)) ? "START_FLAGS_BACKUP" :
+                (CHECK_FLAGS_BY_INDEX(pathNode->flagsPoint, APP_FLAGS_DLP_MANAGER)) ? "DLP_MANAGER" : "null");
             APPSPAPWN_DUMP("        sandbox node dacOverrideSensitive: %{public}s",
                 pathNode->dacOverrideSensitive ? "true" : "false");
             APPSPAPWN_DUMP("        sandbox node mountSharedFlag: %{public}s",
@@ -362,7 +362,7 @@ static int DumpSandboxPermissionNode(ListNode *node, void *data)
     return 0;
 }
 
-static void DumpSandbox(struct tagAppSpawnExtData *data)
+static void DumpSandbox(struct TagAppSpawnExtData *data)
 {
     uint32_t count = 0;
     AppSpawnSandbox *sandbox = (AppSpawnSandbox *)data;
@@ -469,8 +469,4 @@ MODULE_CONSTRUCTOR(void)
     // fork
     AddAppSpawnHook(HOOK_SPAWN_PREPARE, HOOK_PRIO_SANDBOX, PrepareSandbox);
     AddAppSpawnHook(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_PRIO_SANDBOX, SandboxConfigSet);
-}
-
-MODULE_DESTRUCTOR(void)
-{
 }

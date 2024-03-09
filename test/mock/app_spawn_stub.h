@@ -23,23 +23,25 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 
+#include "cJSON.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct tagAppSpawnContent AppSpawnContent;
-typedef struct tagAppSpawnClient AppSpawnClient;
-typedef struct tagAppSpawnReqMsgNode AppSpawnReqMsgNode;
-typedef void * AppSpawnClientHandle;
-typedef struct tagAppSpawnReqMsgMgr AppSpawnReqMsgMgr;
-typedef struct tagAppSpawningCtx AppSpawningCtx;
-typedef struct tagAppSpawnMsg AppSpawnMsg;
-typedef struct tagAppSpawnSandbox  AppSpawnSandbox;
-typedef struct tagAppSpawnExtData AppSpawnDataEx;
-typedef struct tagSandboxContext SandboxContext;
-typedef struct tagAppSpawnedProcess AppSpawnedProcess;
-typedef struct tagAppSpawnForkArg AppSpawnForkArg;
-typedef struct tagAppSpawnMsgNode AppSpawnMsgNode;
+typedef struct TagAppSpawnContent AppSpawnContent;
+typedef struct TagAppSpawnClient AppSpawnClient;
+typedef struct TagAppSpawnReqMsgNode AppSpawnReqMsgNode;
+typedef void *AppSpawnClientHandle;
+typedef struct TagAppSpawnReqMsgMgr AppSpawnReqMsgMgr;
+typedef struct TagAppSpawningCtx AppSpawningCtx;
+typedef struct TagAppSpawnMsg AppSpawnMsg;
+typedef struct TagAppSpawnSandbox  AppSpawnSandbox;
+typedef struct TagAppSpawnExtData AppSpawnExtData;
+typedef struct TagSandboxContext SandboxContext;
+typedef struct TagAppSpawnedProcess AppSpawnedProcess;
+typedef struct TagAppSpawnForkArg AppSpawnForkArg;
+typedef struct TagAppSpawnMsgNode AppSpawnMsgNode;
 
 void SetHapDomainSetcontextResult(int result);
 
@@ -48,7 +50,8 @@ void ProcessSignal(const struct signalfd_siginfo *siginfo);
 int CreateClientSocket(uint32_t type, int block);
 void CloseClientSocket(int socketId);
 
-void AppSpawnSandboxFree(AppSpawnDataEx *data);
+int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandbox *sandbox);
+void AppSpawnSandboxFree(AppSpawnExtData *data);
 AppSpawnSandbox *CreateAppSpawnSandbox(void);
 void AddDefaultVariable(void);
 

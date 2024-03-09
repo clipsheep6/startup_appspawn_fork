@@ -22,8 +22,7 @@ ohos_shared_library("appspawn_asan") {
     "${appspawn_path}/standard",
   ]
   defines = []
-  deps =
-      [ "${appspawn_innerkits_path}/module_engine:libappspawn_module_engine" ]
+  deps = [ "${appspawn_path}/modules/module_engine:libappspawn_module_engine" ]
   if (is_asan) {
     defines += [ "APPSPAWN_ASAN" ]
   }

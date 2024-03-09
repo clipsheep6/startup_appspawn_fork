@@ -80,7 +80,7 @@ AppSpawnedProcess *AddSpawnedProcess(AppSpawnedProcessMgr *mgr, pid_t pid, const
     APPSPAWN_CHECK(mgr != NULL && processName != NULL, return NULL, "Invalid mgr or process name");
     APPSPAWN_CHECK(pid > 0, return NULL, "Invalid pid for %{public}s", processName);
     size_t len = strlen(processName) + 1;
-    AppSpawnedProcess *node = (AppSpawnedProcess *)malloc(sizeof(AppSpawnedProcess) + len + 1);
+    AppSpawnedProcess *node = (AppSpawnedProcess *)calloc(1, sizeof(AppSpawnedProcess) + len + 1);
     APPSPAWN_CHECK(node != NULL, return NULL, "Failed to malloc for appinfo");
 
     node->pid = pid;
@@ -92,8 +92,8 @@ AppSpawnedProcess *AddSpawnedProcess(AppSpawnedProcessMgr *mgr, pid_t pid, const
         return NULL, "Failed to strcpy process name");
 
     OH_ListInit(&node->node);
-    OH_ListAddWithOrder(&mgr->appQueue, &node->node, AppInfoCompareProc);
     APPSPAWN_LOGI("Add %{public}s, pid=%{public}d success", processName, pid);
+    OH_ListAddWithOrder(&mgr->appQueue, &node->node, AppInfoCompareProc);
     return node;
 }
 
@@ -104,14 +104,15 @@ void HandleProcessTerminate(AppSpawnedProcessMgr *mgr, AppSpawnedProcess *node, 
         free(node);
         return;
     }
-    if (mgr->diedAppCount) {
-        AppSpawnedProcess *oldApp = ListEntry(&mgr->diedQueue.next, AppSpawnedProcess, node);
+    if (mgr->diedAppCount >= MAX_DIED_PROCESS_COUNT) {
+        AppSpawnedProcess *oldApp = ListEntry(mgr->diedQueue.next, AppSpawnedProcess, node);
         OH_ListRemove(&oldApp->node);
         free(node);
         mgr->diedAppCount--;
     }
     OH_ListRemove(&node->node);
     OH_ListInit(&node->node);
+    APPSPAWN_LOGI("HandleProcessTerminate %{public}s, pid=%{public}d", node->name, node->pid);
     OH_ListAddTail(&mgr->diedQueue, &node->node);
     mgr->diedAppCount++;
 }
@@ -166,6 +167,7 @@ AppSpawningCtx *CreateAppSpawningCtx(AppSpawnedProcessMgr *mgr)
     property->client.id = ++requestId;
     property->client.flags = 0;
     property->forkCtx.watcherHandle = NULL;
+    property->forkCtx.coldRunPath = NULL;
     property->forkCtx.timer = NULL;
     property->forkCtx.fd[0] = -1;
     property->forkCtx.fd[1] = -1;
@@ -184,6 +186,7 @@ void DeleteAppSpawningCtx(AppSpawningCtx *property)
 {
     APPSPAWN_CHECK_ONLY_EXPER(property != NULL, return);
     DeleteAppSpawnMsg(property->message);
+    APPSPAWN_LOGV("DeleteAppSpawningCtx");
     OH_ListRemove(&property->node);
     if (property->forkCtx.timer) {
         LE_StopTimer(LE_GetDefaultLoop(), property->forkCtx.timer);
@@ -192,6 +195,10 @@ void DeleteAppSpawningCtx(AppSpawningCtx *property)
     if (property->forkCtx.watcherHandle) {
         LE_RemoveWatcher(LE_GetDefaultLoop(), property->forkCtx.watcherHandle);
         property->forkCtx.watcherHandle = NULL;
+    }
+    if (property->forkCtx.coldRunPath) {
+        free(property->forkCtx.coldRunPath);
+        property->forkCtx.coldRunPath = NULL;
     }
     if (property->forkCtx.fd[0] >= 0) {
         close(property->forkCtx.fd[0]);
@@ -222,7 +229,7 @@ AppSpawningCtx *GetAppSpawningCtxByPid(AppSpawnedProcessMgr *mgr, pid_t pid)
     return ListEntry(node, AppSpawningCtx, node);
 }
 
-int TestAppPropertyFlags(const struct tagAppSpawningCtx *property, uint32_t type, uint32_t index)
+int CheckAppPropertyFlags(const struct TagAppSpawningCtx *property, uint32_t type, uint32_t index)
 {
     AppSpawnMsgFlags *msgFlags = (AppSpawnMsgFlags *)GetAppProperty(property, type);
     APPSPAWN_CHECK(msgFlags != NULL, return 0, "No tlv %{public}d in msg %{public}s", type, GetProcessName(property));
@@ -230,29 +237,42 @@ int TestAppPropertyFlags(const struct tagAppSpawningCtx *property, uint32_t type
     uint32_t bitIndex = index % 32;    // 32 max bit in int
     APPSPAWN_CHECK(blockIndex < msgFlags->count, return 0,
         "Invalid index %{public}d max: %{public}d", index, msgFlags->count);
-    return TEST_FLAGS_BY_INDEX(msgFlags->flags[blockIndex], bitIndex);
+    return CHECK_FLAGS_BY_INDEX(msgFlags->flags[blockIndex], bitIndex);
 }
 
-int SetAppPropertyFlags(const struct tagAppSpawningCtx *property, uint32_t type, uint32_t index)
+static inline int SetAppSpawnMsgFlags(AppSpawnMsgFlags *msgFlags, uint32_t index)
+{
+    uint32_t blockIndex = index / 32;  // 32 max bit in int
+    uint32_t bitIndex = index % 32;    // 32 max bit in int
+    if (blockIndex >= msgFlags->count) {
+        return -1;
+    }
+    msgFlags->flags[blockIndex] |= (1 << bitIndex);
+    return 0;
+}
+
+int SetAppPropertyFlags(const struct TagAppSpawningCtx *property, uint32_t type, uint32_t index)
 {
     AppSpawnMsgFlags *msgFlags = (AppSpawnMsgFlags *)GetAppProperty(property, type);
     APPSPAWN_CHECK(msgFlags != NULL, return -1, "No tlv %{public}d in msg %{public}s", type, GetProcessName(property));
     return SetAppSpawnMsgFlags(msgFlags, index);
 }
 
-int IsNWebSpawnMode(const struct tagAppSpawnMgr *content)
+int IsNWebSpawnMode(const struct TagAppSpawnMgr *content)
 {
-    return content->content.mode == MODE_FOR_NWEBSPAWN || content->content.mode == MODE_FOR_NWEB_COLD_RUN;
+    return (content != NULL) &&
+        (content->content.mode == MODE_FOR_NWEB_SPAWN || content->content.mode == MODE_FOR_NWEB_COLD_RUN);
 }
 
-int IsColdRunMode(const struct tagAppSpawnMgr *content)
+int IsColdRunMode(const struct TagAppSpawnMgr *content)
 {
-    return content->content.mode == MODE_FOR_APP_COLD_RUN || content->content.mode == MODE_FOR_NWEB_COLD_RUN;
+    return (content != NULL) &&
+        (content->content.mode == MODE_FOR_APP_COLD_RUN || content->content.mode == MODE_FOR_NWEB_COLD_RUN);
 }
 
 int IsDeveloperModeOn(const AppSpawningCtx *property)
 {
-    return (property->client.flags & APP_DEVELOPER_MODE) == APP_DEVELOPER_MODE;
+    return (property != NULL && ((property->client.flags & APP_DEVELOPER_MODE) == APP_DEVELOPER_MODE));
 }
 
 static void DumpAppProperty(const AppSpawningCtx *property, const char *info)
@@ -288,14 +308,25 @@ static int DumpAppQueue(ListNode *node, void *data)
 
 static int DumpExtData(ListNode *node, void *data)
 {
-    AppSpawnDataEx *dataEx = ListEntry(node, AppSpawnDataEx, node);
-    dataEx->dumpNode(dataEx);
+    AppSpawnExtData *extData = ListEntry(node, AppSpawnExtData, node);
+    extData->dumpNode(extData);
     return 0;
 }
 
-void DumpApSpawn(const AppSpawnMgr *content)
+void DumpApSpawn(const AppSpawnMgr *content, const AppSpawnMsgNode *message)
 {
+    FILE *stream = NULL;
+    uint32_t len = 0;
+    char *ptyName = GetAppSpawnMsgExInfo(message, "pty-name", &len);
+    if (ptyName != NULL) { //
+        APPSPAWN_LOGI("Dump info to file '%{public}s'", ptyName);
+        stream = fopen(ptyName, "w");
+        SetDumpToStream(stream);
+    } else {
+        SetDumpToStream(stdout);
+    }
     APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return);
+    APPSPAPWN_DUMP("Dump appspawn info start ... ");
     APPSPAPWN_DUMP("APP spawning queue: ");
     OH_ListTraversal((ListNode *)&content->processMgr.appSpawnQueue, NULL, DumpAppSpawnQueue, 0);
     APPSPAPWN_DUMP("APP queue: ");
@@ -304,4 +335,14 @@ void DumpApSpawn(const AppSpawnMgr *content)
     OH_ListTraversal((ListNode *)&content->processMgr.diedQueue, "App died queue", DumpAppQueue, 0);
     APPSPAPWN_DUMP("Ext data: ");
     OH_ListTraversal((ListNode *)&content->extData, "Ext data", DumpExtData, 0);
+    APPSPAPWN_DUMP("Dump appspawn info finish ");
+    if (stream != NULL) {
+        (void)fflush(stream);
+        fclose(stream);
+#ifdef APPSPAWN_TEST
+        SetDumpToStream(stdout);
+#else
+        SetDumpToStream(NULL);
+#endif
+    }
 }

@@ -33,10 +33,14 @@ static int PermissionNodeCompareProc(ListNode *node, ListNode *newNode)
     return strcmp(permissionNode->name, newPermissionNode->name);
 }
 
-static int DecodePermissionConfig(const nlohmann::json &permissionConfigs)
+static int ParsePermissionConfig(const cJSON *permissionConfigs)
 {
-    for (auto it = permissionConfigs.begin(); it != permissionConfigs.end(); it++) {
-        SandboxPermissionNode *node = CreateSandboxPermissionNode(it.key().c_str(), 0, NULL);
+    cJSON *config = nullptr;
+    cJSON_ArrayForEach(config, permissionConfigs)
+    {
+        const char *name = config->string;
+        APPSPAWN_LOGV("ParsePermissionConfig %{public}s", name);
+        SandboxPermissionNode *node = CreateSandboxPermissionNode(name, 0, NULL);
         APPSPAWN_CHECK_ONLY_EXPER(node != NULL, return -1);
         // success, insert queue
         OH_ListAddWithOrder(&g_permissionQueue.front, &node->sandboxNode.node, PermissionNodeCompareProc);
@@ -44,20 +48,29 @@ static int DecodePermissionConfig(const nlohmann::json &permissionConfigs)
     return 0;
 }
 
+static int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandbox *context)
+{
+    cJSON *configs = cJSON_GetObjectItemCaseSensitive(appSandboxConfig, "permission");
+    APPSPAWN_CHECK(configs != nullptr && cJSON_IsArray(configs), return 0, "No permission in json");
+
+    int ret = 0;
+    uint32_t configSize = cJSON_GetArraySize(configs);
+    for (uint32_t i = 0; i < configSize; i++) {
+        cJSON *json = cJSON_GetArrayItem(configs, i);
+        ret = ParsePermissionConfig(json);
+        APPSPAWN_CHECK(ret == 0, return ret, "Parse permission config fail result: %{public}d ", ret);
+    }
+    return ret;
+}
+
 static int LoadPermissionConfig(void)
 {
-    std::vector<nlohmann::json> jsonConfigs;
-    int ret = OHOS::AppSpawn::JsonUtils::GetSandboxConfigs(jsonConfigs);
-    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
-    for (auto config : jsonConfigs) {
-        if (config.find("permission") == config.end()) {
-            continue;
-        }
-        ret = DecodePermissionConfig(config["permission"][0]);
-        if (ret != 0) {
-            APPSPAWN_LOGE("Failed to load permission err: %{public}d for config", ret);
-        }
+    int ret = ParseSandboxConfig("etc/sandbox", "/appdata-sandbox.json", ParseAppSandboxConfig, nullptr);
+    if (ret == APPSPAWN_SANDBOX_NONE) {
+        APPSPAWN_LOGW("No sandbox config");
+        ret = 0;
     }
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
     g_maxPermissionIndex = PermissionRenumber(&g_permissionQueue);
     return 0;
 }

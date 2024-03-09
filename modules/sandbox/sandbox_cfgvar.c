@@ -86,8 +86,9 @@ static AppSandboxVarNode *GetAppSandboxVarNode(const char *name)
     return (AppSandboxVarNode *)ListEntry(node, AppSandboxVarNode, node);
 }
 
-int AddVariableReplaceHandler(const char *name, ReplaceVarHandler ReplaceVarHandler)
+int AddVariableReplaceHandler(const char *name, ReplaceVarHandler handler)
 {
+    APPSPAWN_CHECK(name != NULL && handler != NULL, return APPSPAWN_ARG_INVALID, "Invalid arg ");
     if (GetAppSandboxVarNode(name) != NULL) {
         return APPSPAWN_NODE_EXIST;
     }
@@ -97,7 +98,7 @@ int AddVariableReplaceHandler(const char *name, ReplaceVarHandler ReplaceVarHand
     APPSPAWN_CHECK(node != NULL, return APPSPAWN_SYSTEM_ERROR, "Failed to create sandbox");
     // ext data init
     OH_ListInit(&node->node);
-    node->replaceVar = ReplaceVarHandler;
+    node->replaceVar = handler;
     int ret = strcpy_s(node->name, len, name);
     APPSPAWN_CHECK(ret == 0, free(node);
         return -1, "Failed to copy name %{public}s", name);
@@ -108,7 +109,7 @@ int AddVariableReplaceHandler(const char *name, ReplaceVarHandler ReplaceVarHand
 const char *GetSandboxRealVar(const SandboxContext *sandboxContext,
     uint32_t index, const char *source, const char *prefix, int permission)
 {
-    if (index >= 2) { // max buffer count
+    if (index >= 2) { // 2 max buffer count
         return NULL;
     }
     uint32_t destIndex = 0;

@@ -24,52 +24,44 @@
 extern "C" {
 #endif
 
-#define HOOK_STOP_WHEN_ERROR 0x2
-typedef enum RunMode_ {
-    MODE_FOR_APPSPAWN,
-    MODE_FOR_NWEBSPAWN,
+typedef enum {
+    MODE_FOR_APP_SPAWN,
+    MODE_FOR_NWEB_SPAWN,
     MODE_FOR_APP_COLD_RUN,
-    MODE_FOR_NWEB_COLD_RUN
+    MODE_FOR_NWEB_COLD_RUN,
+    MODE_INVALID
 } RunMode;
 
-typedef struct tagAppSpawnClient {
+typedef struct TagAppSpawnClient {
     uint32_t id;
-    uint32_t flags; // Save negotiated flags
+    uint32_t flags;  // Save negotiated flags
 } AppSpawnClient;
 
-typedef struct tagAppSpawnContent {
+typedef struct TagAppSpawnContent {
     char *longProcName;
     uint32_t longProcNameLen;
     uint32_t sandboxNsFlags;
     RunMode mode;
 
     // system
-    void (*runAppSpawn)(struct tagAppSpawnContent *content, int argc, char *const argv[]);
-    void (*notifyResToParent)(struct tagAppSpawnContent *content, AppSpawnClient *client, int result);
-    int (*runChildProcessor)(struct tagAppSpawnContent *content, AppSpawnClient *client);
+    void (*runAppSpawn)(struct TagAppSpawnContent *content, int argc, char *const argv[]);
+    void (*notifyResToParent)(struct TagAppSpawnContent *content, AppSpawnClient *client, int result);
+    int (*runChildProcessor)(struct TagAppSpawnContent *content, AppSpawnClient *client);
     // for cold start
-    int (*coldStartApp)(struct tagAppSpawnContent *content, AppSpawnClient *client);
+    int (*coldStartApp)(struct TagAppSpawnContent *content, AppSpawnClient *client);
 } AppSpawnContent;
 
-typedef struct tagAppSpawnForkArg {
-    struct tagAppSpawnContent *content;
+typedef struct TagAppSpawnForkArg {
+    struct TagAppSpawnContent *content;
     AppSpawnClient *client;
 } AppSpawnForkArg;
 
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int cold);
-int AppSpawnHookExecute(int stage, uint32_t flags, AppSpawnContent *content, AppSpawnClient *client);
+int AppSpawnExecuteClearEnvHook(AppSpawnContent *content, AppSpawnClient *client);
+int AppSpawnExecuteSpawningHook(AppSpawnContent *content, AppSpawnClient *client);
+int AppSpawnExecuteCompleteHook(AppSpawnContent *content, AppSpawnClient *client);
+void AppSpawnEnvClear(AppSpawnContent *content, AppSpawnClient *client);
 int AppSpawnProcessMsg(AppSpawnContent *content, AppSpawnClient *client, pid_t *childPid);
-/**
- * @brief 清空子进程继承的appspawn的环境信息
- *
- * @param content
- * @param client
- * @return int
- */
-__attribute__((always_inline)) inline void AppSpawnEnvClear(AppSpawnContent *content, AppSpawnClient *client)
-{
-    (void)AppSpawnHookExecute(HOOK_SPAWN_POST, 0, content, client);
-}
 
 #ifdef __cplusplus
 }

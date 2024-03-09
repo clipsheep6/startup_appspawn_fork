@@ -37,7 +37,6 @@
 using namespace testing;
 using namespace testing::ext;
 using namespace OHOS;
-using nlohmann::json;
 
 namespace OHOS {
 static AppSpawnTestHelper g_testHelper;
@@ -173,7 +172,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_001, TestSize.Level0)
         reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req ");
         char path[PATH_MAX] = {};
-        content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEBSPAWN);
+        content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
         PreloadHookExecute(content);  // 预加载，解析sandbox
@@ -190,7 +189,8 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_001, TestSize.Level0)
         arg.client = &property->client;
         arg.content = content;
         ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
-        ASSERT_EQ(ret, 0);
+        property = nullptr;
+        content = nullptr;
     } while (0);
     DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
@@ -213,7 +213,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_002, TestSize.Level0)
         reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req");
         char path[PATH_MAX] = {};
-        content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEBSPAWN);
+        content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
         PreloadHookExecute(content);  // 预加载，解析sandbox
@@ -236,7 +236,8 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_002, TestSize.Level0)
         arg.client = &property->client;
         arg.content = content;
         ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
-        ASSERT_EQ(ret, 0);
+        property = nullptr;
+        content = nullptr;
     } while (0);
     DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
@@ -267,7 +268,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_004, TestSize.Level0)
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_GWP_ENABLED_NORMAL);
 
         char path[PATH_MAX] = {};
-        content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEBSPAWN);
+        content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
         PreloadHookExecute(content);
@@ -283,7 +284,8 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_004, TestSize.Level0)
         arg.client = &property->client;
         arg.content = content;
         ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
-        ASSERT_EQ(ret, 0);
+        property = nullptr;
+        content = nullptr;
     } while (0);
     DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
@@ -314,7 +316,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_005, TestSize.Level0)
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_GWP_ENABLED_NORMAL);
 
         char path[PATH_MAX] = {};
-        content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEBSPAWN);
+        content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
         PreloadHookExecute(content);
@@ -330,7 +332,8 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_005, TestSize.Level0)
         arg.client = &property->client;
         arg.content = content;
         ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
-        ASSERT_EQ(ret, 0);
+        property = nullptr;
+        content = nullptr;
     } while (0);
     DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);

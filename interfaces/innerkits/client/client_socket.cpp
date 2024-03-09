@@ -20,7 +20,7 @@
 
 #ifdef APPSPAWN_NEW_CLIENT
 #include "interfaces/innerkits_new/include/appspawn.h"
-#include "interfaces/innerkits_new/module_engine/include/appspawn_msg.h"
+#include "modules/module_engine/include/appspawn_msg.h"
 #endif
 #include "appspawn_utils.h"
 #include "parameters.h"

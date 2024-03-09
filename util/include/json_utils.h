@@ -16,20 +16,51 @@
 #ifndef SANDBOX_UTILS_H
 #define SANDBOX_UTILS_H
 
-#include <string>
-#include "nlohmann/json.hpp"
+#include <stdbool.h>
 
-namespace OHOS {
-namespace AppSpawn {
-class JsonUtils {
-public:
-    static std::vector<std::string> split(const std::string &str, const std::string &pattern);
-    static int GetSandboxConfigs(std::vector<nlohmann::json> &jsonConfigs);
-    static bool GetJsonObjFromJson(nlohmann::json &jsonObj, const std::string &jsonPath);
-    static std::string GetStringFromJson(const nlohmann::json &json, const std::string &key);
-    static bool GetBoolValueFromJson(const nlohmann::json &config, const std::string &key, bool def = false);
-    static uint32_t GetIntValueFromJson(const nlohmann::json &config, const std::string &key, uint32_t def = 0);
-};
-}  // namespace AppSpawn
-}  // namespace OHOS
+#include "appspawn_utils.h"
+#include "cJSON.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
+
+typedef struct TagAppSpawnSandbox AppSpawnSandbox;
+typedef int (*ParseConfig)(const cJSON *root, AppSpawnSandbox *context);
+int ParseSandboxConfig(const char *basePath, const char *fileName, ParseConfig parseConfig, AppSpawnSandbox *context);
+uint32_t GetUint32ArrayFromJson(const cJSON *json, const char *name, uint32_t dataArray[], uint32_t maxCount);
+cJSON *GetJsonObjFromFile(const char *jsonPath);
+
+__attribute__((always_inline)) inline char *GetStringFromJsonObj(const cJSON *json, const char *key)
+{
+    APPSPAWN_CHECK(json != NULL, return 0, "Invalid json");
+    APPSPAWN_CHECK(key != NULL, return 0, "Invalid key");
+    APPSPAWN_CHECK(cJSON_IsObject(json), return NULL, "json is not object %{public}s %s", key, cJSON_Print(json));
+    cJSON *obj = cJSON_GetObjectItemCaseSensitive(json, key);
+    APPSPAWN_CHECK_ONLY_EXPER(obj != NULL, return NULL);
+    APPSPAWN_CHECK(cJSON_IsString(obj), return NULL, "json is not string %{public}s %s", key, cJSON_Print(obj));
+    return cJSON_GetStringValue(obj);
+}
+
+__attribute__((always_inline)) inline bool GetBoolValueFromJsonObj(const cJSON *json, const char *key, bool def)
+{
+    char *value = GetStringFromJsonObj(json, key);
+    APPSPAWN_CHECK_ONLY_EXPER(value != NULL, return def);
+
+    if (strcmp(value, "true") == 0 || strcmp(value, "ON") == 0 || strcmp(value, "True") == 0) {
+        return true;
+    }
+    return false;
+}
+
+__attribute__((always_inline)) inline uint32_t GetIntValueFromJsonObj(const cJSON *json, const char *key, uint32_t def)
+{
+    APPSPAWN_CHECK(json != NULL, return def, "Invalid json");
+    APPSPAWN_CHECK(cJSON_IsObject(json), return def, "json is not object.");
+    return cJSON_GetNumberValue(cJSON_GetObjectItemCaseSensitive(json, key));
+}
+
+#ifdef __cplusplus
+}
+#endif  // __cplusplus
 #endif  // SANDBOX_UTILS_H

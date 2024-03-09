@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include "appspawn.h"
+#include "appspawn_hook.h"
 #include "appspawn_msg.h"
 #include "appspawn_server.h"
 #include "appspawn_utils.h"
@@ -33,12 +34,14 @@ extern "C" {
 
 #define MODE_ID_INDEX 1
 #define MODE_VALUE_INDEX 2
-#define PARAM_ID_INDEX 3
-#define PARAM_VALUE_INDEX 4
-#define FD_ID_INDEX 5
-#define FD_VALUE_INDEX 6
-#define FLAGS_VALUE_INDEX 7
-#define SHM_ID_INDEX 8
+#define FD_ID_INDEX 3
+#define FD_VALUE_INDEX 4
+#define FLAGS_VALUE_INDEX 5
+#define SHM_ID_INDEX 6
+#define PARAM_ID_INDEX 7
+#define PARAM_VALUE_INDEX 8
+
+#define MAX_DIED_PROCESS_COUNT 5
 
 #define INVALID_OFFSET 0xffffffff
 
@@ -59,11 +62,11 @@ extern "C" {
 #define FLAGS_SANDBOX_PRIVATE 0x10
 #define FLAGS_SANDBOX_APP 0x20
 
-typedef struct tagAppSpawnContent AppSpawnContent;
-typedef struct tagAppSpawnClient AppSpawnClient;
-typedef struct tagAppSpawnConnection AppSpawnConnection;
+typedef struct TagAppSpawnContent AppSpawnContent;
+typedef struct TagAppSpawnClient AppSpawnClient;
+typedef struct TagAppSpawnConnection AppSpawnConnection;
 
-typedef struct tagAppSpawnMsgNode {
+typedef struct TagAppSpawnMsgNode {
     AppSpawnConnection *connection;
     AppSpawnMsg msgHeader;
     uint32_t tlvCount;
@@ -71,14 +74,14 @@ typedef struct tagAppSpawnMsgNode {
     uint8_t *buffer;
 } AppSpawnMsgNode;
 
-typedef struct tagAppSpawnMsgReceiverCtx {
+typedef struct TagAppSpawnMsgReceiverCtx {
     uint32_t nextMsgId;              // 校验消息id
     uint32_t msgRecvLen;             // 已经接收的长度
     TimerHandle timer;               // 测试消息完整
     AppSpawnMsgNode *incompleteMsg;  // 保存不完整的消息，额外保存消息头信息
 } AppSpawnMsgReceiverCtx;
 
-typedef struct tagAppSpawnConnection {
+typedef struct TagAppSpawnConnection {
     uint32_t connectionId;
     TaskHandle stream;
     AppSpawnMsgReceiverCtx receiverCtx;
@@ -90,10 +93,10 @@ typedef struct {
     TimerHandle timer;
     int shmId;
     uint32_t memSize;
-    char coldRunPath[PATH_MAX];
+    char *coldRunPath;
 } AppSpawnForkCtx;
 
-typedef struct tagAppSpawningCtx {
+typedef struct TagAppSpawningCtx {
     AppSpawnClient client;
     struct ListNode node;
     AppSpawnForkCtx forkCtx;
@@ -103,7 +106,7 @@ typedef struct tagAppSpawningCtx {
     struct timespec spawnStart;
 } AppSpawningCtx;
 
-typedef struct tagAppSpawnedProcess {
+typedef struct TagAppSpawnedProcess {
     struct ListNode node;
     uid_t uid;
     pid_t pid;
@@ -121,15 +124,24 @@ typedef struct {
     struct ListNode appSpawnQueue;  // save app pid and name
 } AppSpawnedProcessMgr;
 
-typedef struct tagAppSpawnMgr {
+typedef struct TagAppSpawnMgr {
     AppSpawnContent content;
     TaskHandle server;
     SignalHandle sigHandler;
+    pid_t servicePid;
     AppSpawnedProcessMgr processMgr;
     struct timespec perLoadStart;
     struct timespec perLoadEnd;
     struct ListNode extData;
 } AppSpawnMgr;
+
+typedef struct TagAppSpawnStartArg {
+    RunMode mode;
+    uint32_t moduleType;
+    const char *socketName;
+    const char *serviceName;
+    uint32_t initArg : 1;
+} AppSpawnStartArg;
 
 int AppSpawnedProcessMgrInit(AppSpawnedProcessMgr *mgr);
 int AppSpawnedProcessMgrDestroy(AppSpawnedProcessMgr *mgr);
@@ -145,11 +157,11 @@ void DeleteAppSpawningCtx(AppSpawningCtx *property);
 
 pid_t NWebSpawnLaunch(void);
 void NWebSpawnInit(void);
-AppSpawnContent *StartSpawnService(uint32_t argvSize, int argc, char *const argv[]);
+AppSpawnContent *StartSpawnService(const AppSpawnStartArg *arg, uint32_t argvSize, int argc, char *const argv[]);
 void AppSpawnDestroyContent(AppSpawnContent *content);
 
 // dump
-void DumpApSpawn(const AppSpawnMgr *content);
+void DumpApSpawn(const AppSpawnMgr *content, const AppSpawnMsgNode *message);
 void DumpNormalProperty(const AppSpawningCtx *property);
 
 pid_t GetPidFromTerminationMsg(AppSpawnMsgNode *message);
@@ -159,7 +171,8 @@ int DecodeAppSpawnMsg(AppSpawnMsgNode *message);
 int GetAppSpawnMsgFromBuffer(const uint8_t *buffer, uint32_t bufferLen,
     AppSpawnMsgNode **outMsg, uint32_t *msgRecvLen, uint32_t *reminder);
 int SendAppSpawnMsgToChild(AppSpawnForkCtx *forkCtx, AppSpawnMsgNode *message);
-
+void *GetAppSpawnMsgInfo(const AppSpawnMsgNode *message, int type);
+void *GetAppSpawnMsgExInfo(const AppSpawnMsgNode *message, const char *name, uint32_t *len);
 // for stub
 bool may_init_gwp_asan(bool forceInit);
 #ifdef __cplusplus

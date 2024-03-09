@@ -26,13 +26,38 @@
 #include "appspawn_utils.h"
 #include "securec.h"
 
-static inline void *GetAppSpawnMsgInfo(const AppSpawnMsgNode *message, int type)
+void *GetAppSpawnMsgInfo(const AppSpawnMsgNode *message, int type)
 {
     APPSPAWN_CHECK(type < TLV_MAX, return NULL, "Invalid tlv type %{public}u", type);
-    APPSPAWN_CHECK(message != NULL && message->buffer != NULL,
-        return NULL, "Invalid message for type %{public}u", type);
+    APPSPAWN_CHECK_ONLY_EXPER(message != NULL && message->buffer != NULL, return NULL);
     APPSPAWN_CHECK_ONLY_EXPER(message->tlvOffset[type] != INVALID_OFFSET, return NULL);
     return (void *)(message->buffer + message->tlvOffset[type] + sizeof(AppSpawnTlv));
+}
+
+void *GetAppSpawnMsgExInfo(const AppSpawnMsgNode *message, const char *name, uint32_t *len)
+{
+    APPSPAWN_CHECK(name != NULL, return NULL, "Invalid name ");
+    APPSPAWN_CHECK_ONLY_EXPER(message != NULL && message->buffer != NULL, return NULL);
+
+    APPSPAWN_LOGV("GetAppSpawnMsgExInfo tlvCount %{public}d name %{public}s", message->tlvCount, name);
+    for (uint32_t index = TLV_MAX; index < (TLV_MAX + message->tlvCount); index++) {
+        if (message->tlvOffset[index] == INVALID_OFFSET) {
+            return NULL;
+        }
+        uint8_t *data = message->buffer + message->tlvOffset[index];
+        if (((AppSpawnTlv *)data)->tlvType != TLV_MAX) {
+            continue;
+        }
+        AppSpawnTlvExt *tlv = (AppSpawnTlvExt *)data;
+        if (strcmp(tlv->tlvName, name) != 0) {
+            continue;
+        }
+        if (len != NULL) {
+            *len = tlv->dataLen;
+        }
+        return data + sizeof(AppSpawnTlvExt);
+    }
+    return NULL;
 }
 
 static AppSpawnMsgNode *CreateAppSpawnMsg(void)
@@ -123,12 +148,12 @@ int CheckAppSpawnMsg(const AppSpawnMsgNode *message)
 
 static int CheckExtTlvInfo(const AppSpawnTlv *tlv, uint32_t remainLen)
 {
-    AppSpawnTlvEx *tlvEx = (AppSpawnTlvEx *)(tlv);
+    AppSpawnTlvExt *tlvExt = (AppSpawnTlvExt *)(tlv);
     APPSPAWN_LOGV("Recv type [%{public}s %{public}u] real len: %{public}u",
-        tlvEx->tlvName, tlvEx->tlvLen, tlvEx->dataLen);
-    if (tlvEx->dataLen > tlvEx->tlvLen - sizeof(AppSpawnTlvEx)) {
+        tlvExt->tlvName, tlvExt->tlvLen, tlvExt->dataLen);
+    if (tlvExt->dataLen > tlvExt->tlvLen - sizeof(AppSpawnTlvExt)) {
         APPSPAWN_LOGE("Invalid tlv [%{public}s %{public}u] real len: %{public}u %{public}u",
-            tlvEx->tlvName, tlvEx->tlvLen, tlvEx->dataLen, sizeof(AppSpawnTlvEx));
+            tlvExt->tlvName, tlvExt->tlvLen, tlvExt->dataLen, sizeof(AppSpawnTlvExt));
         return APPSPAWN_MSG_INVALID;
     }
     return 0;
@@ -190,7 +215,7 @@ int DecodeAppSpawnMsg(AppSpawnMsgNode *message)
             message->tlvOffset[tlv->tlvType] = currLen;
             currLen += tlv->tlvLen;
         } else {
-            APPSPAWN_CHECK((tlvCount + 1) < message->msgHeader.tlvCount, break,
+            APPSPAWN_CHECK(tlvCount < message->msgHeader.tlvCount, break,
                 "Invalid tlv number tlv %{public}d tlvCount: %{public}d", tlv->tlvType, tlvCount);
             message->tlvOffset[TLV_MAX + tlvCount] = currLen;
             tlvCount++;
@@ -258,23 +283,24 @@ int SendAppSpawnMsgToChild(AppSpawnForkCtx *forkCtx, AppSpawnMsgNode *message)
 {
     uint8_t *mem = (uint8_t *)shmat(forkCtx->shmId, NULL, 0);
     APPSPAWN_CHECK(mem != (uint8_t *)(-1),
-        return -1, "Failed to attach shm errno %{public}d", errno);
+        return -1, "Failed to attach shm errno %{public}d shmId: %{public}d", errno, forkCtx->shmId);
     // copy msg header
     int ret = memcpy_s(mem, forkCtx->memSize, &message->msgHeader, sizeof(AppSpawnMsg));
     APPSPAWN_CHECK(ret == 0, return APPSPAWN_SYSTEM_ERROR, "Failed to write msg header to shared memory");
     ret = memcpy_s(mem + sizeof(AppSpawnMsg), forkCtx->memSize - sizeof(AppSpawnMsg),
         message->buffer, message->msgHeader.msgLen - sizeof(AppSpawnMsg));
     APPSPAWN_CHECK(ret == 0, return APPSPAWN_SYSTEM_ERROR, "Failed to write msg header to shared memory");
+    APPSPAWN_LOGV("SendAppSpawnMsgToChild: %{public}s success", message->msgHeader.processName);
     return 0;
 }
 
-int GetAppPropertyCode(const struct tagAppSpawningCtx *appProperty)
+int GetAppSpawnMsgType(const struct TagAppSpawningCtx *appProperty)
 {
     return (appProperty != NULL && appProperty->message != NULL) ?
         appProperty->message->msgHeader.msgType : MAX_TYPE_INVALID;
 }
 
-const char *GetProcessName(const struct tagAppSpawningCtx *property)
+const char *GetProcessName(const struct TagAppSpawningCtx *property)
 {
     if (property == NULL || property->message == NULL) {
         return NULL;
@@ -282,7 +308,7 @@ const char *GetProcessName(const struct tagAppSpawningCtx *property)
     return property->message->msgHeader.processName;
 }
 
-const char *GetBundleName(const struct tagAppSpawningCtx *property)
+const char *GetBundleName(const struct TagAppSpawningCtx *property)
 {
     AppSpawnMsgBundleInfo *info = (AppSpawnMsgBundleInfo *)GetAppSpawnMsgInfo(property->message, TLV_BUNDLE_INFO);
     if (info != NULL) {
@@ -300,38 +326,19 @@ pid_t GetPidFromTerminationMsg(AppSpawnMsgNode *message)
     return -1;
 }
 
-void *GetAppProperty(const struct tagAppSpawningCtx *property, uint32_t type)
+void *GetAppProperty(const struct TagAppSpawningCtx *property, uint32_t type)
 {
     APPSPAWN_CHECK(property != NULL && property->message != NULL,
         return NULL, "Invalid property for type %{public}u", type);
     return GetAppSpawnMsgInfo(property->message, type);
 }
 
-uint8_t *GetAppPropertyEx(const struct tagAppSpawningCtx *property, const char *name, uint32_t *len)
+uint8_t *GetAppPropertyExt(const struct TagAppSpawningCtx *property, const char *name, uint32_t *len)
 {
     APPSPAWN_CHECK(name != NULL, return NULL, "Invalid name ");
-    APPSPAWN_CHECK(property != NULL && property->message != NULL && property->message->buffer != NULL,
+    APPSPAWN_CHECK(property != NULL && property->message != NULL,
         return NULL, "Invalid property for name %{public}s", name);
-
-    APPSPAWN_LOGV("GetAppPropertyEx tlvCount %{public}d name %{public}s", property->message->tlvCount, name);
-    for (uint32_t index = TLV_MAX; index < (TLV_MAX + property->message->tlvCount); index++) {
-        if (property->message->tlvOffset[index] >= (property->message->msgHeader.msgLen - sizeof(AppSpawnMsg))) {
-            return NULL;
-        }
-        uint8_t *data = property->message->buffer + property->message->tlvOffset[index];
-        if (((AppSpawnTlv *)data)->tlvType != TLV_MAX) {
-            continue;
-        }
-        AppSpawnTlvEx *tlv = (AppSpawnTlvEx *)data;
-        if (strcmp(tlv->tlvName, name) != 0) {
-            continue;
-        }
-        if (len != NULL) {
-            *len = tlv->dataLen;
-        }
-        return data + sizeof(AppSpawnTlvEx);
-    }
-    return NULL;
+    return GetAppSpawnMsgExInfo(property->message, name, len);
 }
 
 static inline void DumpMsgFlags(const char *info, const AppSpawnMsgFlags *msgFlags)
@@ -342,70 +349,60 @@ static inline void DumpMsgFlags(const char *info, const AppSpawnMsgFlags *msgFla
     }
 }
 
-static inline void DumpMsgDacInfo(const AppSpawnMsgDacInfo *dacInfo)
-{
-    APPSPAPWN_DUMP("App dac info uid: %{public}d gid: %{public}d count: %{public}d",
-        dacInfo->uid, dacInfo->gid, dacInfo->gidCount);
-    for (uint32_t i = 0; i < dacInfo->gidCount; i++) {
-        APPSPAPWN_DUMP("gid group[%{public}d]: %{public}d", i, dacInfo->gidTable[i]);
-    }
-}
-
-static inline void DumpMsgExInfo(const AppSpawnTlv *tlv)
+static inline void DumpMsgExtInfo(const AppSpawnTlv *tlv)
 {
     if (tlv->tlvType != TLV_MAX) {
         APPSPAPWN_DUMP("App tlv info: [%{public}d %{public}d]", tlv->tlvType, tlv->tlvLen);
         return;
     }
-    AppSpawnTlvEx *tlvEx = (AppSpawnTlvEx *)(tlv);
-    APPSPAPWN_DUMP("App extend info name: %{public}s len: %{public}u",tlvEx->tlvName, tlvEx->dataLen);
-    if (tlvEx->dataType == DATA_TYPE_STRING) {
-        APPSPAPWN_DUMP("App extend info value: '%{public}s'", (char *)(tlvEx + 1));
+    AppSpawnTlvExt *tlvExt = (AppSpawnTlvExt *)(tlv);
+    APPSPAPWN_DUMP("App extend info name: %{public}s len: %{public}u", tlvExt->tlvName, tlvExt->dataLen);
+    if (tlvExt->dataType == DATA_TYPE_STRING) {
+        APPSPAPWN_DUMP("App extend info value: '%{public}s'", (char *)(tlvExt + 1));
     }
 }
 
 void DumpNormalProperty(const AppSpawningCtx *property)
 {
     APPSPAWN_CHECK_ONLY_EXPER(property != NULL && property->message != NULL, return);
-    for (uint32_t i = 0; i < TLV_MAX + property->message->tlvCount; i++) {
+    AppSpawnMsgFlags *msgFlags = (AppSpawnMsgFlags *)GetAppSpawnMsgInfo(property->message, TLV_MSG_FLAGS);
+    APPSPAWN_ONLY_EXPER(msgFlags != NULL, DumpMsgFlags("App flags", msgFlags));
+    msgFlags = (AppSpawnMsgFlags *)GetAppSpawnMsgInfo(property->message, TLV_PERMISSION);
+    APPSPAWN_ONLY_EXPER(msgFlags != NULL, DumpMsgFlags("App permission bits", msgFlags));
+
+    AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppSpawnMsgInfo(property->message, TLV_DAC_INFO);
+    if (dacInfo != NULL) {
+        APPSPAPWN_DUMP("App dac info uid: %{public}d gid: %{public}d count: %{public}d",
+        dacInfo->uid, dacInfo->gid, dacInfo->gidCount);
+        for (uint32_t i = 0; i < dacInfo->gidCount; i++) {
+            APPSPAPWN_DUMP("gid group[%{public}d]: %{public}d", i, dacInfo->gidTable[i]);
+        }
+    }
+    AppSpawnMsgBundleInfo *bundleInfo = (AppSpawnMsgBundleInfo *)GetAppSpawnMsgInfo(property->message, TLV_BUNDLE_INFO);
+    APPSPAWN_ONLY_EXPER(bundleInfo != NULL,
+        APPSPAPWN_DUMP("App bundle info name: \"%{public}s\" index: %{public}d",
+        bundleInfo->bundleName, bundleInfo->bundleIndex));
+
+    AppSpawnMsgDomainInfo *domainInfo = (AppSpawnMsgDomainInfo *)GetAppSpawnMsgInfo(property->message, TLV_DOMAIN_INFO);
+    APPSPAWN_ONLY_EXPER(domainInfo != NULL,
+        APPSPAPWN_DUMP("App domain info hap: 0x%{public}x apl: \"%{public}s\"", domainInfo->hapFlags, domainInfo->apl));
+
+    AppSpawnMsgOwnerId *owner = (AppSpawnMsgOwnerId *)GetAppSpawnMsgInfo(property->message, TLV_OWNER_INFO);
+    APPSPAWN_ONLY_EXPER(owner != NULL, APPSPAPWN_DUMP("App owner info: \"%{public}s\" ", owner->ownerId));
+
+    AppSpawnMsgAccessToken *t = (AppSpawnMsgAccessToken *)GetAppSpawnMsgInfo(property->message, TLV_ACCESS_TOKEN_INFO);
+    APPSPAWN_ONLY_EXPER(t != NULL,
+        APPSPAPWN_DUMP("App access token info: %{public}" PRId64 "", t->accessTokenIdEx));
+
+    AppSpawnMsgInternetInfo *info = (AppSpawnMsgInternetInfo *)GetAppSpawnMsgInfo(property->message, TLV_INTERNET_INFO);
+    APPSPAWN_ONLY_EXPER(info != NULL,
+        APPSPAPWN_DUMP("App internet permission info [%{public}d %{public}d]",
+        info->setAllowInternet, info->allowInternet));
+
+    for (uint32_t i = TLV_MAX; i < TLV_MAX + property->message->tlvCount; i++) {
         if (property->message->tlvOffset[i] == INVALID_OFFSET) {
             continue;
         }
-        AppSpawnTlv *tlv = (AppSpawnTlv *)(property->message->buffer + property->message->tlvOffset[i]);
-        switch (tlv->tlvType) {
-            case TLV_MSG_FLAGS:
-                DumpMsgFlags("property flags", (AppSpawnMsgFlags *)(tlv + 1));
-                break;
-            case TLV_PERMISSION:
-                DumpMsgFlags("permission flags", (AppSpawnMsgFlags *)(tlv + 1));
-                break;
-            case TLV_ACCESS_TOKEN_INFO:
-                APPSPAPWN_DUMP("App access token info: %{public}" PRId64 "",
-                    ((AppSpawnMsgAccessToken *)(tlv + 1))->accessTokenIdEx);
-                break;
-            case TLV_DAC_INFO:
-                DumpMsgDacInfo((AppSpawnMsgDacInfo *)(tlv + 1));
-                break;
-            case TLV_BUNDLE_INFO:
-                APPSPAPWN_DUMP("App bundle info name: \"%{public}s\" index: %{public}d",
-                    ((AppSpawnMsgBundleInfo *)(tlv + 1))->bundleName,
-                    ((AppSpawnMsgBundleInfo *)(tlv + 1))->bundleIndex);
-                break;
-            case TLV_OWNER_INFO:
-                APPSPAPWN_DUMP("App owner info: \"%{public}s\" ", ((AppSpawnMsgOwnerId *)(tlv + 1))->ownerId);
-                break;
-            case TLV_DOMAIN_INFO:
-                APPSPAPWN_DUMP("App domain info hap: 0x%{public}x apl: \"%{public}s\"",
-                    ((AppSpawnMsgDomainInfo *)(tlv + 1))->hapFlags, ((AppSpawnMsgDomainInfo *)(tlv + 1))->apl);
-                break;
-            case TLV_INTERNET_INFO:
-                APPSPAPWN_DUMP("App internet permission info [%{public}d %{public}d]",
-                    ((AppSpawnMsgInternetInfo *)(tlv + 1))->setAllowInternet,
-                    ((AppSpawnMsgInternetInfo *)(tlv + 1))->allowInternet);
-                break;
-            default:
-                DumpMsgExInfo(tlv);
-                break;
-        }
+        DumpMsgExtInfo((AppSpawnTlv *)(property->message->buffer + property->message->tlvOffset[i]));
     }
 }

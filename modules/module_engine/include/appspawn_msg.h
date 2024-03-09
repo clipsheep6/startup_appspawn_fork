@@ -66,7 +66,7 @@ typedef enum {
 #    pragma clang diagnostic ignored "-Wextern-c-compat"
 #elif defined(__GNUC__)
 #    pragma GCC diagnostic push
-#    pragma GCC diagnostic ignored "-Wextern-c-compat"
+//#    pragma GCC diagnostic ignored "-Wextern-c-compat"
 #elif defined(_MSC_VER)
 #    pragma warning(push)
 #endif
@@ -85,7 +85,7 @@ typedef struct {
     uint16_t dataLen;  // 数据的长度
     uint16_t dataType;
     char tlvName[APPSPAWN_TLV_NAME_LEN];
-} AppSpawnTlvEx;
+} AppSpawnTlvExt;
 
 typedef struct {
     uint32_t count;
@@ -111,11 +111,11 @@ typedef struct {
 } AppSpawnMsgDomainInfo;
 
 typedef struct {
-    int32_t bundleIndex;
+    uint32_t bundleIndex;
     char bundleName[0];  // process name
 } AppSpawnMsgBundleInfo;
 
-typedef struct tagAppSpawnMsg {
+typedef struct TagAppSpawnMsg {
     uint32_t magic;
     uint32_t msgType;
     uint32_t msgLen;
@@ -137,22 +137,6 @@ typedef struct {
 #elif defined(_MSC_VER)
 #    pragma warning(pop)
 #endif
-
-__attribute__((always_inline)) inline int CalcFlagsUnits(uint32_t maxIndex)
-{
-    return ((maxIndex / 32) + ((maxIndex % 32 == 0) ? 0 : 1));  // 32 max bit in uint32_t
-}
-
-__attribute__((always_inline)) inline int SetAppSpawnMsgFlags(AppSpawnMsgFlags *msgFlags, uint32_t index)
-{
-    uint32_t blockIndex = index / 32;  // 32 max bit in int
-    uint32_t bitIndex = index % 32;    // 32 max bit in int
-    if (blockIndex >= msgFlags->count) {
-        return -1;
-    }
-    msgFlags->flags[blockIndex] |= (1 << bitIndex);
-    return 0;
-}
 
 #ifdef __cplusplus
 }

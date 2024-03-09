@@ -25,8 +25,7 @@ ohos_shared_library("event_reporter") {
     "hisysevent:libhisysevent",
     "init:libbegetutil",
   ]
-  deps =
-      [ "${appspawn_innerkits_path}/module_engine:libappspawn_module_engine" ]
+  deps = [ "${appspawn_path}/modules/module_engine:libappspawn_module_engine" ]
   subsystem_name = "${subsystem_name}"
   part_name = "${part_name}"
   install_enable = true

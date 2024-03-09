@@ -17,7 +17,7 @@ config("appspawn_config") {
   visibility = [ "./*" ]
   include_dirs = [
     "${appspawn_innerkits_path}/include",
-    "${appspawn_innerkits_path}/module_engine/include",
+    "${appspawn_path}/modules/module_engine/include",
     "${appspawn_path}/util/include",
     "//commonlibrary/c_utils/base/include",
   ]
@@ -57,8 +57,8 @@ group("appspawn_all") {
     deps += [ "modules/sysevent:event_reporter" ]
     deps += [ "${appspawn_innerkits_path}/client:appspawn_client" ]
     deps += [
-      "${appspawn_innerkits_path}/module_engine:libappspawn_module_engine",
-      "${appspawn_innerkits_path}/module_engine:libappspawn_stub_empty",
+      "${appspawn_path}/modules/module_engine:libappspawn_module_engine",
+      "${appspawn_path}/modules/module_engine:libappspawn_stub_empty",
     ]
   } else {
     deps += [ "lite:appspawn_lite" ]

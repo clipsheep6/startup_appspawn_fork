@@ -27,8 +27,8 @@ ohos_shared_library("appspawn_common") {
   ]
   cflags = []
   deps = [
-    "${appspawn_innerkits_path}/module_engine:libappspawn_module_engine",
-    "//third_party/json:nlohmann_json_static",
+    "${appspawn_path}/modules/module_engine:libappspawn_module_engine",
+    "//third_party/cJSON:cjson",
   ]
   defines = [ "GRAPHIC_PERMISSION_CHECK" ]
   external_deps = [

@@ -23,6 +23,7 @@ if (!defined(ohos_lite)) {
       "APPSPAWN_LABEL=\"APPSPAWN_UT\"",
       "APPSPAWN_TEST",
       "APPSPAWN_DEBUG",
+      "USER_TIMER_TO_CHECK",
       "OHOS_DEBUG",
       "GRAPHIC_PERMISSION_CHECK",
       "capset=CapsetStub",
@@ -57,7 +58,7 @@ if (!defined(ohos_lite)) {
       "${appspawn_innerkits_path}/include",
       "${appspawn_innerkits_path}/client",
       "${appspawn_innerkits_path}/permission",
-      "${appspawn_innerkits_path}/module_engine/include",
+      "${appspawn_path}/modules/module_engine/include",
       "${appspawn_path}/test/mock",
       "${appspawn_path}/test/unittest",
       "${appspawn_path}/util/include",
@@ -104,8 +105,8 @@ if (!defined(ohos_lite)) {
       "${appspawn_path}/modules/sandbox/appspawn_permission.c",
       "${appspawn_path}/modules/sandbox/appspawn_sandbox.c",
       "${appspawn_path}/modules/sandbox/sandbox_cfgvar.c",
-      "${appspawn_path}/modules/sandbox/sandbox_expand.cpp",
-      "${appspawn_path}/modules/sandbox/sandbox_load.cpp",
+      "${appspawn_path}/modules/sandbox/sandbox_expand.c",
+      "${appspawn_path}/modules/sandbox/sandbox_load.c",
       "${appspawn_path}/modules/sandbox/sandbox_manager.c",
       "${startup_path}/init/interfaces/innerkits/hookmgr/hookmgr.c",
       "${startup_path}/init/interfaces/innerkits/modulemgr/modulemgr.c",
@@ -114,6 +115,7 @@ if (!defined(ohos_lite)) {
     # client sources
     sources += [
       "${appspawn_innerkits_path}/client/appspawn_client.c",
+      "${appspawn_innerkits_path}/client/appspawn_msg.c",
       "${appspawn_innerkits_path}/permission/appspawn_mount_permission.cpp",
     ]
 
@@ -139,7 +141,7 @@ if (!defined(ohos_lite)) {
 
     configs = [ "//base/startup/appspawn:appspawn_config" ]
     deps += [
-      "//third_party/json:nlohmann_json_static",
+      "//third_party/cJSON:cjson",
       "//third_party/selinux:libselinux",
     ]
     external_deps = [

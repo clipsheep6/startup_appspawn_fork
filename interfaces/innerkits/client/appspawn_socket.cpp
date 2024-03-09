@@ -23,7 +23,7 @@
 #ifdef APPSPAWN_NEW_CLIENT
 #include "appspawn_msg.h"
 #include "interfaces/innerkits_new/include/appspawn.h"
-#include "interfaces/innerkits_new/module_engine/include/appspawn_msg.h"
+#include "modules/module_engine/include/appspawn_msg.h"
 #else
 #include "pubdef.h"
 #endif
@@ -167,7 +167,7 @@ static int AddBaseTlv(AppSpawnClientHandle clientHandle, const AppParameter *par
     for (uint32_t i = 0; i < 32; i++) {  // 32 bits
         if (((parameter->flags >> i) & 0x1) == 1) {
             APPSPAWN_LOGV("AddBaseTlv flags %{public}d", i);
-            AppSpawnReqMsgSetAppFlag(reqHandle, i);
+            AppSpawnReqMsgSetAppFlag(reqHandle, (AppFlagsIndex)i);
         }
     }
 
@@ -200,7 +200,7 @@ int AppSpawnSocket::SendMessage(const uint8_t *buffer, uint32_t bufferLen)
     }
     const AppParameter *parameter = reinterpret_cast<const AppParameter *>(buffer);
     AppSpawnReqMsgHandle reqHandle = 0;
-    ret = AppSpawnReqMsgCreate(static_cast<uint32_t>(parameter->code), parameter->processName, &reqHandle);
+    ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(parameter->code), parameter->processName, &reqHandle);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to create req %{public}s", socketName_.c_str());
     ret = AddBaseTlv(clientHandle_, parameter, reqHandle);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to create req %{public}s", socketName_.c_str());

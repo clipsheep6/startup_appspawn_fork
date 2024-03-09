@@ -24,96 +24,46 @@
 #include "config_policy_utils.h"
 #include "securec.h"
 
-using namespace std;
-using namespace OHOS;
-
-namespace OHOS {
-namespace AppSpawn {
-namespace {
-    const std::string APP_JSON_CONFIG("/appdata-sandbox.json");
-}
-
-std::string JsonUtils::GetStringFromJson(const nlohmann::json &json, const std::string &key)
+uint32_t GetUint32ArrayFromJson(const cJSON *json, const char *name, uint32_t dataArray[], uint32_t maxCount)
 {
-    APPSPAWN_CHECK(json.is_object(), return "", "json is not object.");
-    bool isRet = json.find(key) != json.end() && json.at(key).is_string();
-    if (isRet) {
-        return json.at(key).get<std::string>();
-    }
-    return "";
-}
+    APPSPAWN_CHECK(json != NULL, return 0, "Invalid json");
+    APPSPAWN_CHECK(name != NULL, return 0, "Invalid name");
+    APPSPAWN_CHECK(dataArray != NULL, return 0, "Invalid dataArray");
+    APPSPAWN_CHECK(cJSON_IsObject(json), return 0, "json is not object.");
+    cJSON *array = cJSON_GetObjectItemCaseSensitive(json, name);
+    APPSPAWN_CHECK_ONLY_EXPER(array != NULL, return 0);
+    APPSPAWN_CHECK(cJSON_IsArray(array), return 0, "json is not object.");
 
-bool JsonUtils::GetBoolValueFromJson(const nlohmann::json &config, const std::string &key, bool def)
-{
-    if (config.find(key) != config.end()) {
-        std::string v = config[key].get<std::string>();
-        if (v == "true" || v == "ON" || v == "True") {
-            return true;
+    uint32_t count = 0;
+    uint32_t arrayLen = cJSON_GetArraySize(array);
+    for (int i = 0; i < arrayLen; i++) {
+        cJSON *item = cJSON_GetArrayItem(array, i);
+        uint32_t value = (uint32_t)cJSON_GetNumberValue(item);
+        if (count < maxCount) {
+            dataArray[count++] = value;
         }
     }
-    return def;
+    return count;
 }
 
-uint32_t JsonUtils::GetIntValueFromJson(const nlohmann::json &config, const std::string &key, uint32_t def)
+cJSON *GetJsonObjFromFile(const char *jsonPath)
 {
-    if (config.find(key) != config.end()) {
-        return config[key].get<uint32_t>();
-    }
-    return def;
-}
-
-std::vector<std::string> JsonUtils::split(const std::string &str, const std::string &pattern)
-{
-    std::string::size_type pos;
-    std::vector<std::string> result;
-    std::string tempStr = str;
-    size_t size = tempStr.size();
-    size_t patternSize = pattern.size();
-    std::string::size_type i = 0;
-    do {
-        pos = tempStr.find(pattern, i);
-        if (pos == std::string::npos) {  // end
-            std::string temp = tempStr.substr(i, size);
-            temp = temp.substr(temp.find_first_not_of(" \n\r\t"));
-            temp = temp.substr(0, temp.find_last_not_of(" \n\r\t") + 1);
-            result.push_back(temp);
-            break;
-        }
-        if (pos == i) {
-            i += patternSize;
-        } else {
-            std::string temp = tempStr.substr(i, pos - i);
-            temp = temp.substr(temp.find_first_not_of(" \n\r\t"));
-            temp = temp.substr(0, temp.find_last_not_of(" \n\r\t") + 1);
-            result.push_back(temp);
-            i = pos + patternSize;
-        }
-    } while (i < size);
-    return result;
-}
-
-bool JsonUtils::GetJsonObjFromJson(nlohmann::json &jsonObj, const std::string &jsonPath)
-{
-    APPSPAWN_CHECK(jsonPath.length() <= PATH_MAX, return false, "jsonPath is too long");
     std::ifstream jsonFileStream;
-    jsonFileStream.open(jsonPath.c_str(), std::ios::in);
-    APPSPAWN_CHECK_ONLY_EXPER(jsonFileStream.is_open(), return false);
+    jsonFileStream.open(jsonPath, std::ios::in);
+    APPSPAWN_CHECK_ONLY_EXPER(jsonFileStream.is_open(), return nullptr);
     std::ostringstream buf;
     char ch;
     while (buf && jsonFileStream.get(ch)) {
         buf.put(ch);
     }
     jsonFileStream.close();
-    jsonObj = nlohmann::json::parse(buf.str(), nullptr, false);
-    APPSPAWN_CHECK(jsonObj.is_structured(), return false, "Parse json file into jsonObj failed.");
-    return true;
+    return cJSON_Parse(buf.str().c_str());
 }
 
-int JsonUtils::GetSandboxConfigs(std::vector<nlohmann::json> &jsonConfigs)
+int ParseSandboxConfig(const char *basePath, const char *fileName, ParseConfig parseConfig, AppSpawnSandbox *context)
 {
     // load sandbox config
-    nlohmann::json appSandboxConfig;
-    CfgFiles *files = GetCfgFiles("etc/sandbox");
+    CfgFiles *files = GetCfgFiles(basePath);
     if (files == nullptr) {
         return APPSPAWN_SANDBOX_NONE;
     }
@@ -122,15 +72,14 @@ int JsonUtils::GetSandboxConfigs(std::vector<nlohmann::json> &jsonConfigs)
             continue;
         }
         std::string path = files->paths[i];
-        path += APP_JSON_CONFIG;
+        path += fileName;
         APPSPAWN_LOGI("LoadAppSandboxConfig %{public}s", path.c_str());
-        bool rc = GetJsonObjFromJson(appSandboxConfig, path);
-        APPSPAWN_CHECK(rc, return APPSPAWN_SANDBOX_LOAD_FAIL, "Failed to load app data sandbox config %{public}s",
-                        path.c_str());
-        jsonConfigs.push_back(appSandboxConfig);
+
+        cJSON *root = GetJsonObjFromFile(path.c_str());
+        APPSPAWN_CHECK(root != nullptr, continue, "Failed to load app data sandbox config %{public}s", path.c_str());
+        parseConfig(root, context);
+        cJSON_Delete(root);
     }
     FreeCfgFiles(files);
     return 0;
 }
-}  // namespace AppSpawn
-}  // namespace OHOS

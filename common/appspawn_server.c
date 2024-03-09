@@ -23,7 +23,7 @@
 
 #include "appspawn_utils.h"
 
-static void NotifyResToParent(struct tagAppSpawnContent *content, AppSpawnClient *client, int result)
+static void NotifyResToParent(struct TagAppSpawnContent *content, AppSpawnClient *client, int result)
 {
     APPSPAWN_LOGI("NotifyResToParent: %{public}d", result);
     if (content->notifyResToParent != NULL) {
@@ -65,7 +65,7 @@ static int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
     APPSPAWN_CHECK(content != NULL && client != NULL, return -1, "Invalid arg for appspawn child");
     APPSPAWN_LOGI("AppSpawnChild %{public}u flags: 0x%{public}x", client->id, client->flags);
 
-    int ret = AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, HOOK_STOP_WHEN_ERROR, content, client);
+    int ret = AppSpawnExecuteClearEnvHook(content, client);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0,
         NotifyResToParent(content, client, ret);
         return 0);
@@ -75,8 +75,9 @@ static int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
         if (content->coldStartApp != NULL && content->coldStartApp(content, client) == 0) {
             return 0;
         }
+        APPSPAWN_LOGW("AppSpawnChild cold start fail %{public}u", client->id);
     }
-    ret = AppSpawnHookExecute(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_STOP_WHEN_ERROR, content, client);
+    ret = AppSpawnExecuteSpawningHook(content, client);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0,
         NotifyResToParent(content, client, ret);
         return 0);
@@ -84,15 +85,12 @@ static int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
     // notify success to father process and start app process
     NotifyResToParent(content, client, 0);
 
-    (void)AppSpawnHookExecute(HOOK_SPAWN_COMPLETED, 0, content, client);
+    (void)AppSpawnExecuteCompleteHook(content, client);
 
     if (content->runChildProcessor != NULL) {
         ret = content->runChildProcessor(content, client);
-    } else {
-        ret = -1;
-        APPSPAWN_LOGE("No child processor to run %{public}u", client->id);
     }
-    if (ret != 0) { // clear env
+    if (ret != 0) {  // clear env
         AppSpawnEnvClear(content, client);
     }
     return 0;
@@ -115,7 +113,7 @@ int AppSpawnProcessMsg(AppSpawnContent *content, AppSpawnClient *client, pid_t *
 
     pid_t pid = 0;
 #ifndef OHOS_LITE
-    if (content->mode == MODE_FOR_NWEBSPAWN) {
+    if (content->mode == MODE_FOR_NWEB_SPAWN) {
         AppSpawnForkArg arg;
         arg.client = client;
         arg.content = content;
@@ -133,4 +131,3 @@ int AppSpawnProcessMsg(AppSpawnContent *content, AppSpawnClient *client, pid_t *
     *childPid = pid;
     return 0;
 }
-

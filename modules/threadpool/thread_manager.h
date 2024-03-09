@@ -27,7 +27,7 @@ extern "C" {
 
 typedef uint32_t ThreadTaskHandle;
 typedef void *ThreadMgr;
-typedef struct ThreadContext_ ThreadContext;
+typedef struct TagThreadContext ThreadContext;
 
 typedef void (*TaskFinishProcessor)(ThreadTaskHandle handle, const ThreadContext *context);
 typedef void (*TaskExecutor)(ThreadTaskHandle handle, const ThreadContext *context);

@@ -16,10 +16,12 @@
 #ifndef APPSPAWN_UTILS_H
 #define APPSPAWN_UTILS_H
 
+#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -65,7 +67,10 @@ extern "C" {
 #define APPSPAWN_USEC_TO_NSEC 1000
 #define APPSPAWN_SEC_TO_MSEC 1000
 
-#define TEST_FLAGS_BY_INDEX(flags, index) ((((flags) >> (index)) & 0x1) == 0x1)
+#define CHECK_FLAGS_BY_INDEX(flags, index) ((((flags) >> (index)) & 0x1) == 0x1)
+#ifndef ARRAY_LENGTH
+#define ARRAY_LENGTH(array) (sizeof((array)) / sizeof((array)[0]))
+#endif
 
 typedef enum {
     APPSPAWN_OK = 0,
@@ -88,23 +93,7 @@ typedef enum {
     APPSPAWN_NODE_EXIST,
 } AppSpawnErrorCode;
 
-typedef enum  {
-    // run in init
-    HOOK_PRELOAD  = 10,
-    // run before fork
-    HOOK_SPAWN_PREPARE = 20,
-    // run in child process
-    HOOK_SPAWN_CLEAR_ENV = 30, // clear env, set token HOOK_SPAWN_CLEAR_ENV
-    HOOK_SPAWN_SET_CHILD_PROPERTY,
-    HOOK_SPAWN_COMPLETED,
-    HOOK_SPAWN_POST = 40,
-
-    // for app change
-    HOOK_APP_ADD = 50,
-    HOOK_APP_DIED,
-} APPSPAWN_HOOK;
-
-typedef enum {
+typedef enum TagAppSpawnHookPrio {
     HOOK_PRIO_STEP1 = 1000,
     HOOK_PRIO_STEP2 = 2000,
     HOOK_PRIO_SANDBOX = 5000,
@@ -116,7 +105,10 @@ uint64_t DiffTime(const struct timespec *startTime, const struct timespec *endTi
 uint8_t *Base64Decode(const char *data, uint32_t dataLen, uint32_t *outLen);
 char *Base64Encode(const uint8_t *data, uint32_t len);
 void AppSpawnDump(const char *fmt, ...);
-void SetDumpFlags(uint32_t flags);
+void SetDumpToStream(FILE *stream);
+typedef int (*SplitStringHandle)(const char *str, void *context);
+int32_t StringSplit(const char *str, const char *separator, void *context, SplitStringHandle handle);
+char *GetLastStr(const char *str, const char *dst);
 
 #ifndef APP_FILE_NAME
 #define APP_FILE_NAME   (strrchr((__FILE__), '/') ? strrchr((__FILE__), '/') + 1 : (__FILE__))
@@ -146,8 +138,8 @@ void SetDumpFlags(uint32_t flags);
 
 #define APPSPAPWN_DUMP(fmt, ...) \
     do { \
-        HILOG_INFO(LOG_CORE, "[%{public}s:%{public}d]" fmt, (APP_FILE_NAME), (__LINE__), ##__VA_ARGS__); \
-        AppSpawnDump(fmt, ##__VA_ARGS__); \
+        HILOG_INFO(LOG_CORE, fmt, ##__VA_ARGS__); \
+        AppSpawnDump(fmt "\n", ##__VA_ARGS__); \
     } while (0)
 
 #else
@@ -172,6 +164,11 @@ void SetDumpFlags(uint32_t flags);
     if (!(retCode)) {                  \
         exper;                 \
     }                         \
+
+#define APPSPAWN_ONLY_EXPER(retCode, exper) \
+    if ((retCode)) {                  \
+        exper;                 \
+    }
 
 #define APPSPAWN_CHECK_ONLY_LOG(retCode, fmt, ...) \
     if (!(retCode)) {                    \

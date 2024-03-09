@@ -15,13 +15,13 @@
 
 #include "appspawn_adapter.h"
 
+#include "access_token.h"
 #include "appspawn_hook.h"
 #include "appspawn_service.h"
 #include "appspawn_utils.h"
-#include "access_token.h"
+#include "cJSON.h"
 #include "token_setproc.h"
 #include "tokenid_kit.h"
-#include "nlohmann/json.hpp"
 
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
@@ -38,7 +38,6 @@ using namespace OHOS::Security::AccessToken;
 
 int SetAppAccessToken(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
-    APPSPAWN_LOGV("Process step %{public}s", "SetAppAccessToken");
     int32_t ret = 0;
     uint64_t tokenId = 0;
     AppSpawnMsgAccessToken *tokenInfo = (AppSpawnMsgAccessToken *)GetAppProperty(property, TLV_ACCESS_TOKEN_INFO);
@@ -56,7 +55,6 @@ int SetAppAccessToken(const AppSpawnMgr *content, const AppSpawningCtx *property
     ret = SetSelfTokenID(tokenId);
     APPSPAWN_CHECK(ret == 0, return APPSPAWN_ACCESS_TOKEN_INVALID,
         "set access token id failed, ret: %{public}d %{public}s", ret, GetProcessName(property));
-
     APPSPAWN_LOGV("SetAppAccessToken success for %{public}s", GetProcessName(property));
     return 0;
 }
@@ -65,7 +63,7 @@ int SetSelinuxCon(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
 #ifdef WITH_SELINUX
     APPSPAWN_LOGV("SetSelinuxCon IsDeveloperModeOn %{public}d", IsDeveloperModeOn(property));
-    if (GetAppPropertyCode(property) == MSG_SPAWN_NATIVE_PROCESS) {
+    if (GetAppSpawnMsgType(property) == MSG_SPAWN_NATIVE_PROCESS) {
         if (!IsDeveloperModeOn(property)) {
             APPSPAWN_LOGE("Denied Launching a native process: not in developer mode");
             return APPSPAWN_NATIVE_NOT_SUPPORT;
@@ -141,7 +139,7 @@ int SetInternetPermission(const AppSpawningCtx *property)
     AppSpawnMsgInternetInfo *info = (AppSpawnMsgInternetInfo *)GetAppProperty(property, TLV_INTERNET_INFO);
     APPSPAWN_CHECK(info != NULL, return 0,
         "No tlv internet permission info in req form %{public}s", GetProcessName(property));
-    APPSPAWN_LOGV("SetInternetPermission %{public}d %{public}d",  info->setAllowInternet, info->allowInternet);
+    APPSPAWN_LOGV("Set internet permission %{public}d %{public}d", info->setAllowInternet, info->allowInternet);
     if (info->setAllowInternet == 1 && info->allowInternet == 0) {
         DisallowInternet();
     }
@@ -151,21 +149,21 @@ int SetInternetPermission(const AppSpawningCtx *property)
 int32_t SetEnvInfo(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     uint32_t size = 0;
-    char *envStr = reinterpret_cast<char *>(GetAppPropertyEx(property, "AppEnv", &size));
+    char *envStr = reinterpret_cast<char *>(GetAppPropertyExt(property, "AppEnv", &size));
     if (size == 0 || envStr == NULL) {
         return 0;
     }
     int ret = 0;
-    std::string appEnvInfo(envStr);
-    nlohmann::json envs = nlohmann::json::parse(appEnvInfo.c_str(), nullptr, false);
-    APPSPAWN_CHECK(!envs.is_discarded(), return -1, "SetEnvInfo: json parse failed");
-
-    for (nlohmann::json::iterator it = envs.begin(); it != envs.end(); ++it) {
-        APPSPAWN_CHECK(it.value().is_string(), return -1, "SetEnvInfo: element type error");
-        std::string name = it.key();
-        std::string value = it.value();
-        ret = setenv(name.c_str(), value.c_str(), 1);
-        APPSPAWN_CHECK(ret == 0, return ret, "setenv failed, errno: %{public}d", errno);
+    cJSON *root = cJSON_Parse(envStr);
+    APPSPAWN_CHECK(root != nullptr, return -1, "SetEnvInfo: json parse failed %{public}s", envStr);
+    cJSON *config = nullptr;
+    cJSON_ArrayForEach(config, root) {
+        const char *name = config->string;
+        const char *value = cJSON_GetStringValue(config);
+        APPSPAWN_LOGV("SetEnvInfo name: %{public}s value: %{public}s", name, value);
+        ret = setenv(name, value, 1);
+        APPSPAWN_CHECK(ret == 0, break, "setenv failed, errno: %{public}d", errno);
     }
+    cJSON_Delete(root);
     return ret;
 }

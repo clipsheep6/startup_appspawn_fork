@@ -82,9 +82,9 @@ static void NWebRenderMainStub(const char *cmd)
 }
 
 uint32_t g_dlsymResultFlags = 0;
-#define DLSYM_FAIL_SetSecPolicy 0x01
-#define DLSYM_FAIL_NWebRenderMainStub 0x02
-#define DLSYM_FAIL_InitEnvironment 0x04
+#define DLSYM_FAIL_SET_SEC_POLICY 0x01
+#define DLSYM_FAIL_NWEB_MAIN 0x02
+#define DLSYM_FAIL_INIT_ENV 0x04
 void SetDlsymResult(uint32_t flags, bool success)
 {
     if (success) {
@@ -99,13 +99,13 @@ void *DlsymStub(void *handle, const char *symbol)
     printf("DlsymStub %s \n", symbol);
     UNUSED(handle);
     if (strcmp(symbol, "InitEnvironmentParam") == 0) {
-        return ((g_dlsymResultFlags & DLSYM_FAIL_InitEnvironment) == 0) ? (void *)(InitEnvironmentParamStub) : NULL;
+        return ((g_dlsymResultFlags & DLSYM_FAIL_INIT_ENV) == 0) ? (void *)(InitEnvironmentParamStub) : NULL;
     }
     if (strcmp(symbol, "SetRendererSeccompPolicy") == 0) {
-        return ((g_dlsymResultFlags & DLSYM_FAIL_SetSecPolicy) == 0) ? (void *)(SetRendererSecCompPolicyStub) : NULL;
+        return ((g_dlsymResultFlags & DLSYM_FAIL_SET_SEC_POLICY) == 0) ? (void *)(SetRendererSecCompPolicyStub) : NULL;
     }
     if (strcmp(symbol, "NWebRenderMain") == 0) {
-        return ((g_dlsymResultFlags & DLSYM_FAIL_NWebRenderMainStub) == 0) ? (void *)(NWebRenderMainStub) : NULL;
+        return ((g_dlsymResultFlags & DLSYM_FAIL_NWEB_MAIN) == 0) ? (void *)(NWebRenderMainStub) : NULL;
     }
     return NULL;
 }

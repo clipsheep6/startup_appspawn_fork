@@ -41,11 +41,11 @@
 static inline int TestMountNodeFlagsPoint(const SandboxContext *context, const PathMountNode *sandboxNode)
 {
     if (TestAppMsgFlagsSet(context->property, APP_FLAGS_BACKUP_EXTENSION) &&
-        TEST_FLAGS_BY_INDEX(sandboxNode->flagsPoint, APP_FLAGS_BACKUP_EXTENSION)) {
+        CHECK_FLAGS_BY_INDEX(sandboxNode->flagsPoint, APP_FLAGS_BACKUP_EXTENSION)) {
         return 1;
     }
     if (TestAppMsgFlagsSet(context->property, APP_FLAGS_DLP_MANAGER) &&
-        TEST_FLAGS_BY_INDEX(sandboxNode->flagsPoint, APP_FLAGS_DLP_MANAGER)) {
+        CHECK_FLAGS_BY_INDEX(sandboxNode->flagsPoint, APP_FLAGS_DLP_MANAGER)) {
         return 1;
     }
     return 0;
@@ -62,10 +62,10 @@ static bool CheckBundleNameForPrivate(const char *bundleName)
 static inline const char *GetRootPathForSandbox(const AppSpawnSandbox *sandbox,
     const SandboxSection *section, uint32_t flags)
 {
-    if (TEST_FLAGS_BY_INDEX(flags, APP_FLAGS_BACKUP_EXTENSION)) {
+    if (CHECK_FLAGS_BY_INDEX(flags, APP_FLAGS_BACKUP_EXTENSION)) {
         return section->rootFlagsPath[0] == NULL ? NULL : section->rootFlagsPath[0];
     }
-    if (TEST_FLAGS_BY_INDEX(flags, APP_FLAGS_DLP_MANAGER)) {
+    if (CHECK_FLAGS_BY_INDEX(flags, APP_FLAGS_DLP_MANAGER)) {
         return section->rootFlagsPath[1] == NULL ? NULL : section->rootFlagsPath[1];
     }
     return section->rootPath == NULL ? NULL : section->rootPath;
@@ -259,7 +259,7 @@ static int DoSandboxMountNode(const SandboxContext *context,
         ret = DoDlpAppMountStrategy(context, &args);
     }
     if (ret < 0) {
-        APPSPAWN_LOGV("DoSandboxMountNode %{public}s => %{public}s", args.originPath, args.destinationPath);
+        APPSPAWN_LOGV("Bind path %{public}s => %{public}s", args.originPath, args.destinationPath);
         MakeDirRecursive(args.destinationPath, FILE_MODE);
         ret = SandboxMountPath(&args);
     }
@@ -657,5 +657,10 @@ int SetSandboxConfigs(const AppSpawnSandbox *sandbox, AppSpawningCtx *property, 
     SetDefaultSandboxContext(property, sandbox, &context);
     int ret = SetSandboxConfig(&context, sandbox);
     FreeSandboxContext(&context);
+
+    // for module test do not create sandbox
+    if (strncmp(GetBundleName(property), MODULE_TEST_BUNDLE_NAME, strlen(MODULE_TEST_BUNDLE_NAME)) == 0) {
+        return 0;
+    }
     return ret;
 }

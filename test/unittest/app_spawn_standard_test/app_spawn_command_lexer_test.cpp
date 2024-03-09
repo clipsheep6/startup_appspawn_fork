@@ -16,7 +16,6 @@
 #include <cstdarg>
 #include <gtest/gtest.h>
 
-#include "app_spawn_test_helper.h"
 #include "command_lexer.h"
 
 #define SPACE_STR               " "

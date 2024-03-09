@@ -50,7 +50,7 @@ ohos_executable("appspawn") {
     "${appspawn_path}:appspawn_config",
   ]
   deps = [
-    "${appspawn_innerkits_path}/module_engine:libappspawn_stub_versionscript",
+    "${appspawn_path}/modules/module_engine:libappspawn_stub_versionscript",
     "${appspawn_path}/util:libappspawn_base64",
     "${appspawn_path}/util:libappspawn_util",
   ]
@@ -80,9 +80,9 @@ ohos_executable("appspawn") {
   }
 
   version_script = get_label_info(
-                       "${appspawn_innerkits_path}/module_engine:libappspawn_stub_versionscript",
+                       "${appspawn_path}/modules/module_engine:libappspawn_stub_versionscript",
                        "target_gen_dir") + "/" + get_label_info(
-                       "${appspawn_innerkits_path}/module_engine:libappspawn_stub_versionscript",
+                       "${appspawn_path}/modules/module_engine:libappspawn_stub_versionscript",
                        "name") + stub_version_script_suffix
 
   install_enable = true

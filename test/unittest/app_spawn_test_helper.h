@@ -30,6 +30,7 @@
 
 #include "appspawn.h"
 #include "appspawn_hook.h"
+#include "appspawn_server.h"
 #include "appspawn_utils.h"
 #include "list.h"
 #include "loop_event.h"
@@ -42,7 +43,7 @@ typedef struct {
     char *argv[0];
 } CmdArgs;
 
-typedef struct tagAppSpawnClient AppSpawnClient;
+typedef struct TagAppSpawnClient AppSpawnClient;
 struct TestConnection;
 class LocalTestServer;
 using RecvMsgProcess = std::function<void(struct TestConnection *connection, const uint8_t *buffer, uint32_t buffLen)>;
@@ -101,7 +102,7 @@ public:
     static int AddBaseTlv(uint8_t *buffer, uint32_t bufferLen, uint32_t &realLen, uint32_t &tlvCount);
     static uint32_t GenRandom(void);
     static CmdArgs *ToCmdList(const char *cmd);
-
+    static AppSpawnContent *StartSpawnServer(std::string &cmd, CmdArgs *&args);
 private:
     AppSpawnMsgNode *CreateAppSpawnMsg(AppSpawnMsg *msg);
 
@@ -121,7 +122,6 @@ private:
     };
 };
 
-static uint32_t g_serverId = 1;
 class AppSpawnTestServer : public AppSpawnTestHelper {
 public:
     explicit AppSpawnTestServer(const char *cmd, bool testServer)
@@ -131,7 +131,7 @@ public:
         AppSpawnTestServer::serverId++;
     }
 
-    AppSpawnTestServer(const char *cmd)
+    explicit AppSpawnTestServer(const char *cmd)
         : AppSpawnTestHelper(), serviceCmd_(cmd), testServer_(true), protectTime_(2000)  // 2000 2s
     {
         serverId_ = AppSpawnTestServer::serverId;
@@ -145,21 +145,32 @@ public:
     void KillNWebSpawnServer();
 
 private:
+    void CloseCheckHandler(void);
+    void StartCheckHandler(void);
     void StopSpawnService(void);
 
     static uint32_t serverId;
     static void *ServiceThread(void *arg);
+#ifdef USER_TIMER_TO_CHECK
+    static void ProcessIdle(const TimerHandle taskHandle, void *context);
+#else
     static void ProcessIdle(const IdleHandle taskHandle, void *context);
+#endif
     static int ChildLoopRun(AppSpawnContent *content, AppSpawnClient *client);
 
     AppSpawnContent *content_ = nullptr;
     std::atomic<long> appPid_{-1};
     std::string serviceCmd_{};
+#ifdef USER_TIMER_TO_CHECK
+    TimerHandle timer_;
+#else
     IdleHandle idle_ = nullptr;
+#endif
     pthread_t threadId_ = 0;
     std::atomic<bool> stop_{false};
     RecvMsgProcess recvMsgProcess_ = nullptr;
     bool testServer_ = false;
+    bool serverStoped = false;
     struct timespec startTime_ {};
     uint32_t protectTime_;
     uint32_t serverId_ = 0;

@@ -38,9 +38,9 @@ ohos_shared_library("appspawn_ace") {
   ]
   configs = [ ":ace_config" ]
   deps = [
-    "${appspawn_innerkits_path}/module_engine:libappspawn_module_engine",
+    "${appspawn_path}/modules/module_engine:libappspawn_module_engine",
     "${appspawn_path}/util:libappspawn_util",
-    "//third_party/json:nlohmann_json_static",
+    "//third_party/cJSON:cjson",
   ]
   defines = []
   if (asan_detector || is_asan) {

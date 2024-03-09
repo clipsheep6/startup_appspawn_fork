@@ -27,12 +27,13 @@ if (!defined(ohos_lite)) {
       "${appspawn_path}/util/src/json_utils.cpp",
       "../permission/appspawn_mount_permission.cpp",
       "appspawn_client.c",
+      "appspawn_msg.c",
     ]
     include_dirs = [
       ".",
       "../include",
       "../permission",
-      "../module_engine/include",
+      "${appspawn_path}/modules/module_engine/include",
       "${appspawn_path}",
       "${appspawn_path}/modules/sandbox",
       "${appspawn_path}/util/include",
@@ -51,7 +52,7 @@ if (!defined(ohos_lite)) {
     public_configs = [ ":exported_header_files" ]
     version_script = "libappspawn_client.versionscript"
 
-    deps = [ "//third_party/json:nlohmann_json_static" ]
+    deps = [ "//third_party/cJSON:cjson" ]
     external_deps = [
       "c_utils:utils",
       "config_policy:configpolicy_util",

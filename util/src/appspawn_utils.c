@@ -15,6 +15,7 @@
 
 #include "appspawn_utils.h"
 
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -97,6 +98,8 @@ static void CheckDirRecursive(const char *path)
 
 int SandboxMountPath(const MountArg *arg)
 {
+    APPSPAWN_CHECK(arg != NULL && arg->originPath != NULL && arg->destinationPath != NULL,
+        return APPSPAWN_ARG_INVALID, "Invalid arg ");
     int ret = mount(arg->originPath, arg->destinationPath, arg->fsType, arg->mountFlags, arg->options);
     if (ret != 0) {
         if (arg->originPath != NULL && strstr(arg->originPath, "/data/app/el2/") != NULL) {
@@ -115,10 +118,82 @@ int SandboxMountPath(const MountArg *arg)
     return 0;
 }
 
-static uint32_t g_dumpToConsole = 0;
-void SetDumpFlags(uint32_t flags)
+static void TrimTail(char *buffer, uint32_t maxLen)
 {
-    g_dumpToConsole = flags;
+    int32_t index = maxLen - 1;
+    while (index > 0) {
+        if (isspace(buffer[index])) {
+            buffer[index] = '\0';
+            index--;
+            continue;
+        }
+        break;
+    }
+}
+
+int32_t StringSplit(const char *str, const char *separator, void *context, SplitStringHandle handle)
+{
+    APPSPAWN_CHECK(str != NULL && handle != NULL && separator != NULL, return APPSPAWN_ARG_INVALID, "Invalid arg ");
+
+    int ret = 0;
+    char *tmp = (char *)str;
+    char buffer[PATH_MAX] = {0};
+    uint32_t len = strlen(separator);
+    uint32_t index = 0;
+    while ((*tmp != '\0') && (index < (uint32_t)sizeof(buffer))) {
+        if (index == 0 && isspace(*tmp)) {
+            tmp++;
+            continue;
+        }
+        if (strncmp(tmp, separator, len) != 0) {
+            buffer[index++] = *tmp;
+            tmp++;
+            continue;
+        }
+        tmp += len;
+        buffer[index] = '\0';
+        TrimTail(buffer, index);
+        index = 0;
+
+        int result = handle(buffer, context);
+        if (result != 0) {
+            ret = result;
+        }
+    }
+    if (index > 0) {
+        buffer[index] = '\0';
+        TrimTail(buffer, index);
+        index = 0;
+        int result = handle(buffer, context);
+        if (result != 0) {
+            ret = result;
+        }
+    }
+    return ret;
+}
+
+char *GetLastStr(const char *str, const char *dst)
+{
+    char *end = (char *)str + strlen(str);
+    size_t len = strlen(dst);
+    while (end != str) {
+        if (isspace(*end)) { // clear space
+            *end = '\0';
+            end --;
+            continue;
+        }
+        if (strncmp(end, dst, len) == 0) {
+            return end;
+        }
+        end--;
+    }
+    return NULL;
+}
+
+static FILE *g_dumpToStream = NULL;
+void SetDumpToStream(FILE *stream)
+{
+    g_dumpToStream = stream;
 }
 
 #if defined(__clang__)
@@ -133,7 +208,7 @@ void SetDumpFlags(uint32_t flags)
 
 void AppSpawnDump(const char *fmt, ...)
 {
-    if (!g_dumpToConsole) {
+    if (g_dumpToStream == NULL) {
         return;
     }
     char format[128] = {0};  // 128 max buffer for format
@@ -152,10 +227,9 @@ void AppSpawnDump(const char *fmt, ...)
     }
     va_list vargs;
     va_start(vargs, format);
-    vprintf(format, vargs);
+    (void)vfprintf(g_dumpToStream, format, vargs);
     va_end(vargs);
-    printf("\n");
-    (void)fflush(stdout);
+    (void)fflush(g_dumpToStream);
 }
 
 #if defined(__clang__)

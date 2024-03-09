@@ -50,7 +50,7 @@ public:
             ret = AppSpawnReqMsgSetAppDacInfo(reqHandle, &dacInfo);
             APPSPAWN_CHECK(ret == 0, break, "Failed to add dac %{public}s", APPSPAWN_SERVER_NAME);
 
-            AppSpawnReqMsgSetAppFlag(reqHandle, 10); // 10 test
+            AppSpawnReqMsgSetAppFlag(reqHandle, static_cast<AppFlagsIndex>(10)); // 10 test
 
             ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 12345678);  // 12345678
             APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", APPSPAWN_SERVER_NAME);

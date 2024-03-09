@@ -28,9 +28,9 @@
 #define CALC_ENCODE_LEN(len) ((((len) + 2) / 3 + 1) * 4 + 1)
 #define CALC_DECODE_LEN(len) ((len) / 4 * 3)
 
-static const char g_base64EncodeTab[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const char BASE64_ENCODE_TAB[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 /* ASCII order for BASE 64 decode, 255 in unused character */
-static const uint8_t g_base64DecodeTab[] = {
+static const uint8_t BASE64_DECODE_TAB[] = {
     /* nul, soh, stx, etx, eot, enq, ack, bel, */
     255, 255, 255, 255, 255, 255, 255, 255,
 
@@ -83,12 +83,12 @@ static const uint8_t g_base64DecodeTab[] = {
 static void EncodeSection(const uint8_t *data, char *out)
 {
 	// get data[0] high 6 bit 2 0x3F
-    out[0] = g_base64EncodeTab[(data[0] >> 2) & 0x3F];
+    out[0] = BASE64_ENCODE_TAB[(data[0] >> 2) & 0x3F];
    	// get data[0] low 2 bit and data[1] high 4 bit 0x3 0xF
-    out[1] = g_base64EncodeTab[((data[0] & 0x3) << 4) | ((data[1] >> 4) & 0xF)];
+    out[1] = BASE64_ENCODE_TAB[((data[0] & 0x3) << 4) | ((data[1] >> 4) & 0xF)];
     // get data[1] low 4 bit and data[2] high 2 bit 6 0x3 0xF
-    out[2] = g_base64EncodeTab[((data[1] & 0xF) << 2) | ((data[2] >> 6) & 0x3)];
-    out[3] = g_base64EncodeTab[data[2] & 0x3F]; // get data[2] low 4 bit 2 0x3F
+    out[2] = BASE64_ENCODE_TAB[((data[1] & 0xF) << 2) | ((data[2] >> 6) & 0x3)];
+    out[3] = BASE64_ENCODE_TAB[data[2] & 0x3F]; // get data[2] low 4 bit 2 0x3F
 }
 
 char *Base64Encode(const uint8_t *data, uint32_t len)
@@ -111,15 +111,15 @@ char *Base64Encode(const uint8_t *data, uint32_t len)
     }
 
     if ((len - sourceIndex) == 1) { // 1 byte
-        out[destIndex++] = g_base64EncodeTab[(data[sourceIndex] >> 2) & 0x3F]; // 2 0x3F
-        out[destIndex++] = g_base64EncodeTab[(data[sourceIndex] & 0x3) << 4]; // 4 0x3
+        out[destIndex++] = BASE64_ENCODE_TAB[(data[sourceIndex] >> 2) & 0x3F]; // 2 0x3F
+        out[destIndex++] = BASE64_ENCODE_TAB[(data[sourceIndex] & 0x3) << 4]; // 4 0x3
         out[destIndex++] = BASE64_PAD;
         out[destIndex++] = BASE64_PAD;
     } else if ((len - sourceIndex) == 2) { // 2 byte
-        out[destIndex++] = g_base64EncodeTab[(data[sourceIndex] >> 2) & 0x3F]; // 2 0x3F
+        out[destIndex++] = BASE64_ENCODE_TAB[(data[sourceIndex] >> 2) & 0x3F]; // 2 0x3F
         // 0x3 4 0xF
-        out[destIndex++] = g_base64EncodeTab[((data[sourceIndex] & 0x3) << 4) | ((data[sourceIndex + 1] >> 4) & 0xF)];
-        out[destIndex++] = g_base64EncodeTab[((data[sourceIndex + 1] & 0xF) << 2)]; // 2 0xF
+        out[destIndex++] = BASE64_ENCODE_TAB[((data[sourceIndex] & 0x3) << 4) | ((data[sourceIndex + 1] >> 4) & 0xF)];
+        out[destIndex++] = BASE64_ENCODE_TAB[((data[sourceIndex + 1] & 0xF) << 2)]; // 2 0xF
         out[destIndex++] = BASE64_PAD;
     }
     out[destIndex] = 0;
@@ -149,7 +149,7 @@ uint8_t *Base64Decode(const char *data, uint32_t dataLen, uint32_t *outLen)
             free(out);
             return NULL;
         }
-        uint8_t dest = g_base64DecodeTab[(uint8_t)data[source]];
+        uint8_t dest = BASE64_DECODE_TAB[(uint8_t)data[source]];
         if (dest == 255) { // 255 invalid
             free(out);
             return NULL;

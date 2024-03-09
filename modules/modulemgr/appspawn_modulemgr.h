@@ -22,14 +22,17 @@
 
 #include "hookmgr.h"
 #include "modulemgr.h"
+#include "appspawn_hook.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct tagAppSpawnContent AppSpawnContent;
-typedef struct tagAppSpawnClient AppSpawnClient;
-typedef struct tagAppSpawnedProcess AppSpawnedProcess;
+#define HOOK_STOP_WHEN_ERROR 0x2
+
+typedef struct TagAppSpawnContent AppSpawnContent;
+typedef struct TagAppSpawnClient AppSpawnClient;
+typedef struct TagAppSpawnedProcess AppSpawnedProcess;
 typedef enum {
     MODULE_DEFAULT,
     MODULE_APPSPAWN,
@@ -53,12 +56,12 @@ void DeleteAppSpawnHookMgr(void);
 int PreloadHookExecute(AppSpawnContent *content);
 
 typedef struct {
-    const struct tagAppSpawnContent *content;
+    const struct TagAppSpawnContent *content;
     const AppSpawnedProcess *appInfo;
 } AppSpawnAppArg;
 
-int AppChangeHookExecute(int stage, const AppSpawnContent *content, const AppSpawnedProcess *appInfo);
-
+int AppChangeHookExecute(AppSpawnHookStage stage, const AppSpawnContent *content, const AppSpawnedProcess *appInfo);
+int AppSpawnHookExecute(AppSpawnHookStage stage, uint32_t flags, AppSpawnContent *content, AppSpawnClient *client);
 #ifdef __cplusplus
 }
 #endif

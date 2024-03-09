@@ -63,9 +63,8 @@ static bool SetSeccompPolicyForRenderer(void *nwebRenderHandle)
 
 static int RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
 {
-    APPSPAWN_LOGI("RunChildProcessorNweb");
     uint32_t len = 0;
-    char *renderCmd = reinterpret_cast<char *>(GetAppPropertyEx(
+    char *renderCmd = reinterpret_cast<char *>(GetAppPropertyExt(
         reinterpret_cast<AppSpawningCtx *>(client), MSG_EXT_NAME_RENDER_CMD, &len));
     if (renderCmd == nullptr) {
         return -1;
@@ -73,7 +72,6 @@ static int RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
     std::string renderStr(renderCmd);
     void *webEngineHandle = nullptr;
     void *nwebRenderHandle = nullptr;
-
 #ifdef __MUSL__
     Dl_namespace dlns;
     dlns_init(&dlns, "nweb_ns");
@@ -114,6 +112,7 @@ static int RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
     }
     AppSpawnEnvClear(content, client);
     funcNWebRenderMain(renderStr.c_str());
+    APPSPAWN_LOGI("RunChildProcessorNweb %{public}s", renderStr.c_str());
     return 0;
 }
 

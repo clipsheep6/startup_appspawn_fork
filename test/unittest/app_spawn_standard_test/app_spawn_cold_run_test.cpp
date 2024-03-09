@@ -39,7 +39,6 @@
 using namespace testing;
 using namespace testing::ext;
 using namespace OHOS;
-using nlohmann::json;
 
 namespace OHOS {
 static AppSpawnTestHelper g_testHelper;
@@ -65,7 +64,7 @@ static int ExecvAbortStub(const char *pathName, char *const argv[])
     return 0;
 }
 
-static int ExecvLocalProcessStub(const char *pathName, char *const argv[])
+int ExecvLocalProcessStub(const char *pathName, char *const argv[])
 {
     if (!(strcmp(pathName, "/system/bin/appspawn") == 0 || strcmp(pathName, "/system/asan/bin/appspawn") == 0)) {
         return 0;
@@ -89,18 +88,17 @@ static int HandleExecvStub(const char *pathName, char *const argv[])
     if (!(strcmp(pathName, "/system/bin/appspawn") == 0 || strcmp(pathName, "/system/asan/bin/appspawn") == 0)) {
         return 0;
     }
-    std::string arg;
+    std::string cmd;
     int index = 0;
     do {
-        arg += argv[index];
-        arg += " ";
+        cmd += argv[index];
+        cmd += " ";
         index++;
     } while (argv[index] != nullptr);
-    APPSPAWN_LOGV("HandleExecvStub arg: %{public}s ", arg.c_str());
+    APPSPAWN_LOGV("HandleExecvStub cmd: %{public}s ", cmd.c_str());
 
-    CmdArgs *args = AppSpawnTestHelper::ToCmdList(arg.c_str());
-    APPSPAWN_CHECK(args != nullptr, return -1, "Failed to alloc args");
-    AppSpawnContent *content = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
+    CmdArgs *args = nullptr;
+    AppSpawnContent *content = AppSpawnTestHelper::StartSpawnServer(cmd, args);
     if (content == nullptr) {
         free(args);
         return -1;
@@ -108,6 +106,7 @@ static int HandleExecvStub(const char *pathName, char *const argv[])
     content->runAppSpawn(content, args->argc, args->argv);
     free(args);
     APPSPAWN_LOGV("HandleExecvStub %{public}s exit", pathName);
+    _exit(0x7f); // 0x7f user exit
     return 0;
 }
 
@@ -174,7 +173,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_002, TestSize.Level0)
     ASSERT_EQ(ret, 0);
 }
 
-static CmdArgs *GetColdRunArgs(AppSpawningCtx *property, const char *arg)
+static std::string GetColdRunArgs(AppSpawningCtx *property, const char *arg)
 {
     std::string argStr = arg;
     const uint32_t memSize = (property->message->msgHeader.msgLen % 1024 + 1) * 1024;  // 1024
@@ -186,7 +185,7 @@ static CmdArgs *GetColdRunArgs(AppSpawningCtx *property, const char *arg)
     argStr += "null";
     argStr += "  -fd -1 0  ";
     argStr += std::to_string(property->forkCtx.shmId);
-    return AppSpawnTestHelper::ToCmdList(argStr.c_str());
+    return argStr;
 }
 
 HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_003, TestSize.Level0)
@@ -209,10 +208,8 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_003, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        std::string arg = "appspawn -mode app_cold -param ";
-        args = GetColdRunArgs(property, arg.c_str());
-        APPSPAWN_CHECK(args != nullptr, break, "Failed to alloc args");
-        content = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
+        std::string cmd = GetColdRunArgs(property, "appspawn -mode app_cold -param ");
+        content = AppSpawnTestHelper::StartSpawnServer(cmd, args);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
         // spawn prepare process
@@ -249,10 +246,8 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_004, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        std::string arg = "appspawn -mode nweb_cold -param ";
-        args = GetColdRunArgs(property, arg.c_str());
-        APPSPAWN_CHECK(args != nullptr, break, "Failed to alloc args");
-        content = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
+        std::string cmd = GetColdRunArgs(property, "appspawn -mode nweb_cold -param ");
+        content = AppSpawnTestHelper::StartSpawnServer(cmd, args);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         ASSERT_EQ(content->mode, MODE_FOR_NWEB_COLD_RUN);
 
@@ -296,10 +291,8 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_005, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        std::string arg = "appspawn -mode app_cold -param ";
-        args = GetColdRunArgs(property, arg.c_str());
-        APPSPAWN_CHECK(args != nullptr, break, "Failed to alloc args");
-        content = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
+        std::string cmd = GetColdRunArgs(property, "appspawn -mode app_cold -param ");
+        content = AppSpawnTestHelper::StartSpawnServer(cmd, args);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         ASSERT_EQ(content->mode, MODE_FOR_APP_COLD_RUN);
 
@@ -343,15 +336,13 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        std::string arg = "appspawn -mode app_cold -param ";
-        args = GetColdRunArgs(property, arg.c_str());
-        APPSPAWN_CHECK(args != nullptr, break, "Failed to alloc args");
-        content = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
+        std::string cmd = GetColdRunArgs(property, "appspawn -mode app_cold -param ");
+        content = AppSpawnTestHelper::StartSpawnServer(cmd, args);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         ASSERT_EQ(content->mode, MODE_FOR_APP_COLD_RUN);
         // add property to content
         OH_ListAddTail(&(reinterpret_cast<AppSpawnMgr *>(content))->processMgr.appSpawnQueue, &property->node);
-        DumpApSpawn(reinterpret_cast<AppSpawnMgr *>(content));
+        DumpApSpawn(reinterpret_cast<AppSpawnMgr *>(content), nullptr);
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
         AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, 0, content, &property->client);
@@ -362,60 +353,6 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
     if (args) {
         free(args);
     }
-    DeleteAppSpawningCtx(property);
-    AppSpawnClientDestroy(clientHandle);
-    ASSERT_EQ(ret, 0);
-}
-
-/**
- * @brief 测试冷启动子进程中执行的 coldStartApp
- *
- */
-HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_007, TestSize.Level0)
-{
-    AppSpawnClientHandle clientHandle = nullptr;
-    AppSpawnReqMsgHandle reqHandle = 0;
-    AppSpawningCtx *property = nullptr;
-    AppSpawnContent *content = nullptr;
-    CmdArgs *args = nullptr;
-    StubNode *node = GetStubNode(STUB_EXECV);
-    ASSERT_NE(node != nullptr, 0);
-    int ret = -1;
-    do {
-        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
-        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
-
-        // asan set cold
-        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_DEBUGGABLE);
-        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_NATIVEDEBUG);
-        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
-        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
-        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ASANENABLED);
-        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_GWP_ENABLED_NORMAL);
-
-        ret = APPSPAWN_ARG_INVALID;
-        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
-        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
-
-        std::string arg = "appspawn -mode nwebspawn";
-        args = AppSpawnTestHelper::ToCmdList(arg.c_str());
-        APPSPAWN_CHECK(args != nullptr, break, "Failed to alloc args");
-        content = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
-        APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        ret = -1;
-        node->flags |= STUB_NEED_CHECK;
-        node->arg = reinterpret_cast<void *>(ExecvLocalProcessStub);
-        // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
-        content->coldStartApp(content, &property->client);
-        ret = 0;
-    } while (0);
-    if (args) {
-        free(args);
-    }
-    node->flags &= ~STUB_NEED_CHECK;
     DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
@@ -646,6 +583,5 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Base64_011, TestSize.Level0)
     uint32_t outLen = 0;
     uint8_t *result = Base64Decode(data, strlen(data), &outLen);
     ASSERT_EQ(result == nullptr, 1);
-    SetDumpFlags(0);
 }
 }  // namespace OHOS

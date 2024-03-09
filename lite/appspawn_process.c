@@ -80,14 +80,14 @@ static int SetCapability(unsigned int capsCnt, const unsigned int *caps)
     return 0;
 }
 
-static int SetProcessName(struct tagAppSpawnContent *content, AppSpawnClient *client,
+static int SetProcessName(struct TagAppSpawnContent *content, AppSpawnClient *client,
     char *longProcName, uint32_t longProcNameLen)
 {
     AppSpawnClientLite *appProperty = (AppSpawnClientLite *)client;
     return prctl(PR_SET_NAME, appProperty->message.bundleName);
 }
 
-static int SetKeepCapabilities(struct tagAppSpawnContent *content, AppSpawnClient *client)
+static int SetKeepCapabilities(struct TagAppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGE("SetKeepCapabilities");
 #ifdef __LINUX__
@@ -99,7 +99,7 @@ static int SetKeepCapabilities(struct tagAppSpawnContent *content, AppSpawnClien
     return 0;
 }
 
-static int SetUidGid(struct tagAppSpawnContent *content, AppSpawnClient *client)
+static int SetUidGid(struct TagAppSpawnContent *content, AppSpawnClient *client)
 {
     AppSpawnClientLite *appProperty = (AppSpawnClientLite *)client;
     APPSPAWN_LOGE("SetUidGid %d %d", appProperty->message.uID, appProperty->message.gID);
@@ -128,7 +128,7 @@ static int SetUidGid(struct tagAppSpawnContent *content, AppSpawnClient *client)
     return 0;
 }
 
-static int SetCapabilities(struct tagAppSpawnContent *content, AppSpawnClient *client)
+static int SetCapabilities(struct TagAppSpawnContent *content, AppSpawnClient *client)
 {
     AppSpawnClientLite *appProperty = (AppSpawnClientLite *)client;
     APPSPAWN_LOGE("SetCapabilities appProperty->message.capsCnt %d", appProperty->message.capsCnt);
@@ -183,12 +183,8 @@ void SetContentFunction(AppSpawnContent *content)
     content->runChildProcessor = RunChildProcessor;
 }
 
-int AppSpawnHookExecute(int stage, uint32_t flags, AppSpawnContent *content, AppSpawnClient *client)
+int AppSpawnExecuteSpawningHook(AppSpawnContent *content, AppSpawnClient *client)
 {
-    if (stage != HOOK_SPAWN_SET_CHILD_PROPERTY) {
-        return 0;
-    }
-
     (void)umask(DEFAULT_UMASK);
     int ret = SetKeepCapabilities(content, client);
     if (ret != 0) {
@@ -207,4 +203,18 @@ int AppSpawnHookExecute(int stage, uint32_t flags, AppSpawnContent *content, App
         return ret;
     }
     return 0;
+}
+
+int AppSpawnExecuteClearEnvHook(AppSpawnContent *content, AppSpawnClient *client)
+{
+    return 0;
+}
+
+int AppSpawnExecuteCompleteHook(AppSpawnContent *content, AppSpawnClient *client)
+{
+    return 0;
+}
+
+void AppSpawnEnvClear(AppSpawnContent *content, AppSpawnClient *client)
+{
 }

@@ -28,6 +28,7 @@
 
 #include "appspawn.h"
 #include "appspawn_client.h"
+#include "appspawn_modulemgr.h"
 #include "appspawn_msg.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
@@ -62,25 +63,50 @@ int AppSpawnTestServer::ChildLoopRun(AppSpawnContent *content, AppSpawnClient *c
     return 0;
 }
 
+void AppSpawnTestServer::CloseCheckHandler(void)
+{
+    APPSPAWN_LOGV("CloseCheckHandler");
+#ifdef USER_TIMER_TO_CHECK
+    if (timer_ != nullptr) {
+        LE_StopTimer(LE_GetDefaultLoop(), timer_);
+        timer_ = nullptr;
+    }
+#else
+    if (idle_) {
+        LE_DelIdle(idle_);
+        idle_ = nullptr;
+    }
+#endif
+}
+
+void AppSpawnTestServer::StartCheckHandler(void)
+{
+#ifdef USER_TIMER_TO_CHECK
+    int ret = LE_CreateTimer(LE_GetDefaultLoop(), &timer_, ProcessIdle, this);
+    if (ret == 0) {
+        ret = LE_StartTimer(LE_GetDefaultLoop(), timer_, 100, 10000000);  // 100 10000000 repeat
+    }
+#else
+    LE_AddIdle(LE_GetDefaultLoop(), &idle_, ProcessIdle, this, 10000000);  // 10000000 repeat
+#endif
+}
+
 void *AppSpawnTestServer::ServiceThread(void *arg)
 {
+    CmdArgs *args = nullptr;
     pid_t pid = getpid();
     AppSpawnTestServer *server = reinterpret_cast<AppSpawnTestServer *>(arg);
     APPSPAWN_LOGV("serviceCmd_ %{public}s", server->serviceCmd_.c_str());
-    CmdArgs *args = ToCmdList(server->serviceCmd_.c_str());
-    APPSPAWN_CHECK(args != nullptr, return nullptr, "Failed to alloc args");
 
     // 测试server时，使用appspawn的server
     if (server->testServer_) {
-        server->content_ = StartSpawnService(APP_LEN_PROC_NAME, args->argc, args->argv);
+        server->content_ = AppSpawnTestHelper::StartSpawnServer(server->serviceCmd_, args);
         if (server->content_ == nullptr) {
-            free(args);
             return nullptr;
         }
         if (pid == getpid()) {  // 主进程进行处理
             APPSPAWN_LOGV("Service start timer %{public}s ", server->serviceCmd_.c_str());
-            LE_AddIdle(LE_GetDefaultLoop(), &server->idle_, ProcessIdle, server, 10000000);  // 10000000 repeat
-
+            server->StartCheckHandler();
             RegChildLooper(server->content_, ChildLoopRun);
             AppSpawnMgr *content = reinterpret_cast<AppSpawnMgr *>(server->content_);
             APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return nullptr);
@@ -97,12 +123,14 @@ void *AppSpawnTestServer::ServiceThread(void *arg)
             server->content_ = nullptr;
         }
     } else {
-        LE_AddIdle(LE_GetDefaultLoop(), &server->idle_, ProcessIdle, server, 10000000);  // 10000000 repeat
+        server->StartCheckHandler();
         server->localServer_ = new LocalTestServer();
         server->localServer_->Run(APPSPAWN_SOCKET_NAME, server->recvMsgProcess_);
     }
     APPSPAWN_LOGV("Service thread finish %{public}s ", server->serviceCmd_.c_str());
-    free(args);
+    if (args) {
+        free(args);
+    }
     return nullptr;
 }
 
@@ -146,10 +174,10 @@ void AppSpawnTestServer::KillNWebSpawnServer()
 void AppSpawnTestServer::StopSpawnService(void)
 {
     APPSPAWN_LOGV("StopSpawnService ");
-    if (idle_) {
-        LE_DelIdle(idle_);
-        idle_ = nullptr;
+    if (serverStoped) {
+        CloseCheckHandler();
     }
+    serverStoped = true;
     if (testServer_) {
         struct signalfd_siginfo siginfo = {};
         siginfo.ssi_signo = SIGTERM;
@@ -160,8 +188,13 @@ void AppSpawnTestServer::StopSpawnService(void)
     }
 }
 
+#ifdef USER_TIMER_TO_CHECK
+void AppSpawnTestServer::ProcessIdle(const TimerHandle taskHandle, void *context)
+#else
 void AppSpawnTestServer::ProcessIdle(const IdleHandle taskHandle, void *context)
+#endif
 {
+    APPSPAWN_LOGV("AppSpawnTestServer::ProcessIdle");
     AppSpawnTestServer *server = reinterpret_cast<AppSpawnTestServer *>(const_cast<void *>(context));
     if (server->stop_) {
         server->StopSpawnService();
@@ -172,7 +205,7 @@ void AppSpawnTestServer::ProcessIdle(const IdleHandle taskHandle, void *context)
     clock_gettime(CLOCK_MONOTONIC, &end);
     uint64_t diff = DiffTime(&server->startTime_, &end);
     if (diff >= (server->protectTime_ * 1000)) {  // 1000 ms -> us
-        APPSPAWN_LOGV("AppSpawnTestServer::ProcessIdle: %{public}u %{public}llu", server->protectTime_, diff);
+        APPSPAWN_LOGV("AppSpawnTestServer:: timeout %{public}u %{public}llu", server->protectTime_, diff);
         server->StopSpawnService();
         return;
     }
@@ -340,7 +373,7 @@ CmdArgs *AppSpawnTestHelper::ToCmdList(const char *cmd)
 AppSpawnReqMsgHandle AppSpawnTestHelper::CreateMsg(AppSpawnClientHandle handle, uint32_t msgType, int base)
 {
     AppSpawnReqMsgHandle reqHandle = 0;
-    int ret = AppSpawnReqMsgCreate(msgType, processName_.c_str(), &reqHandle);
+    int ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(msgType), processName_.c_str(), &reqHandle);
     APPSPAWN_CHECK(ret == 0, return INVALID_REQ_HANDLE, "Failed to create req %{public}s", processName_.c_str());
     APPSPAWN_CHECK_ONLY_EXPER(msgType == MSG_APP_SPAWN || msgType == MSG_SPAWN_NATIVE_PROCESS, return reqHandle);
     do {
@@ -459,7 +492,6 @@ void AppSpawnTestHelper::SetDefaultTestData()
     defaultTestGid_ = 20010029;       // 20010029 test
     defaultTestGidGroup_ = 20010029;  // 20010029 test
     defaultTestBundleIndex_ = 100;    // 100 test
-    SetDumpFlags(OHOS::system::GetBoolParameter("appspawn.open.console", true));
 }
 
 int AppSpawnTestHelper::CreateSocket(void)
@@ -574,5 +606,43 @@ int AppSpawnTestHelper::AddBaseTlv(uint8_t *buffer, uint32_t bufferLen, uint32_t
     tlvCount++;
     realLen = currLen;
     return 0;
+}
+
+AppSpawnContent *AppSpawnTestHelper::StartSpawnServer(std::string &cmd, CmdArgs *&args)
+{
+    args = AppSpawnTestHelper::ToCmdList(cmd.c_str());
+    APPSPAWN_CHECK(args != nullptr, return NULL, "Failed to alloc args");
+
+    AppSpawnStartArg startRrg = {};
+    startRrg.mode = MODE_FOR_APP_SPAWN;
+    startRrg.socketName = APPSPAWN_SOCKET_NAME;
+    startRrg.serviceName = APPSPAWN_SERVER_NAME;
+    startRrg.moduleType = MODULE_APPSPAWN;
+    startRrg.initArg = 1;
+    if (args->argc <= MODE_VALUE_INDEX) {  // appspawn start
+        startRrg.mode = MODE_FOR_APP_SPAWN;
+    } else if (strcmp(args->argv[MODE_VALUE_INDEX], "app_cold") == 0) {  // cold start
+        APPSPAWN_CHECK(args->argc > PARAM_VALUE_INDEX, free(args);
+            return NULL, "Invalid arg for cold start %{public}d", args->argc);
+        startRrg.mode = MODE_FOR_APP_COLD_RUN;
+        startRrg.initArg = 0;
+    } else if (strcmp(args->argv[MODE_VALUE_INDEX], "nweb_cold") == 0) {  // cold start
+        APPSPAWN_CHECK(args->argc > PARAM_VALUE_INDEX, free(args);
+            return NULL, "Invalid arg for cold start %{public}d", args->argc);
+        startRrg.mode = MODE_FOR_NWEB_COLD_RUN;
+        startRrg.serviceName = NWEBSPAWN_SERVER_NAME;
+        startRrg.initArg = 0;
+    } else if (strcmp(args->argv[MODE_VALUE_INDEX], NWEBSPAWN_SERVER_NAME) == 0) {  // nweb spawn start
+        startRrg.mode = MODE_FOR_NWEB_SPAWN;
+        startRrg.moduleType = MODULE_NWEBSPAWN;
+        startRrg.socketName = NWEBSPAWN_SOCKET_NAME;
+        startRrg.serviceName = NWEBSPAWN_SERVER_NAME;
+    }
+    APPSPAWN_LOGV("Start service %{public}s", startRrg.serviceName);
+    AppSpawnContent *content = StartSpawnService(&startRrg, APP_LEN_PROC_NAME, args->argc, args->argv);
+    if (content == nullptr) {
+        free(args);
+    }
+    return content;
 }
 }  // namespace OHOS

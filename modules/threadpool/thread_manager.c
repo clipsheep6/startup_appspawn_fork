@@ -240,8 +240,6 @@ static void CheckTaskComplete(ThreadManager *mgr)
     if (task == NULL) {
         return;
     }
-    APPSPAWN_LOGV("CheckTaskComplete task: %{public}u task count: %{public}u %{public}u",
-        task->taskId, atomic_load(&task->finishTaskCount), task->totalTask);
     if (task->totalTask <= atomic_load(&task->finishTaskCount)) {
         if (task->finishProcess != NULL) {
             task->finishProcess(task->taskId, task->context);
@@ -514,7 +512,7 @@ static void *ManagerThreadProc(void *args)
             }
         } while (1);
         pthread_mutex_unlock(&mgr->mutex);
-        APPSPAWN_LOGV("aaaa threadNode->threadExit %{public}d", threadNode->threadExit);
+
         ExecuteTask(mgr);
         CheckAndCreateNewThread(mgr);
 

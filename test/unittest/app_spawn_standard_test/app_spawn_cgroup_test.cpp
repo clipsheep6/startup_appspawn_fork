@@ -37,7 +37,6 @@
 using namespace testing;
 using namespace testing::ext;
 using namespace OHOS;
-using nlohmann::json;
 
 namespace OHOS {
 static AppSpawnTestHelper g_testHelper;
@@ -115,7 +114,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_002, TestSize.Level0)
 
         ret = GetTestCGroupFilePath(appInfo, "cgroup.procs", path, true);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
-        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APPSPAWN);
+        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         // spawn prepare process
         AppChangeHookExecute(HOOK_APP_ADD, content, appInfo);
@@ -166,7 +165,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_003, TestSize.Level0)
         appInfo = CreateTestAppInfo(name);
         APPSPAWN_CHECK(appInfo != nullptr, break, "Failed to create appInfo");
 
-        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APPSPAWN);
+        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         AppChangeHookExecute(HOOK_APP_DIED, content, appInfo);
         ret = 0;
@@ -193,7 +192,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_004, TestSize.Level0)
         APPSPAWN_CHECK(appInfo != nullptr, break, "Failed to create appInfo");
         appInfo->pid = 44;  // 44 test pid
 
-        content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEBSPAWN);
+        content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         AppChangeHookExecute(HOOK_APP_ADD, content, appInfo);
         // add success
@@ -228,7 +227,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_005, TestSize.Level0)
         appInfo = CreateTestAppInfo(name);
         APPSPAWN_CHECK(appInfo != nullptr, break, "Failed to create appInfo");
 
-        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEBSPAWN);
+        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         AppChangeHookExecute(HOOK_APP_DIED, content, appInfo);
         ret = 0;
@@ -259,7 +258,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_006, TestSize.Level0)
 
         ret = GetTestCGroupFilePath(appInfo, "cgroup.procs", path, true);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
-        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APPSPAWN);
+        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         AppChangeHookExecute(HOOK_APP_ADD, content, appInfo);
 
@@ -307,7 +306,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_007, TestSize.Level0)
         appInfo->max = 10;  // 10 test max
         ret = GetTestCGroupFilePath(appInfo, "pids.max", path, true);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
-        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APPSPAWN);
+        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         AppChangeHookExecute(HOOK_APP_ADD, content, appInfo);
 

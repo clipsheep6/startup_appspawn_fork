@@ -87,10 +87,12 @@ static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
     if (CheckSupportColdStart(GetBundleName(property)) == 0) {
         property->client.flags |= APP_COLD_START;
         property->client.flags |= APP_ASAN_DETECTOR;
-        int ret = strcpy_s(property->forkCtx.coldRunPath,
-            sizeof(property->forkCtx.coldRunPath), "/system/asan/bin/appspawn");
-        if (ret != 0) {
-             APPSPAWN_LOGE("Failed to set asan exec path %{public}s", GetProcessName(property));
+        if (property->forkCtx.coldRunPath) {
+            free(property->forkCtx.coldRunPath);
+        }
+        property->forkCtx.coldRunPath = strdup("/system/asan/bin/appspawn");
+        if (property->forkCtx.coldRunPath == NULL) {
+            APPSPAWN_LOGE("Failed to set asan exec path %{public}s", GetProcessName(property));
         }
     }
 #endif
@@ -99,7 +101,7 @@ static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
 
 static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
 {
-    if (IsNWebSpawnMode(content) || GetAppPropertyCode(property) == MSG_SPAWN_NATIVE_PROCESS) {
+    if (IsNWebSpawnMode(content) || GetAppSpawnMsgType(property) == MSG_SPAWN_NATIVE_PROCESS) {
         return 0;
     }
     int ret = SetAsanEnabledEnv(content, property);

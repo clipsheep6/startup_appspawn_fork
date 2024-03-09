@@ -49,26 +49,35 @@ static const bool DEFAULT_PRELOAD_VALUE = true;
 #endif
 static const std::string PRELOAD_JSON_CONFIG("/appspawn_preload.json");
 
-static void GetPreloadModules(const std::string &configName, std::set<std::string> &modules)
+typedef struct TagAppSpawnSandbox {
+    std::set<std::string> modules;
+} AppSpawnSandbox;
+
+static void GetModules(const cJSON *root, std::set<std::string> &modules)
 {
-    // Preload napi module
-    nlohmann::json preloadJson;
-    bool rc = JsonUtils::GetJsonObjFromJson(preloadJson, configName);
-    APPSPAWN_CHECK_ONLY_EXPER(rc, return);
     // no config
-    if (preloadJson.find("napi") == preloadJson.end()) {
+    cJSON *modulesJson = cJSON_GetObjectItemCaseSensitive(root, "napi");
+    if (modulesJson == nullptr) {
         return;
     }
 
-    nlohmann::json modulesJson = preloadJson["napi"];
-    uint32_t moduleCount = modulesJson.size();
+    uint32_t moduleCount = cJSON_GetArraySize(modulesJson);
     for (uint32_t i = 0; i < moduleCount; ++i) {
-        nlohmann::json moduleName = modulesJson[i];
-        APPSPAWN_LOGV("moduleName %{public}s", moduleName.get<std::string>().c_str());
-        if (!modules.count(moduleName.get<std::string>())) {
-            modules.insert(moduleName.get<std::string>());
+        const char *moduleName = cJSON_GetStringValue(cJSON_GetArrayItem(modulesJson, i));
+        if (moduleName == nullptr) {
+            continue;
+        }
+        APPSPAWN_LOGV("moduleName %{public}s", moduleName);
+        if (!modules.count(moduleName)) {
+            modules.insert(moduleName);
         }
     }
+}
+
+static int GetModuleSet(const cJSON *root, AppSpawnSandbox *context)
+{
+    GetModules(root, context->modules);
+    return 0;
 }
 
 static void PreloadModule(void)
@@ -83,23 +92,10 @@ static void PreloadModule(void)
         APPSPAWN_LOGE("LoadExtendLib: Failed to create runtime");
         return;
     }
-    std::set<std::string> modules = {};
-    CfgFiles *files = GetCfgFiles("etc/appspawn");
-    if (files == nullptr) {
-        APPSPAWN_LOGE("LoadExtendLib: Get cfg file fail");
-        return;
-    }
-    for (int i = 0; i < MAX_CFG_POLICY_DIRS_CNT; ++i) {
-        if (files->paths[i] == nullptr) {
-            continue;
-        }
-        std::string path = files->paths[i];
-        path += PRELOAD_JSON_CONFIG;
-        APPSPAWN_LOGI("PreloadModules path %{public}s", path.c_str());
-        GetPreloadModules(path, modules);
-    }
-    FreeCfgFiles(files);
-    for (std::string moduleName : modules) {
+
+    AppSpawnSandbox context = {};
+    (void)ParseSandboxConfig("etc/appspawn", PRELOAD_JSON_CONFIG.c_str(), GetModuleSet, &context);
+    for (std::string moduleName : context.modules) {
         APPSPAWN_LOGI("moduleName %{public}s", moduleName.c_str());
         runtime->PreloadSystemModule(moduleName);
     }
@@ -148,7 +144,7 @@ static int RunChildThread(const AppSpawnMgr *content, const AppSpawningCtx *prop
 static int RunChildByRenderCmd(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     uint32_t len = 0;
-    char *renderCmd = reinterpret_cast<char *>(GetAppPropertyEx(property, MSG_EXT_NAME_RENDER_CMD, &len));
+    char *renderCmd = reinterpret_cast<char *>(GetAppPropertyExt(property, MSG_EXT_NAME_RENDER_CMD, &len));
     if (renderCmd == NULL || !IsDeveloperModeOn(property)) {
         APPSPAWN_LOGE("Denied launching a native process: not in developer mode");
         return -1;
@@ -183,12 +179,12 @@ static int RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
     APPSPAWN_CHECK(client != NULL && content != NULL, return -1, "Invalid client");
     AppSpawningCtx *property = reinterpret_cast<AppSpawningCtx *>(client);
     int ret = 0;
-    if (GetAppPropertyCode(property) == MSG_SPAWN_NATIVE_PROCESS) {
+    if (GetAppSpawnMsgType(property) == MSG_SPAWN_NATIVE_PROCESS) {
         ret = RunChildByRenderCmd(reinterpret_cast<AppSpawnMgr *>(content), property);
     } else {
         ret = RunChildThread(reinterpret_cast<AppSpawnMgr *>(content), property);
     }
-    return 0;
+    return ret;
 }
 
 static int AppSpawnPreload(AppSpawnMgr *content)

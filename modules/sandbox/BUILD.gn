@@ -19,8 +19,8 @@ ohos_shared_library("appspawn_sandbox") {
     "appspawn_permission.c",
     "appspawn_sandbox.c",
     "sandbox_cfgvar.c",
-    "sandbox_expand.cpp",
-    "sandbox_load.cpp",
+    "sandbox_expand.c",
+    "sandbox_load.c",
     "sandbox_manager.c",
   ]
 
@@ -34,9 +34,9 @@ ohos_shared_library("appspawn_sandbox") {
 
   defines = []
   deps = [
-    "${appspawn_innerkits_path}/module_engine:libappspawn_module_engine",
+    "${appspawn_path}/modules/module_engine:libappspawn_module_engine",
     "${appspawn_path}/util:libappspawn_util",
-    "//third_party/json:nlohmann_json_static",
+    "//third_party/cJSON:cjson",
   ]
   external_deps = [
     "c_utils:utils",

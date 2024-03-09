@@ -32,13 +32,16 @@ extern "C" {
 #define TIMEOUT_DEF 2
 #endif
 
+#define RETRY_TIME (200 * 1000)     // 200 * 1000 wait 200ms CONNECT_RETRY_DELAY = 200 * 1000
+#define MAX_RETRY_SEND_COUNT 2      // 2 max retry count CONNECT_RETRY_MAX_TIMES = 2;
+
 // only used for ExternalFileManager.hap
 #define GID_FILE_ACCESS 1006
 #define GID_USER_DATA_RW 1008
 
 #define MAX_DATA_IN_TLV 2
 
-struct tagAppSpawnReqMsgNode;
+struct TagAppSpawnReqMsgNode;
 typedef enum {
     CLIENT_FOR_APPSPAWN,
     CLIENT_FOR_NWEBSPAWN,
@@ -52,16 +55,17 @@ typedef struct {
     uint8_t buffer[0];
 } AppSpawnMsgBlock;
 
-typedef struct tagAppSpawnReqMsgMgr {
+typedef struct TagAppSpawnReqMsgMgr {
     AppSpawnClientType type;
     uint32_t maxRetryCount;
+    uint32_t timeout;
     uint32_t msgNextId;
     int socketId;
     pthread_mutex_t mutex;
-    AppSpawnMsgBlock recvBlock; // 消息接收缓存
+    AppSpawnMsgBlock recvBlock;  // 消息接收缓存
 } AppSpawnReqMsgMgr;
 
-typedef struct tagAppSpawnReqMsgNode {
+typedef struct TagAppSpawnReqMsgNode {
     struct ListNode node;
     uint32_t reqId;
     uint32_t retryCount;

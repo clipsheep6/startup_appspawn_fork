@@ -22,7 +22,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct tagPermissionNode PermissionNode;
+typedef struct TagPermissionNode PermissionNode;
 int32_t GetPermissionIndex(const char *permission);
 int32_t GetMaxPermissionIndex(void);
 const PermissionNode *GetPermissionNode(const char *permission);

@@ -31,7 +31,7 @@ ohos_static_library("libappspawn_util") {
     "src/appspawn_utils.c",
     "src/json_utils.cpp",
   ]
-  deps = [ "//third_party/json:nlohmann_json_static" ]
+  deps = [ "//third_party/cJSON:cjson" ]
   external_deps = [
     "config_policy:configpolicy_util",
     "hilog:libhilog",

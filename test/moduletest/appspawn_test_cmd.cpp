@@ -13,17 +13,25 @@
  * limitations under the License.
  */
 
+#include "appspawn_test_cmd.h"
+
+#include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <fcntl.h>
 #include <string>
+#include <termios.h>
+#include <unistd.h>
+
+#include <sys/stat.h>
 
 #include "appspawn.h"
 #include "appspawn_msg.h"
 #include "appspawn_utils.h"
 #include "command_lexer.h"
 #include "json_utils.h"
-#include "nlohmann/json.hpp"
+#include "cJSON.h"
 #include "securec.h"
 #include "thread_manager.h"
 
@@ -31,9 +39,7 @@
 
 #define MAX_THREAD 10
 #define MAX_SEND 200
-
-typedef struct ThreadContext_ {
-} ThreadContext;
+#define PTY_PATH_SIZE 128
 
 namespace OHOS {
 namespace AppSpawnModuleTest {
@@ -71,60 +77,13 @@ static const std::string g_defaultAppInfo = "{ \
     },\
     \"ext-info\" : [\
             {\
-                    \"name\" : \"hiplist\",\
-                    \"value\" : \"1333333333333345\"\
+                    \"name\" : \"test\",\
+                    \"value\" : \"4444444444444444444\" \
             } \
     ]\
 }";
 
-class AppSpawnTestCommander : public ThreadContext {
-public:
-    AppSpawnTestCommander()
-    {
-        exit_ = 0;
-        appSpawn_ = 1;
-    }
-    ~AppSpawnTestCommander() {}
-
-    int ProcessArgs(int argc, char *const argv[]);
-    int Run();
-
-private:
-    int ProcessInputCmd(std::string &cmd);
-    int CreateOtherMsg(AppSpawnReqMsgHandle &reqHandle, pid_t pid);
-    int CreateMsg(AppSpawnReqMsgHandle &reqHandle);
-    int StartSendMsg();
-    int SendMsg();
-
-    int AddExtTlv(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle);
-    int BuildMsgFromJson(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle);
-    int AddBundleInfoFromJson(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle);
-    int GetDacInfoFromJson(const nlohmann::json &appInfoConfig, AppDacInfo &info);
-    int GetInternetPermissionInfoFromJson(const nlohmann::json &appInfoConfig, AppSpawnMsgInternetInfo &info);
-    int GetAccessTokenFromJson(const nlohmann::json &appInfoConfig, AppSpawnMsgAccessToken &info);
-    int AddDomainInfoFromJson(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle);
-
-    static AppSpawnTestCommander *ConvertTo(const ThreadContext *context)
-    {
-        return const_cast<AppSpawnTestCommander *>(reinterpret_cast<const AppSpawnTestCommander *>(context));
-    }
-    static void TaskExecutorProc(ThreadTaskHandle handle, const ThreadContext *context);
-    static void SendTaskFinish(ThreadTaskHandle handle, const ThreadContext *context);
-    static void InputThread(ThreadTaskHandle handle, const ThreadContext *context);
-
-    uint32_t exit_ : 1;
-    uint32_t appSpawn_ : 1;
-    uint32_t msgType_;
-    pid_t terminatePid_;
-    std::string testFileName_{};
-    std::string processName_ {};
-    uint32_t threadCount_ {1};
-    AppSpawnClientHandle clientHandle_{nullptr};
-    ThreadMgr threadMgr_{nullptr};
-    ThreadTaskHandle inputHandle_{0};
-};
-
-static const char *g_usage = "usage: AppSpawnTest <options> \n"
+static const char *APPSPAWN_TEST_USAGE = "usage: AppSpawnTest <options> \n"
     "options list:\n"
     "  --help                   list available commands\n"
     "  --file xx                file path with app info\n"
@@ -166,113 +125,100 @@ int AppSpawnTestCommander::ProcessArgs(int argc, char *const argv[])
             terminatePid_ = atoi(argv[i]);
             sendMsg = 1;
         } else if (strcmp(argv[i], "--help") == 0) {
-            printf("%s\n", g_usage);
+            printf("%s\n", APPSPAWN_TEST_USAGE);
             return 1;
         } else if (strcmp(argv[i], "--send") == 0 || strcmp(argv[i], "send") == 0) {
             sendMsg = 1;
         }
     }
     if (sendMsg == 0) {
-        printf("%s\n", g_usage);
+        printf("%s\n", APPSPAWN_TEST_USAGE);
         return 1;
     }
     return 0;
 }
 
-int AppSpawnTestCommander::AddBundleInfoFromJson(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle)
+int AppSpawnTestCommander::AddBundleInfoFromJson(const cJSON *appInfoConfig, AppSpawnReqMsgHandle reqHandle)
 {
-    if (appInfoConfig.find("bundle-info") == appInfoConfig.end()) {
-        return -1;
-    }
-    nlohmann::json config = appInfoConfig.at("bundle-info");
-    uint32_t bundleIndex = AppSpawn::JsonUtils::GetIntValueFromJson(config, "bundle-index");
-    std::string bundleName = AppSpawn::JsonUtils::GetStringFromJson(config, "bundle-name");
-    int ret = AppSpawnReqMsgSetBundleInfo(reqHandle, bundleIndex, bundleName.c_str());
-    APPSPAWN_CHECK(ret == 0, return ret, "Failed to add bundle info req %{public}s", bundleName.c_str());
+    cJSON *config = cJSON_GetObjectItemCaseSensitive(appInfoConfig, "bundle-info");
+    APPSPAWN_CHECK_ONLY_EXPER(config, return 0);
+
+    uint32_t bundleIndex = GetIntValueFromJsonObj(config, "bundle-index", 0);
+    char *bundleName = GetStringFromJsonObj(config, "bundle-name");
+    int ret = AppSpawnReqMsgSetBundleInfo(reqHandle, bundleIndex, bundleName);
+    APPSPAWN_CHECK(ret == 0, return ret, "Failed to add bundle info req %{public}s", bundleName);
     return 0;
 }
 
-int AppSpawnTestCommander::GetDacInfoFromJson(const nlohmann::json &appInfoConfig, AppDacInfo &info)
+int AppSpawnTestCommander::GetDacInfoFromJson(const cJSON *appInfoConfig, AppDacInfo &info)
 {
-    if (appInfoConfig.find("dac-info") == appInfoConfig.end()) {
-        return -1;
-    }
-    nlohmann::json config = appInfoConfig.at("dac-info");
-    info.uid = AppSpawn::JsonUtils::GetIntValueFromJson(config, "uid");
-    info.gid = AppSpawn::JsonUtils::GetIntValueFromJson(config, "gid");
-    if (config.find("gid-table") != config.end()) {
-        const auto vec = config.at("gid-table").get<std::vector<uint32_t>>();
-        for (unsigned int j = 0; j < vec.size(); j++) {
-            info.gidTable[info.gidCount++] = vec[j];
-            if (info.gidCount >= APP_MAX_GIDS) {
-                break;
-            }
-        }
-    }
-    std::string userName = AppSpawn::JsonUtils::GetStringFromJson(config, "user-name");
-    if (!userName.empty()) {
-        return strcpy_s(info.userName, sizeof(info.userName), userName.c_str());
+    cJSON *config = cJSON_GetObjectItemCaseSensitive(appInfoConfig, "dac-info");
+    APPSPAWN_CHECK_ONLY_EXPER(config, return 0);
+
+    info.uid = GetIntValueFromJsonObj(config, "uid", 0);
+    info.gid = GetIntValueFromJsonObj(config, "gid", 0);
+    info.gidCount = GetUint32ArrayFromJson(config, "gid-table", info.gidTable, APP_MAX_GIDS);
+    char *userName = GetStringFromJsonObj(config, "user-name");
+    if (userName != nullptr) {
+        return strcpy_s(info.userName, sizeof(info.userName), userName);
     }
     return 0;
 }
 
 int AppSpawnTestCommander::GetInternetPermissionInfoFromJson(
-    const nlohmann::json &appInfoConfig, AppSpawnMsgInternetInfo &info)
+    const cJSON *appInfoConfig, AppSpawnMsgInternetInfo &info)
 {
-    if (appInfoConfig.find("internet-permission") == appInfoConfig.end()) {
-        return -1;
-    }
-    nlohmann::json config = appInfoConfig.at("internet-permission");
-    info.setAllowInternet = AppSpawn::JsonUtils::GetIntValueFromJson(config, "set-allow-internet");
-    info.allowInternet = AppSpawn::JsonUtils::GetIntValueFromJson(config, "allow-internet");
+    cJSON *config = cJSON_GetObjectItemCaseSensitive(appInfoConfig, "internet-permission");
+    APPSPAWN_CHECK_ONLY_EXPER(config, return 0);
+
+    info.setAllowInternet = GetIntValueFromJsonObj(config, "set-allow-internet", 0);
+    info.allowInternet = GetIntValueFromJsonObj(config, "allow-internet", 0);
     return 0;
 }
 
-int AppSpawnTestCommander::GetAccessTokenFromJson(const nlohmann::json &appInfoConfig, AppSpawnMsgAccessToken &info)
+int AppSpawnTestCommander::GetAccessTokenFromJson(const cJSON *appInfoConfig, AppSpawnMsgAccessToken &info)
 {
-    if (appInfoConfig.find("access-token") == appInfoConfig.end()) {
-        return -1;
-    }
-    nlohmann::json config = appInfoConfig.at("access-token");
-    info.accessTokenIdEx = AppSpawn::JsonUtils::GetIntValueFromJson(config, "accessTokenIdEx");
+    cJSON *config = cJSON_GetObjectItemCaseSensitive(appInfoConfig, "access-token");
+    APPSPAWN_CHECK_ONLY_EXPER(config, return 0);
+
+    info.accessTokenIdEx = GetIntValueFromJsonObj(config, "accessTokenIdEx", 0);
     return 0;
 }
 
-int AppSpawnTestCommander::AddDomainInfoFromJson(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle)
+int AppSpawnTestCommander::AddDomainInfoFromJson(const cJSON *appInfoConfig, AppSpawnReqMsgHandle reqHandle)
 {
-    if (appInfoConfig.find("domain-info") == appInfoConfig.end()) {
-        return -1;
-    }
-    nlohmann::json config = appInfoConfig.at("domain-info");
-    uint32_t hapFlags = AppSpawn::JsonUtils::GetIntValueFromJson(config, "hap-flags");
-    std::string apl = AppSpawn::JsonUtils::GetStringFromJson(config, "apl");
-    int ret = AppSpawnReqMsgSetAppDomainInfo(reqHandle, hapFlags, apl.c_str());
+    cJSON *config = cJSON_GetObjectItemCaseSensitive(appInfoConfig, "domain-info");
+    APPSPAWN_CHECK_ONLY_EXPER(config, return 0);
+
+    uint32_t hapFlags = GetIntValueFromJsonObj(config, "hap-flags", 0);
+    char *apl = GetStringFromJsonObj(config, "apl");
+    int ret = AppSpawnReqMsgSetAppDomainInfo(reqHandle, hapFlags, apl);
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to domain info");
     return 0;
 }
 
-int AppSpawnTestCommander::AddExtTlv(const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle)
+int AppSpawnTestCommander::AddExtTlv(const cJSON *appInfoConfig, AppSpawnReqMsgHandle reqHandle)
 {
-    if (appInfoConfig.find("ext-info") == appInfoConfig.end()) {
-        return 0;
-    }
+    cJSON *configs = cJSON_GetObjectItemCaseSensitive(appInfoConfig, "ext-info");
+    APPSPAWN_CHECK_ONLY_EXPER(configs, return 0);
+
     int ret = 0;
-    uint32_t count = appInfoConfig.at("ext-info").size();
+    uint32_t count = cJSON_GetArraySize(configs);
     for (unsigned int j = 0; j < count; j++) {
-        nlohmann::json config = appInfoConfig.at("ext-info")[j];
-        std::string name = AppSpawn::JsonUtils::GetStringFromJson(config, "name");
-        std::string value = AppSpawn::JsonUtils::GetStringFromJson(config, "value");
-        APPSPAWN_LOGV("ext-info %{public}s %{public}s", name.c_str(), value.c_str());
-        ret = AppSpawnReqMsgAddStringInfo(reqHandle, name.c_str(), value.c_str());
-        APPSPAWN_CHECK(ret == 0, return ret, "Failed to add ext name %{public}s", name.c_str());
+        cJSON *config = cJSON_GetArrayItem(configs, j);
+
+        char *name = GetStringFromJsonObj(config, "name");
+        char *value = GetStringFromJsonObj(config, "value");
+        APPSPAWN_LOGV("ext-info %{public}s %{public}s", name, value);
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, name, value);
+        APPSPAWN_CHECK(ret == 0, return ret, "Failed to add ext name %{public}s", name);
     }
-    ret = AppSpawnReqMsgAddStringInfo(reqHandle, "app-info", appInfoConfig.dump().c_str());
-    APPSPAWN_CHECK(ret == 0, return ret, "Failed to add ext name app-info");
-    // Ìí¼ÓÒ»¸ö¶þ½øÖÆµÄÀ©Õ¹ÔªËØ
-    AppDacInfo dacInfo {};
-    dacInfo.uid = 101;
-    dacInfo.gid = 101;
-    dacInfo.gidTable[0] = 101;
+
+    // æ·»åŠ ä¸€ä¸ªäºŒè¿›åˆ¶çš„æ‰©å±•å…ƒç´ 
+    AppDacInfo dacInfo{};
+    dacInfo.uid = 101;          // 101 test data
+    dacInfo.gid = 101;          // 101 test data
+    dacInfo.gidTable[0] = 101;  // 101 test data
     dacInfo.gidCount = 1;
     (void)strcpy_s(dacInfo.userName, sizeof(dacInfo.userName), processName_.c_str());
     ret = AppSpawnReqMsgAddExtInfo(reqHandle, "app-dac-info", reinterpret_cast<uint8_t *>(&dacInfo), sizeof(dacInfo));
@@ -280,7 +226,7 @@ int AppSpawnTestCommander::AddExtTlv(const nlohmann::json &appInfoConfig, AppSpa
     return ret;
 }
 
-int AppSpawnTestCommander::BuildMsgFromJson (const nlohmann::json &appInfoConfig, AppSpawnReqMsgHandle reqHandle)
+int AppSpawnTestCommander::BuildMsgFromJson(const cJSON *appInfoConfig, AppSpawnReqMsgHandle reqHandle)
 {
     int ret = AddBundleInfoFromJson(appInfoConfig, reqHandle);
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to add dac %{public}s", processName_.c_str());
@@ -298,30 +244,32 @@ int AppSpawnTestCommander::BuildMsgFromJson (const nlohmann::json &appInfoConfig
     ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, token.accessTokenIdEx);
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to add access token %{public}s", processName_.c_str());
 
-    if (appInfoConfig.find("permission") != appInfoConfig.end()) {
-        const auto vec = appInfoConfig.at("permission").get<std::vector<std::string>>();
-        for (unsigned int j = 0; j < vec.size(); j++) {
-            APPSPAWN_LOGV("permission %{public}s ", vec[j].c_str());
-            ret = AppSpawnReqMsgAddPermission(reqHandle, vec[j].c_str());
-            APPSPAWN_CHECK(ret == 0, return ret, "Failed to permission %{public}s", vec[j].c_str());
+    cJSON *obj = cJSON_GetObjectItemCaseSensitive(appInfoConfig, "permission");
+    if (obj != nullptr && cJSON_IsArray(obj)) {
+        int count = cJSON_GetArraySize(obj);
+        for (int i = 0; i < count; i++) {
+            char *value = cJSON_GetStringValue(cJSON_GetArrayItem(obj, i));
+            APPSPAWN_LOGV("permission %{public}s ", value);
+            ret = AppSpawnReqMsgAddPermission(reqHandle, value);
+            APPSPAWN_CHECK(ret == 0, return ret, "Failed to permission %{public}s", value);
         }
     }
+
     AppSpawnMsgInternetInfo internetInfo = {};
     ret = GetInternetPermissionInfoFromJson(appInfoConfig, internetInfo);
     ret = AppSpawnReqMsgSetAppInternetPermissionInfo(reqHandle,
         internetInfo.allowInternet, internetInfo.setAllowInternet);
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to internet info %{public}s", processName_.c_str());
 
-    std::string ownerId = AppSpawn::JsonUtils::GetStringFromJson(appInfoConfig, "owner-id");
+    std::string ownerId = GetStringFromJsonObj(appInfoConfig, "owner-id");
     if (!ownerId.empty()) {
         ret = AppSpawnReqMsgSetAppOwnerId(reqHandle, ownerId.c_str());
         APPSPAWN_CHECK(ret == 0, return ret, "Failed to ownerid %{public}s", processName_.c_str());
     }
 
-    std::string renderCmd = AppSpawn::JsonUtils::GetStringFromJson(appInfoConfig, "render-cmd");
+    std::string renderCmd = GetStringFromJsonObj(appInfoConfig, "render-cmd");
     if (!renderCmd.empty()) {
-        ret = AppSpawnReqMsgAddExtInfo(reqHandle, MSG_EXT_NAME_RENDER_CMD,
-            reinterpret_cast<uint8_t *>(const_cast<char *>(renderCmd.c_str())), renderCmd.size());
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_RENDER_CMD, renderCmd.c_str());
         APPSPAWN_CHECK(ret == 0, return -1, "Failed to add renderCmd %{public}s", renderCmd.c_str());
     }
     return AddExtTlv(appInfoConfig, reqHandle);
@@ -331,13 +279,13 @@ int AppSpawnTestCommander::CreateOtherMsg(AppSpawnReqMsgHandle &reqHandle, pid_t
 {
     if (msgType_ == MSG_GET_RENDER_TERMINATION_STATUS) {
         int ret = AppSpawnTerminateMsgCreate(pid, &reqHandle);
-        APPSPAWN_CHECK(ret == 0, return ret,
-            "Failed to termination message req %{public}s", processName_.c_str());
+        APPSPAWN_CHECK(ret == 0, return ret, "Failed to termination message req %{public}s", processName_.c_str());
     }
     if (msgType_ == MSG_DUMP) {
-        int ret = AppSpawnReqMsgCreate(msgType_, processName_.c_str(), &reqHandle);
-        APPSPAWN_CHECK(ret == 0, return ret,
-            "Failed to dump req %{public}s", processName_.c_str());
+        int ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(msgType_), processName_.c_str(), &reqHandle);
+        APPSPAWN_CHECK(ret == 0, return ret, "Failed to dump req %{public}s", processName_.c_str());
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, "pty-name", ptyName_.c_str());
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to add ptyName_ %{public}s", ptyName_.c_str());
     }
     return 0;
 }
@@ -346,42 +294,45 @@ int AppSpawnTestCommander::CreateMsg(AppSpawnReqMsgHandle &reqHandle)
 {
     int ret = APPSPAWN_SYSTEM_ERROR;
     reqHandle = INVALID_REQ_HANDLE;
-    nlohmann::json appInfoConfig;
+    if (appInfoConfig_) {
+        cJSON_Delete(appInfoConfig_);
+        appInfoConfig_ = nullptr;
+    }
     if (!testFileName_.empty()) {
-        if (!AppSpawn::JsonUtils::GetJsonObjFromJson(appInfoConfig, testFileName_)) {
+        appInfoConfig_ = GetJsonObjFromFile(testFileName_.c_str());
+        if (appInfoConfig_ == nullptr) {
             printf("Failed to load file %s, so use default info \n", testFileName_.c_str());
         }
     }
-    if (appInfoConfig == nullptr) {
-        appInfoConfig = nlohmann::json::parse(g_defaultAppInfo.c_str(), nullptr, false);
+    if (appInfoConfig_ == nullptr) {
+        appInfoConfig_ = cJSON_Parse(g_defaultAppInfo.c_str());
     }
-    if (appInfoConfig == nullptr) {
+    if (appInfoConfig_ == nullptr) {
         printf("Invalid app info \n");
         return APPSPAWN_SYSTEM_ERROR;
     }
-    processName_ = AppSpawn::JsonUtils::GetStringFromJson(appInfoConfig, "process-name");
+    processName_ = GetStringFromJsonObj(appInfoConfig_, "process-name");
     if (processName_.empty()) {
         processName_ = "com.example.myapplication";
     }
     if (msgType_ == MAX_TYPE_INVALID) {
-        msgType_ = AppSpawn::JsonUtils::GetIntValueFromJson(appInfoConfig, "msg-type", MSG_APP_SPAWN);
+        msgType_ = GetIntValueFromJsonObj(appInfoConfig_, "msg-type", MSG_APP_SPAWN);
     }
     if (msgType_ == MSG_DUMP) {
         return CreateOtherMsg(reqHandle, 0);
     } else if (msgType_ == MSG_GET_RENDER_TERMINATION_STATUS) {
-        pid_t pid = AppSpawn::JsonUtils::GetIntValueFromJson(appInfoConfig, "pid");
+        pid_t pid = GetIntValueFromJsonObj(appInfoConfig_, "pid", 0);
         return CreateOtherMsg(reqHandle, pid);
     }
-    ret = AppSpawnReqMsgCreate(msgType_, processName_.c_str(), &reqHandle);
+    ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(msgType_), processName_.c_str(), &reqHandle);
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to create req %{public}s", processName_.c_str());
 
-    if (appInfoConfig.find("msg-flags") != appInfoConfig.end()) {
-        const auto vec = appInfoConfig.at("msg-flags").get<std::vector<uint32_t>>();
-        for (unsigned int j = 0; j < vec.size(); j++) {
-            (void)AppSpawnReqMsgSetAppFlag(reqHandle, vec[j]);
-        }
+    uint32_t msgFlags[64] = {};
+    uint32_t count = GetUint32ArrayFromJson(appInfoConfig_, "msg-flags", msgFlags, ARRAY_LENGTH(msgFlags));
+    for (uint32_t j = 0; j < count; j++) {
+        (void)AppSpawnReqMsgSetAppFlag(reqHandle, static_cast<AppFlagsIndex>(msgFlags[j]));
     }
-    ret = BuildMsgFromJson(appInfoConfig, reqHandle);
+    ret = BuildMsgFromJson(appInfoConfig_, reqHandle);
     APPSPAWN_CHECK(ret == 0, AppSpawnReqMsgFree(reqHandle);
         return ret, "Failed to build req %{public}s", processName_.c_str());
     return ret;
@@ -394,6 +345,9 @@ int AppSpawnTestCommander::SendMsg()
     AppSpawnReqMsgHandle reqHandle = INVALID_REQ_HANDLE;
     int ret = 0;
     if (msgType_ == MSG_DUMP) {
+        while (!dumpFlags) {
+            usleep(20000);  // 20000
+        }
         ret = CreateOtherMsg(reqHandle, 0);
     } else if (msgType_ == MSG_GET_RENDER_TERMINATION_STATUS) {
         ret = CreateOtherMsg(reqHandle, terminatePid_);
@@ -404,20 +358,27 @@ int AppSpawnTestCommander::SendMsg()
     if (ret == 0) {
         ret = AppSpawnClientSendMsg(clientHandle_, reqHandle, &result);
     }
-    if (msgType_ == MSG_APP_SPAWN || msgType_ == MSG_SPAWN_NATIVE_PROCESS) {
-        if (result.result == 0) {
-            printf("Spawn app %s success, pid %d \n", processName_.c_str(), result.pid);
-        } else {
-            printf("Spawn app %s fail, result 0x%x \n", processName_.c_str(), result.result);
-        }
-    } else if (msgType_ == MSG_GET_RENDER_TERMINATION_STATUS) {
-        if (ret == 0) {
+    switch (msgType_) {
+        case MSG_APP_SPAWN:
+            if (result.result == 0) {
+                printf("Spawn app %s success, pid %d \n", processName_.c_str(), result.pid);
+            } else {
+                printf("Spawn app %s fail, result 0x%x \n", processName_.c_str(), result.result);
+            }
+            break;
+        case MSG_SPAWN_NATIVE_PROCESS:
+            if (result.result == 0) {
+                printf("Spawn native app %s success, pid %d \n", processName_.c_str(), result.pid);
+            } else {
+                printf("Spawn native app %s fail, result 0x%x \n", processName_.c_str(), result.result);
+            }
+            break;
+        case MSG_GET_RENDER_TERMINATION_STATUS:
             printf("Terminate app %s success, pid %d status 0x%x \n", processName_.c_str(), result.pid, result.result);
-        } else {
-            printf("Terminate app %s fail, result 0x%x \n", processName_.c_str(), ret);
-        }
-    } else {
-        printf("Dump server %s result %d \n", server, ret);
+            break;
+        default:
+            printf("Dump server %s result %d \n", server, ret);
+            break;
     }
     msgType_ = MAX_TYPE_INVALID;
     terminatePid_ = 0;
@@ -454,49 +415,90 @@ void AppSpawnTestCommander::SendTaskFinish(ThreadTaskHandle handle, const Thread
     APPSPAWN_LOGV("SendTaskFinish %{public}u \n", handle);
 }
 
+static std::vector<std::string> g_args;
+static int HandleSplitString(const char *str, void *context)
+{
+    APPSPAWN_LOGV("HandleSplitString %{public}s ", str);
+    std::string value = str;
+    g_args.push_back(value);
+    return 0;
+}
+
 int AppSpawnTestCommander::ProcessInputCmd(std::string &cmd)
 {
-    std::vector<std::string> args = AppSpawn::JsonUtils::split(cmd, " ");
+    g_args.clear();
+    int ret = StringSplit(cmd.c_str(), " ", nullptr, HandleSplitString);
     std::vector<char *> options;
-    for (const auto &arg : args) {
+    for (const auto &arg : g_args) {
         if (!arg.empty()) {
             options.push_back(const_cast<char *>(arg.c_str()));
         }
     }
     (void)ProcessArgs(options.size(), options.data());
     StartSendMsg();
-    return 0;
+    return ret;
 }
 
 void AppSpawnTestCommander::InputThread(ThreadTaskHandle handle, const ThreadContext *context)
 {
     AppSpawnTestCommander *testCmder = AppSpawnTestCommander::ConvertTo(context);
-    char buf[1024] = {0};  // 1024 test buffer max len
+    char buffer[1024] = {0};  // 1024 test buffer max len
     fd_set fds;
+    printf("Please input cmd: \n");
     while (1) {
         FD_ZERO(&fds);
         FD_SET(STDIN_FILENO, &fds);
-        printf("Please input cmd: \n");
-        int ret = select(STDIN_FILENO + 1, &fds, 0, 0, 0);
+        int ret = select(STDIN_FILENO + 1, &fds, nullptr, nullptr, nullptr);
         if (ret <= 0) {
             if (testCmder->exit_) {
                 break;
             }
             continue;
         }
-        int readLen = read(STDIN_FILENO, buf, sizeof(buf) - 1);
-        if (readLen <= 1) {
+        ssize_t rlen = read(STDIN_FILENO, buffer, sizeof(buffer) - 1);
+        if (rlen <= 1) {
             continue;
         }
-        buf[readLen - 1] = 0;
-        printf("Recv command: '%s' \n", buf);
-        if (strncmp("quit", buf, strlen("quit")) == 0) {
+        buffer[rlen - 1] = 0;
+        printf("Recv command: '%s' \n", buffer);
+        if (strncmp("quit", buffer, strlen("quit")) == 0) {
             testCmder->exit_ = 1;
             break;
         }
-        if (strncmp("send", buf, 4) == 0) {               // 4 strlen("send")
-            std::string cmd(buf);
+        if (strncmp("send", buffer, 4) == 0) {  // 4 strlen("send")
+            std::string cmd(buffer);
             testCmder->ProcessInputCmd(cmd);
+            printf("Please input cmd: \n");
+        }
+    }
+}
+
+void AppSpawnTestCommander::DumpThread(ThreadTaskHandle handle, const ThreadContext *context)
+{
+    AppSpawnTestCommander *testCmder = AppSpawnTestCommander::ConvertTo(context);
+    printf("Start dump thread \n");
+    char buffer[10240] = {0};  // 1024 test buffer max len
+    fd_set fds;
+    while (1) {
+        testCmder->dumpFlags = 1;
+        FD_ZERO(&fds);
+        FD_SET(testCmder->ptyFd_, &fds);
+        int ret = select(testCmder->ptyFd_ + 1, &fds, nullptr, nullptr, nullptr);
+        if (ret <= 0) {
+            if (testCmder->exit_) {
+                break;
+            }
+            continue;
+        }
+        if (!FD_ISSET(testCmder->ptyFd_, &fds)) {
+            continue;
+        }
+        ssize_t rlen = read(testCmder->ptyFd_, buffer, sizeof(buffer) - 1);
+        while (rlen > 0) {
+            buffer[rlen] = '\0';
+            printf("%s", buffer);
+            fflush(stdout);
+            rlen = read(testCmder->ptyFd_, buffer, sizeof(buffer) - 1);
         }
     }
 }
@@ -507,6 +509,8 @@ int AppSpawnTestCommander::Run()
     int ret = AppSpawnClientInit(name, &clientHandle_);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to create client %{public}s", name);
 
+    InitPtyInterface();
+
     ret = CreateThreadMgr(5, &threadMgr_);  // 5 max thread
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to create thread manager");
 
@@ -515,6 +519,11 @@ int AppSpawnTestCommander::Run()
     ThreadMgrAddExecutor(threadMgr_, inputHandle_, InputThread, this);
     TaskExecute(threadMgr_, inputHandle_, SendTaskFinish, this);
 
+    ret = ThreadMgrAddTask(threadMgr_, &dumpHandle_);
+    APPSPAWN_CHECK(ret == 0, return 0, "Failed to add task for thread ");
+    ThreadMgrAddExecutor(threadMgr_, dumpHandle_, DumpThread, this);
+    TaskExecute(threadMgr_, dumpHandle_, SendTaskFinish, this);
+
     StartSendMsg();
 
     APPSPAWN_LOGV("Finish send msg \n");
@@ -522,11 +531,34 @@ int AppSpawnTestCommander::Run()
         usleep(200000);  // 200000 200ms
     }
     ThreadMgrCancelTask(threadMgr_, inputHandle_);
+    ThreadMgrCancelTask(threadMgr_, dumpHandle_);
     DestroyThreadMgr(threadMgr_);
     threadMgr_ = nullptr;
     inputHandle_ = 0;
+    dumpHandle_ = 0;
     AppSpawnClientDestroy(clientHandle_);
     clientHandle_ = nullptr;
+    return 0;
+}
+
+int AppSpawnTestCommander::InitPtyInterface()
+{
+    // open master pty and get slave pty
+    int pfd = open("/dev/ptmx", O_RDWR | O_CLOEXEC | O_NOCTTY | O_NONBLOCK);
+    APPSPAWN_CHECK(pfd >= 0, return -1, "Failed open pty err=%d", errno);
+    APPSPAWN_CHECK(grantpt(pfd) >= 0, close(pfd);
+        return -1, "Failed to call grantpt");
+    APPSPAWN_CHECK(unlockpt(pfd) >= 0, close(pfd);
+        return -1, "Failed to call unlockpt");
+    char ptsbuffer[PTY_PATH_SIZE] = {0};
+    int ret = ptsname_r(pfd, ptsbuffer, sizeof(ptsbuffer));
+    APPSPAWN_CHECK(ret >= 0, close(pfd);
+        return -1, "Failed to get pts name err=%d", errno);
+    APPSPAWN_LOGI("ptsbuffer is %s", ptsbuffer);
+    APPSPAWN_CHECK(chmod(ptsbuffer, S_IRWXU | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) == 0, close(pfd);
+        return -1, "Failed to chmod %s, err=%d", ptsbuffer, errno);
+    ptyFd_ = pfd;
+    ptyName_ = std::string(ptsbuffer);
     return 0;
 }
 }  // namespace AppSpawnModuleTest
@@ -537,7 +569,7 @@ int main(int argc, char *const argv[])
     if (argc <= 0) {
         return 0;
     }
-    SetDumpFlags(1);
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     int ret = commander.ProcessArgs(argc, argv);
     if (ret == 0) {

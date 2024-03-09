@@ -36,7 +36,6 @@
 using namespace testing;
 using namespace testing::ext;
 using namespace OHOS;
-using nlohmann::json;
 
 namespace OHOS {
 static AppSpawnTestHelper g_testHelper;
@@ -187,7 +186,8 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Msg_003, TestSize.Level0)
         APPSPAWN_CHECK(len > 0, break, "Failed to send msg %{public}s", testServer.GetDefaultTestAppBundleName());
         // recv timeout
         len = RecvMsg(socketId, buffer.data(), buffer.size());
-        APPSPAWN_CHECK(len == 0, ret = -1; break, "Failed to recv msg len: %{public}d", len);
+        APPSPAWN_CHECK(len == 0, ret = -1;
+            break, "Failed to recv msg len: %{public}d", len);
     } while (0);
     if (socketId >= 0) {
         CloseClientSocket(socketId);
@@ -447,13 +447,14 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_001, TestSize.Level0)
         reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
         APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
         char path[PATH_MAX] = {};
-        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APPSPAWN);
+        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
         PreloadHookExecute(content);  // 预加载，解析sandbox
 
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        reqHandle = nullptr;
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         // spawn prepare process
@@ -464,13 +465,11 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_001, TestSize.Level0)
         arg.client = &property->client;
         arg.content = content;
         ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
-        ASSERT_EQ(ret, 0);
+        property = nullptr;
     } while (0);
     DeleteAppSpawningCtx(property);
+    AppSpawnReqMsgFree(reqHandle);
     AppSpawnClientDestroy(clientHandle);
-    AppSpawnDestroyContent(content);
-    LE_StopLoop(LE_GetDefaultLoop());
-    LE_CloseLoop(LE_GetDefaultLoop());
     ASSERT_EQ(ret, 0);
 }
 
@@ -492,13 +491,14 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_002, TestSize.Level0)
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
 
         char path[PATH_MAX] = {};
-        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APPSPAWN);
+        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
         PreloadHookExecute(content);
 
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        reqHandle = nullptr;
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         // spawn prepare process
@@ -508,13 +508,11 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_002, TestSize.Level0)
         arg.client = &property->client;
         arg.content = content;
         ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
-        ASSERT_EQ(ret, 0);
+        property = nullptr;
     } while (0);
     DeleteAppSpawningCtx(property);
+    AppSpawnReqMsgFree(reqHandle);
     AppSpawnClientDestroy(clientHandle);
-    AppSpawnDestroyContent(content);
-    LE_StopLoop(LE_GetDefaultLoop());
-    LE_CloseLoop(LE_GetDefaultLoop());
     ASSERT_EQ(ret, 0);
 }
 
@@ -538,13 +536,14 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_003, TestSize.Level0)
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
 
         char path[PATH_MAX] = {};
-        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APPSPAWN);
+        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
         PreloadHookExecute(content);
 
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        reqHandle = nullptr;
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         // spawn prepare process
@@ -554,13 +553,11 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_003, TestSize.Level0)
         arg.client = &property->client;
         arg.content = content;
         ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
-        ASSERT_EQ(ret, 0);
+        property = nullptr;
     } while (0);
     DeleteAppSpawningCtx(property);
+    AppSpawnReqMsgFree(reqHandle);
     AppSpawnClientDestroy(clientHandle);
-    AppSpawnDestroyContent(content);
-    LE_StopLoop(LE_GetDefaultLoop());
-    LE_CloseLoop(LE_GetDefaultLoop());
     ASSERT_EQ(ret, 0);
 }
 
@@ -584,16 +581,15 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_004, TestSize.Level0)
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_GWP_ENABLED_NORMAL);
 
-        char path[PATH_MAX] = {};
-        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APPSPAWN);
-        APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-
-        PreloadHookExecute(content);
-
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        reqHandle = nullptr;
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
+        char path[PATH_MAX] = {};
+        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
+        APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
+        PreloadHookExecute(content);
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
         // spawn
@@ -601,13 +597,11 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_004, TestSize.Level0)
         arg.client = &property->client;
         arg.content = content;
         ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
-        ASSERT_EQ(ret, 0);
+        property = nullptr;
     } while (0);
     DeleteAppSpawningCtx(property);
+    AppSpawnReqMsgFree(reqHandle);
     AppSpawnClientDestroy(clientHandle);
-    AppSpawnDestroyContent(content);
-    LE_StopLoop(LE_GetDefaultLoop());
-    LE_CloseLoop(LE_GetDefaultLoop());
     ASSERT_EQ(ret, 0);
 }
 
@@ -631,16 +625,15 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_005, TestSize.Level0)
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_GWP_ENABLED_NORMAL);
 
-        char path[PATH_MAX] = {};
-        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APPSPAWN);
-        APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-
-        PreloadHookExecute(content);
-
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        reqHandle = nullptr;
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
+        char path[PATH_MAX] = {};
+        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
+        APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
+        PreloadHookExecute(content);
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
         // spawn
@@ -648,13 +641,12 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_005, TestSize.Level0)
         arg.client = &property->client;
         arg.content = content;
         ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
+        property = nullptr;
         ASSERT_EQ(ret, 0);
     } while (0);
     DeleteAppSpawningCtx(property);
+    AppSpawnReqMsgFree(reqHandle);
     AppSpawnClientDestroy(clientHandle);
-    AppSpawnDestroyContent(content);
-    LE_StopLoop(LE_GetDefaultLoop());
-    LE_CloseLoop(LE_GetDefaultLoop());
     ASSERT_EQ(ret, 0);
 }
 
@@ -681,16 +673,15 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_006, TestSize.Level0)
             reinterpret_cast<uint8_t *>(const_cast<char *>(appEnv)), strlen(appEnv) + 1);
         APPSPAWN_CHECK(ret == 0, break, "Failed to add ext tlv %{public}s", appEnv);
 
-        char path[PATH_MAX] = {};
-        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APPSPAWN);
-        APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-
-        PreloadHookExecute(content);
-
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        reqHandle = nullptr;
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
+        char path[PATH_MAX] = {};
+        content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
+        APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
+        PreloadHookExecute(content);
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
         // spawn
@@ -698,13 +689,12 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_006, TestSize.Level0)
         arg.client = &property->client;
         arg.content = content;
         ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
+        property = nullptr;
         ASSERT_EQ(ret, 0);
     } while (0);
     DeleteAppSpawningCtx(property);
+    AppSpawnReqMsgFree(reqHandle);
     AppSpawnClientDestroy(clientHandle);
-    AppSpawnDestroyContent(content);
-    LE_StopLoop(LE_GetDefaultLoop());
-    LE_CloseLoop(LE_GetDefaultLoop());
     ASSERT_EQ(ret, 0);
 }
 
