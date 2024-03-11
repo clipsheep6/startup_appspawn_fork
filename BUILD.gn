@@ -64,10 +64,7 @@ if (!defined(ohos_lite)) {
       defines += [ "ASAN_DETECTOR" ]
     }
     configs = [ ":appspawn_config" ]
-    deps = [
-      "${appspawn_path}:appspawn_server",
-      "//third_party/selinux:libselinux",
-    ]
+    deps = [ "${appspawn_path}:appspawn_server" ]
     external_deps = [
       "ability_base:want",
       "ability_runtime:app_manager",
@@ -82,6 +79,7 @@ if (!defined(ohos_lite)) {
       "init:libbegetutil",
       "os_account:os_account_innerkits",
       "resource_management:global_resmgr",
+      "selinux:libselinux",
     ]
 
     if (build_selinux) {
@@ -147,7 +145,6 @@ if (!defined(ohos_lite)) {
     }
     configs = [ ":appspawn_config" ]
     ldflags = [ "-Wl,--dynamic-linker,/system/bin/linker64z" ]
-    deps = [ "//third_party/selinux:libselinux" ]
     external_deps = [
       "access_token:libtoken_setproc",
       "access_token:libtokenid_sdk",
@@ -157,6 +154,7 @@ if (!defined(ohos_lite)) {
       "init:libbegetutil",
       "netmanager_base:netsys_client",
       "os_account:os_account_innerkits",
+      "selinux:libselinux",
     ]
 
     if (!defined(global_parts_info) ||
