@@ -32,6 +32,7 @@
                 "c_utils",
                 "ipc",
                 "selinux_adapter",
+                "selinux",
                 "hilog",
                 "init",
                 "ability_runtime",
