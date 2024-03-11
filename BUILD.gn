@@ -182,7 +182,7 @@ if (!defined(ohos_lite)) {
 
     if (appspawn_report_event) {
       cflags += [ "-DREPORT_EVENT" ]
-      deps += [ "adapter/sysevent:event_reporter" ]
+      deps = [ "adapter/sysevent:event_reporter" ]
     }
 
     subsystem_name = "${subsystem_name}"
