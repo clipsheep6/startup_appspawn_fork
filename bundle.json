@@ -50,6 +50,7 @@
                 "os_account",
                 "hilog_lite",
                 "samgr_lite",
+                "json",
                 "ipc_single",
                 "kv_store",
                 "ability_lite",
