@@ -24,7 +24,6 @@ config("appspawn_config") {
     "//base/startup/init/services/log",
     "//base/startup/init/services/loopevent/include",
     "//third_party/json/include",
-    "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
     "//foundation/arkui/napi",
   ]
 
@@ -72,6 +71,7 @@ if (!defined(ohos_lite)) {
       "hilog:libhilog",
       "hitrace:hitrace_meter",
       "init:libbegetutil",
+      "ipc:ipc_single",
       "libuv:uv",
       "os_account:os_account_innerkits",
       "resource_management:global_resmgr",
@@ -114,6 +114,7 @@ if (!defined(ohos_lite)) {
       "eventhandler:libeventhandler",
       "hilog:libhilog",
       "init:libbegetutil",
+      "ipc:ipc_single",
       "libuv:uv",
       "resource_management:global_resmgr",
       "selinux:libselinux",
@@ -157,6 +158,7 @@ if (!defined(ohos_lite)) {
       "eventhandler:libeventhandler",
       "hilog:libhilog",
       "init:libbegetutil",
+      "ipc:ipc_single",
       "libuv:uv",
       "netmanager_base:netsys_client",
       "os_account:os_account_innerkits",
