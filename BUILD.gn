@@ -20,7 +20,6 @@ config("appspawn_config") {
     "standard",
     "adapter",
     "interfaces/innerkits/include",
-    "//commonlibrary/c_utils/base/include",
     "util/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/app",
     "//base/global/resource_management/interfaces/inner_api/include",
@@ -112,6 +111,7 @@ if (!defined(ohos_lite)) {
       "-fstack-protector-all",
     ]
     external_deps = [
+      "c_utils:utils",
       "hilog:libhilog",
       "init:libbegetutil",
     ]
