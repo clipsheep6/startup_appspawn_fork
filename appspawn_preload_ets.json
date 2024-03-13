@@ -1,0 +1,5 @@
+{
+    "napi" : [
+        "ETS_INTEROP_JS_NAPI"
+    ]
+}

@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021 Huawei Device Co., Ltd.
+# Copyright (c) 2020-2024 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -13,7 +13,18 @@
 
 import("//base/startup/appspawn/appspawn.gni")
 import("//base/startup/appspawn/etc/sandbox/appdata_sandbox_fixer.gni")
+import("//base/startup/appspawn/etc/preload/appspawn_preload_merger.gni")
 import("//build/ohos.gni")
+
+declare_args() {
+  # ark_ets_interop_js is declared in
+  # //ohos/arkcompiler/runtime_core/static_core/plugins/ets/BUILD.gn
+  if (defined(ark_ets_interop_js)) {
+    preload_ark_ets_interop_js = ark_ets_interop_js
+  } else {
+    preload_ark_ets_interop_js = is_ohos && is_standard_system
+  }
+}
 
 ohos_prebuilt_appdata_sandbox("appdata-sandbox.json") {
   source = "../appdata-sandbox.json"
@@ -30,8 +41,11 @@ ohos_prebuilt_appdata_sandbox("appdata-sandbox.json") {
   module_install_dir = "etc/sandbox"
 }
 
-ohos_prebuilt_etc("appspawn_preload.json") {
-  source = "../appspawn_preload.json"
+ohos_prebuilt_appspawn_preload("appspawn_preload.json") {
+  sources = ["../appspawn_preload.json"]
+  if (preload_ark_ets_interop_js) {
+    sources += ["../appspawn_preload_ets.json"]
+  }
   part_name = "${part_name}"
   module_install_dir = "etc/appspawn"
 }
