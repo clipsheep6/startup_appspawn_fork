@@ -76,6 +76,11 @@ static int SetAsanEnabledEnv(struct AppSpawnContent_ *content, AppSpawnClient *c
         unsetenv("UBSAN_OPTIONS");
         setenv("ASAN_OPTIONS", asanOptions, 1);
         client->flags |= APP_COLD_START;
+    }  else if ((appProperty->flags & APP_TSANENABLED) != 0) {
+        setenv("LD_PRELOAD", "/system/lib64/libclang_rt.asan.so", 1);
+        unsetenv("UBSAN_OPTIONS");
+        setenv("TSAN_OPTIONS", "history_size=7 force_seq_cst_atomics=1", 1);
+        client->flags |= APP_COLD_START;
     }
     return 0;
 }
