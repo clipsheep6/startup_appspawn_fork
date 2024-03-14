@@ -105,6 +105,31 @@ if (!defined(ohos_lite)) {
     part_name = "${part_name}"
   }
 
+  ohos_executable("appspawn_hnp") {
+    sources = [
+      "${appspawn_path}/interfaces/innerkits/hnp/src/hnp_api.c",
+      "${appspawn_path}/service/hnp/base/hnp_log.c",
+      "${appspawn_path}/service/hnp/installer/src/hnp_installer.c",
+      "${appspawn_path}/service/hnp/pack/src/hnp_pack.c",
+      "${appspawn_path}/service/hnp/hnp_main.c",
+    ]
+    include_dirs = [
+      "interfaces/innerkits/hnp/include",
+      "service/hnp/base",
+      "service/hnp/installer/include",
+      "service/hnp/pack/include",
+    ]
+    defines = []
+    cflags = []
+    external_deps = [
+      "hilog:libhilog",
+    ]
+
+    install_enable = true
+    subsystem_name = "${subsystem_name}"
+    part_name = "${part_name}"
+  }
+
   ohos_shared_library("appspawn_helper") {
     sources = [ "${appspawn_path}/common/appspawn_server.c" ]
     configs = [ ":appspawn_config" ]
@@ -116,6 +141,23 @@ if (!defined(ohos_lite)) {
     external_deps = [
       "hilog:libhilog",
       "init:libbegetutil",
+    ]
+
+    install_enable = true
+    subsystem_name = "${subsystem_name}"
+    part_name = "${part_name}"
+  }
+
+  ohos_shared_library("appspawn_native") {
+    sources = [ "${appspawn_path}/interfaces/innerkits/hnp/src/hnp_api.c" ]
+    include_dirs = [ "interfaces/innerkits/hnp/include" ]
+    defines = []
+    cflags = [
+      "-fvisibility=hidden",
+      "-fstack-protector-all",
+    ]
+    external_deps = [
+      "hilog:libhilog",
     ]
 
     install_enable = true
