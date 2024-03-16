@@ -12,46 +12,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <stdlib.h>
+#include <pthread.h>
+
+#ifdef APPSPAWN_CLIENT
 #include "appspawn_mount_permission.h"
-
-#include <fstream>
-#include <sstream>
-#include <vector>
-
+#else
 #include "appspawn_sandbox.h"
+#endif
+#include "appspawn_msg.h"
+#include "appspawn_permission.h"
 #include "appspawn_utils.h"
 #include "json_utils.h"
+#include "securec.h"
 
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int32_t g_maxPermissionIndex = -1;
-static SandboxSection g_permissionQueue;
-
-static int PermissionNodeCompareProc(ListNode *node, ListNode *newNode)
-{
-    SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)ListEntry(node, SandboxNode, node);
-    SandboxPermissionNode *newPermissionNode = (SandboxPermissionNode *)ListEntry(newNode, SandboxNode, node);
-    return strcmp(permissionNode->name, newPermissionNode->name);
-}
+static SandboxQueue g_permissionQueue = {0};
 
 static int ParsePermissionConfig(const cJSON *permissionConfigs)
 {
-    cJSON *config = nullptr;
+    cJSON *config = NULL;
     cJSON_ArrayForEach(config, permissionConfigs)
     {
         const char *name = config->string;
         APPSPAWN_LOGV("ParsePermissionConfig %{public}s", name);
-        SandboxPermissionNode *node = CreateSandboxPermissionNode(name, 0, NULL);
-        APPSPAWN_CHECK_ONLY_EXPER(node != NULL, return -1);
-        // success, insert queue
-        OH_ListAddWithOrder(&g_permissionQueue.front, &node->sandboxNode.node, PermissionNodeCompareProc);
+        int ret = AddSandboxPermissionNode(name, &g_permissionQueue);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
     }
     return 0;
 }
 
-static int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandbox *context)
+static int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandboxCfg *context)
 {
     cJSON *configs = cJSON_GetObjectItemCaseSensitive(appSandboxConfig, "permission");
-    APPSPAWN_CHECK(configs != nullptr && cJSON_IsArray(configs), return 0, "No permission in json");
+    APPSPAWN_CHECK(configs != NULL && cJSON_IsArray(configs), return 0, "No permission in json");
 
     int ret = 0;
     uint32_t configSize = cJSON_GetArraySize(configs);
@@ -65,12 +60,12 @@ static int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandbox 
 
 static int LoadPermissionConfig(void)
 {
-    int ret = ParseSandboxConfig("etc/sandbox", "/appdata-sandbox.json", ParseAppSandboxConfig, nullptr);
+    int ret = ParseSandboxConfig("etc/sandbox", APP_SANDBOX_FILE_NAME, ParseAppSandboxConfig, NULL);
     if (ret == APPSPAWN_SANDBOX_NONE) {
         APPSPAWN_LOGW("No sandbox config");
         ret = 0;
     }
-    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
+    APPSPAWN_CHECK(ret == 0, return ret, "Load sandbox fail");
     g_maxPermissionIndex = PermissionRenumber(&g_permissionQueue);
     return 0;
 }
@@ -85,17 +80,13 @@ int32_t GetMaxPermissionIndex(void)
     return g_maxPermissionIndex;
 }
 
-const SandboxPermissionNode *GetPermissionNode(const char *permission)
-{
-    return GetPermissionNodeInQueue(&g_permissionQueue, permission);
-}
-
-const SandboxPermissionNode *GetPermissionNodeByIndex(int32_t index)
+const char *GetPermissionByIndex(int32_t index)
 {
     if (g_maxPermissionIndex <= index) {
-        return nullptr;
+        return NULL;
     }
-    return GetPermissionNodeInQueueByIndex(&g_permissionQueue, index);
+    const SandboxPermissionNode *node = GetPermissionNodeInQueueByIndex(&g_permissionQueue, index);
+    return node == NULL ? NULL : node->name;
 }
 
 static void LoadPermission(void)
@@ -103,7 +94,6 @@ static void LoadPermission(void)
     pthread_mutex_lock(&g_mutex);
     if (g_maxPermissionIndex == -1) {
         OH_ListInit(&g_permissionQueue.front);
-        g_permissionQueue.type = SANDBOX_TAG_PERMISSION_QUEUE;
         LoadPermissionConfig();
     }
     pthread_mutex_unlock(&g_mutex);

@@ -60,13 +60,14 @@ cJSON *GetJsonObjFromFile(const char *jsonPath)
     return cJSON_Parse(buf.str().c_str());
 }
 
-int ParseSandboxConfig(const char *basePath, const char *fileName, ParseConfig parseConfig, AppSpawnSandbox *context)
+int ParseSandboxConfig(const char *basePath, const char *fileName, ParseConfig parseConfig, AppSpawnSandboxCfg *context)
 {
     // load sandbox config
     CfgFiles *files = GetCfgFiles(basePath);
     if (files == nullptr) {
         return APPSPAWN_SANDBOX_NONE;
     }
+    int ret = 0;
     for (int i = 0; i < MAX_CFG_POLICY_DIRS_CNT; ++i) {
         if (files->paths[i] == nullptr) {
             continue;
@@ -76,10 +77,14 @@ int ParseSandboxConfig(const char *basePath, const char *fileName, ParseConfig p
         APPSPAWN_LOGI("LoadAppSandboxConfig %{public}s", path.c_str());
 
         cJSON *root = GetJsonObjFromFile(path.c_str());
-        APPSPAWN_CHECK(root != nullptr, continue, "Failed to load app data sandbox config %{public}s", path.c_str());
-        parseConfig(root, context);
+        APPSPAWN_CHECK(root != nullptr, ret = APPSPAWN_SANDBOX_INVALID;
+            continue, "Failed to load app data sandbox config %{public}s", path.c_str());
+        int rc = parseConfig(root, context);
+        if (rc != 0) {
+            ret = rc;
+        }
         cJSON_Delete(root);
     }
     FreeCfgFiles(files);
-    return 0;
+    return ret;
 }

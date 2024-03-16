@@ -658,7 +658,7 @@
                 }
             ]
         }],
-	"ohos.permission.ACCESS_BUNDLE_DIR":[{
+        "ohos.permission.ACCESS_BUNDLE_DIR":[{
             "sandbox-switch": "ON",
             "gids": [1010],
             "mount-paths": [{

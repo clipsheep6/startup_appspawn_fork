@@ -17,14 +17,14 @@
 #define _GNU_SOURCE
 #include <sched.h>
 
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "appspawn_sandbox.h"
 #include "appspawn_utils.h"
 #include "parameter.h"
 #include "modulemgr.h"
 #include "securec.h"
 
-static void FreePathMountNode(SandboxNode *node)
+static void FreePathMountNode(SandboxMountNode *node)
 {
     PathMountNode *sandboxNode = (PathMountNode *)node;
     if (sandboxNode->source) {
@@ -50,7 +50,7 @@ static void FreePathMountNode(SandboxNode *node)
     free(sandboxNode);
 }
 
-static void FreeSymbolLinkNode(SandboxNode *node)
+static void FreeSymbolLinkNode(SandboxMountNode *node)
 {
     SymbolLinkNode *sandboxNode = (SymbolLinkNode *)node;
     if (sandboxNode->target) {
@@ -66,19 +66,19 @@ static void FreeSymbolLinkNode(SandboxNode *node)
 
 static void PermissionQueueDestroyProc(ListNode *node)
 {
-    SandboxNode *sandboxNode = ListEntry(node, SandboxNode, node);
+    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
     FreePathNode(sandboxNode);
 }
 
 static void PrivateQueueDestroyProc(ListNode *node)
 {
-    SandboxNode *sandboxNode = ListEntry(node, SandboxNode, node);
+    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
     FreePathNode(sandboxNode);
 }
 
 static void PathNodeDestroyProc(ListNode *node)
 {
-    SandboxNode *sandboxNode = ListEntry(node, SandboxNode, node);
+    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
     switch (sandboxNode->type) {
         case SANDBOX_TAG_MOUNT_PATH:
             FreePathMountNode(sandboxNode);
@@ -93,22 +93,22 @@ static void PathNodeDestroyProc(ListNode *node)
 
 static int PermissionNodeCompareProc(ListNode *node, ListNode *newNode)
 {
-    SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)ListEntry(node, SandboxNode, node);
-    SandboxPermissionNode *newPermissionNode = (SandboxPermissionNode *)ListEntry(newNode, SandboxNode, node);
+    SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)ListEntry(node, SandboxMountNode, node);
+    SandboxPermissionNode *newPermissionNode = (SandboxPermissionNode *)ListEntry(newNode, SandboxMountNode, node);
     return strcmp(permissionNode->name, newPermissionNode->name);
 }
 
 static int PrivateNodeCompareProc(ListNode *node, ListNode *newNode)
 {
-    SandboxPrivateNode *privateNode = (SandboxPrivateNode *)ListEntry(node, SandboxNode, node);
-    SandboxPrivateNode *newPrivateNode = (SandboxPrivateNode *)ListEntry(newNode, SandboxNode, node);
+    SandboxPrivateNode *privateNode = (SandboxPrivateNode *)ListEntry(node, SandboxMountNode, node);
+    SandboxPrivateNode *newPrivateNode = (SandboxPrivateNode *)ListEntry(newNode, SandboxMountNode, node);
     return strcmp(privateNode->name, newPrivateNode->name);
 }
 
 static int SandboxNodeCompareProc(ListNode *node, ListNode *newNode)
 {
-    SandboxNode *sandbox1 = (SandboxNode *)ListEntry(node, SandboxNode, node);
-    SandboxNode *sandbox2 = (SandboxNode *)ListEntry(newNode, SandboxNode, node);
+    SandboxMountNode *sandbox1 = (SandboxMountNode *)ListEntry(node, SandboxMountNode, node);
+    SandboxMountNode *sandbox2 = (SandboxMountNode *)ListEntry(newNode, SandboxMountNode, node);
     return sandbox1->type - sandbox2->type;
 }
 
@@ -172,20 +172,20 @@ SandboxPrivateNode *CreateSandboxPrivateNode(const char *name)
 
 static int PrivateNodeCompareName(ListNode *node, void *data)
 {
-    SandboxPrivateNode *tmpNode = (SandboxPrivateNode *)ListEntry(node, SandboxNode, node);
+    SandboxPrivateNode *tmpNode = (SandboxPrivateNode *)ListEntry(node, SandboxMountNode, node);
     return strcmp(tmpNode->name, (char *)data);
 }
 
-SandboxPrivateNode *GetSandboxPrivateNode(const AppSpawnSandbox *sandbox, const char *name)
+SandboxPrivateNode *GetSandboxPrivateNode(const AppSpawnSandboxCfg *sandbox, const char *name)
 {
     ListNode *node = OH_ListFind(&sandbox->privateNodeQueue.front, (void *)name, PrivateNodeCompareName);
     if (node == NULL) {
         return NULL;
     }
-    return (SandboxPrivateNode *)ListEntry(node, SandboxNode, node);
+    return (SandboxPrivateNode *)ListEntry(node, SandboxMountNode, node);
 }
 
-void FreePathNode(SandboxNode *node)
+void FreePathNode(SandboxMountNode *node)
 {
     // delete node
     OH_ListRemove(&node->node);
@@ -225,7 +225,7 @@ void SandboxSectionInit(SandboxSection *section, uint32_t type)
     section->rootFlagsPath[1] = NULL;
 }
 
-int AddPathNode(SandboxNode *node, SandboxSection *queue)
+int AddPathNode(SandboxMountNode *node, SandboxSection *queue)
 {
     switch (node->type) {
         case SANDBOX_TAG_PERMISSION:
@@ -243,7 +243,7 @@ int AddPathNode(SandboxNode *node, SandboxSection *queue)
 
 APPSPAWN_STATIC void AppSpawnSandboxFree(AppSpawnExtData *data)
 {
-    AppSpawnSandbox *sandbox = (AppSpawnSandbox *)data;
+    AppSpawnSandboxCfg *sandbox = (AppSpawnSandboxCfg *)data;
     OH_ListRemove(&sandbox->extData.node);
     OH_ListInit(&sandbox->extData.node);
 
@@ -265,14 +265,14 @@ static int AppSpawnExtDataCompareDataId(ListNode *node, void *data)
     return extData->dataId - *(uint32_t *)data;
 }
 
-AppSpawnSandbox *GetAppSpawnSandbox(const AppSpawnMgr *content)
+AppSpawnSandboxCfg *GetAppSpawnSandbox(const AppSpawnMgr *content)
 {
     uint32_t dataId = EXT_DATA_SANDBOX;
     ListNode *node = OH_ListFind(&content->extData, (void *)&dataId, AppSpawnExtDataCompareDataId);
     if (node == NULL) {
         return NULL;
     }
-    return (AppSpawnSandbox *)ListEntry(node, AppSpawnSandbox, extData);
+    return (AppSpawnSandboxCfg *)ListEntry(node, AppSpawnSandboxCfg, extData);
 }
 
 static void DumpSandboxSection(const char *info, const SandboxSection *section)
@@ -293,7 +293,7 @@ int DumpSandboxNode(ListNode *node, void *data)
     if (data != NULL) {
         (*(uint32_t *)data)++;
     }
-    SandboxNode *sandboxNode = ListEntry(node, SandboxNode, node);
+    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
     switch (sandboxNode->type) {
         case SANDBOX_TAG_MOUNT_PATH: {
             PathMountNode *pathNode = (PathMountNode *)sandboxNode;
@@ -338,7 +338,7 @@ int DumpSandboxNode(ListNode *node, void *data)
 static int DumpSandboxPrivateNode(ListNode *node, void *data)
 {
     (*(uint32_t *)data)++;
-    SandboxNode *sandboxNode = ListEntry(node, SandboxNode, node);
+    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
     SandboxPrivateNode *privateNode = (SandboxPrivateNode *)sandboxNode;
     DumpSandboxSection(privateNode->name, &privateNode->section);
     uint32_t count = 0;
@@ -349,7 +349,7 @@ static int DumpSandboxPrivateNode(ListNode *node, void *data)
 static int DumpSandboxPermissionNode(ListNode *node, void *data)
 {
     (*(uint32_t *)data)++;
-    SandboxNode *sandboxNode = ListEntry(node, SandboxNode, node);
+    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
     SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)sandboxNode;
     DumpSandboxSection(permissionNode->name, &permissionNode->section);
     APPSPAPWN_DUMP("    gidCount: %{public}u", permissionNode->gidCount);
@@ -365,7 +365,7 @@ static int DumpSandboxPermissionNode(ListNode *node, void *data)
 static void DumpSandbox(struct TagAppSpawnExtData *data)
 {
     uint32_t count = 0;
-    AppSpawnSandbox *sandbox = (AppSpawnSandbox *)data;
+    AppSpawnSandboxCfg *sandbox = (AppSpawnSandboxCfg *)data;
     APPSPAPWN_DUMP("Sandbox defaultRootPath: %{public}s", sandbox->defaultRootPath);
     APPSPAPWN_DUMP("Sandbox sandboxNsFlags: %{public}x %{public}x",
         sandbox->sandboxNsFlags[0], sandbox->sandboxNsFlags[1]);
@@ -385,7 +385,7 @@ static void DumpSandbox(struct TagAppSpawnExtData *data)
     OH_ListTraversal((ListNode *)&sandbox->permissionNodeQueue.front, (void *)&count, DumpSandboxPermissionNode, 0);
 }
 
-APPSPAWN_STATIC AppSpawnSandbox *CreateAppSpawnSandbox(void)
+APPSPAWN_STATIC AppSpawnSandboxCfg *CreateAppSpawnSandbox(void)
 {
 #ifdef APPSPAWN_TEST
     const char *sandBoxRootDir = APPSPAWN_BASE_DIR "/mnt/sandbox/<PackageName>";
@@ -394,9 +394,9 @@ APPSPAWN_STATIC AppSpawnSandbox *CreateAppSpawnSandbox(void)
 #endif
     size_t rootDirLen = strlen(sandBoxRootDir) + 1;
     // create sandbox
-    AppSpawnSandbox *sandbox = (AppSpawnSandbox *)malloc(sizeof(AppSpawnSandbox) + rootDirLen);
+    AppSpawnSandboxCfg *sandbox = (AppSpawnSandboxCfg *)malloc(sizeof(AppSpawnSandboxCfg) + rootDirLen);
     APPSPAWN_CHECK(sandbox != NULL, return NULL, "Failed to create sandbox");
-    (void)memset_s(sandbox, sizeof(AppSpawnSandbox), 0, sizeof(AppSpawnSandbox));
+    (void)memset_s(sandbox, sizeof(AppSpawnSandboxCfg), 0, sizeof(AppSpawnSandboxCfg));
     // ext data init
     OH_ListInit(&sandbox->extData.node);
     sandbox->extData.dataId = EXT_DATA_SANDBOX;
@@ -422,7 +422,7 @@ APPSPAWN_STATIC AppSpawnSandbox *CreateAppSpawnSandbox(void)
 
 static int LoadSandbox(AppSpawnMgr *content)
 {
-    AppSpawnSandbox *sandbox = GetAppSpawnSandbox(content);
+    AppSpawnSandboxCfg *sandbox = GetAppSpawnSandbox(content);
     APPSPAWN_CHECK(sandbox == NULL, return 0, "Sandbox has been load");
     sandbox = CreateAppSpawnSandbox();
     APPSPAWN_CHECK_ONLY_EXPER(sandbox != NULL, return APPSPAWN_SYSTEM_ERROR);
@@ -445,7 +445,7 @@ static int LoadSandbox(AppSpawnMgr *content)
 
 int SandboxConfigSet(AppSpawnMgr *content, AppSpawningCtx *property)
 {
-    AppSpawnSandbox *appSandBox = GetAppSpawnSandbox(content);
+    AppSpawnSandboxCfg *appSandBox = GetAppSpawnSandbox(content);
     APPSPAWN_CHECK(appSandBox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));
     // CLONE_NEWPID 0x20000000
     // CLONE_NEWNET 0x40000000

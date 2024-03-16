@@ -26,7 +26,7 @@
 #include <vector>
 
 #include "appspawn_client.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "appspawn_utils.h"
 #include "json_utils.h"
 #include "parameter.h"
@@ -412,7 +412,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_008, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         uint32_t tlvLen = 0;
-        uint8_t *tlvValue = GetAppPropertyExt(property, tlvName, &tlvLen);
+        uint8_t *tlvValue = reinterpret_cast<uint8_t *>(GetAppPropertyExt(property, tlvName, &tlvLen));
         APPSPAWN_CHECK(tlvValue != nullptr, break, "Can not find tlv in msg");
         APPSPAWN_CHECK(tlvLen == testData.size(), break, "Invalid tlv len %{public}u", tlvLen);
         APPSPAWN_CHECK(strncmp(reinterpret_cast<char *>(tlvValue), testData.data(), testData.size()) == 0,

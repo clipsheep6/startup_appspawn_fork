@@ -15,7 +15,7 @@ import("//base/startup/appspawn/appspawn.gni")
 import("//build/test.gni")
 
 ohos_executable("AppSpawnTest") {
-  sources = [ "${appspawn_path}/test/moduletest/appspawn_test_cmd.cpp" ]
+  sources = [ "${appspawn_path}/test/moduletest/appspawn_test_cmder.cpp" ]
 
   include_dirs = [
     "${appspawn_path}",
@@ -53,6 +53,7 @@ ohos_executable("AppSpawnTest") {
     "config_policy:configpolicy_util",
     "hilog:libhilog",
     "init:libbegetutil",
+    "zlib:libz",
   ]
   subsystem_name = "${subsystem_name}"
   part_name = "${part_name}"

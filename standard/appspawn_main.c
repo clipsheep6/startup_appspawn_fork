@@ -19,6 +19,7 @@
 
 #include "appspawn_hook.h"
 #include "appspawn_modulemgr.h"
+#include "appspawn_manager.h"
 #include "appspawn_service.h"
 #include "parameter.h"
 #include "securec.h"

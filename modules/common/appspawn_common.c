@@ -40,7 +40,7 @@
 #include "appspawn_adapter.h"
 #include "appspawn_hook.h"
 #include "appspawn_msg.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "init_param.h"
 #include "parameter.h"
 #include "securec.h"
@@ -194,7 +194,7 @@ static int SetXpmConfig(const AppSpawnMgr *content, const AppSpawningCtx *proper
     int ret = InitXpmRegion();
     APPSPAWN_CHECK(ret == 0, return ret, "init xpm region failed: %{public}d", ret);
 
-    if (TestAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE)) {
+    if (CheckAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE)) {
         ret = SetXpmOwnerId(PROCESS_OWNERID_DEBUG, NULL);
     } else if (ownerInfo == NULL) {
         ret = SetXpmOwnerId(PROCESS_OWNERID_COMPAT, NULL);
@@ -232,7 +232,7 @@ static int SetUidGid(const AppSpawnMgr *content, const AppSpawningCtx *property)
     APPSPAWN_CHECK(ret == 0, return errno,
         "setuid(%{public}u) failed: %{public}d", dacInfo->uid, errno);
 
-    if (TestAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE) && IsDeveloperModeOn(property)) {
+    if (CheckAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE) && IsDeveloperModeOn(property)) {
         setenv("HAP_DEBUGGABLE", "true", 1);
         if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) {
             APPSPAWN_LOGE("Failed to set app dumpable: %{public}s", strerror(errno));
@@ -303,7 +303,7 @@ static int32_t CheckTraceStatus(void)
 static int32_t WaitForDebugger(const AppSpawningCtx *property)
 {
     // wait for debugger only debugging is required and process is debuggable
-    if (TestAppMsgFlagsSet(property, APP_FLAGS_NATIVEDEBUG) && TestAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE)) {
+    if (CheckAppMsgFlagsSet(property, APP_FLAGS_NATIVEDEBUG) && CheckAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE)) {
         uint32_t count = 0;
         while (CheckTraceStatus() != 0) {
 #ifndef APPSPAWN_TEST
@@ -472,7 +472,7 @@ static int CheckEnabled(const char *param, const char *value)
 static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Spawning: prepare app %{public}s", GetProcessName(property));
-    if (TestAppMsgFlagsSet(property, APP_FLAGS_COLD_BOOT)) {
+    if (CheckAppMsgFlagsSet(property, APP_FLAGS_COLD_BOOT)) {
         // check cold start
         property->client.flags |= CheckEnabled("startup.appspawn.cold.boot", "true") ? APP_COLD_START : 0;
     }

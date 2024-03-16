@@ -25,9 +25,9 @@
 extern "C" {
 #endif  // __cplusplus
 
-typedef struct TagAppSpawnSandbox AppSpawnSandbox;
-typedef int (*ParseConfig)(const cJSON *root, AppSpawnSandbox *context);
-int ParseSandboxConfig(const char *basePath, const char *fileName, ParseConfig parseConfig, AppSpawnSandbox *context);
+typedef struct TagAppSpawnSandboxCfg AppSpawnSandboxCfg;
+typedef int (*ParseConfig)(const cJSON *root, AppSpawnSandboxCfg *context);
+int ParseSandboxConfig(const char *basePath, const char *fileName, ParseConfig parseConfig, AppSpawnSandboxCfg *context);
 uint32_t GetUint32ArrayFromJson(const cJSON *json, const char *name, uint32_t dataArray[], uint32_t maxCount);
 cJSON *GetJsonObjFromFile(const char *jsonPath);
 

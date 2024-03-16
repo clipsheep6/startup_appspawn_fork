@@ -73,48 +73,6 @@ int AddPreloadHook(int prio, PreloadHook hook);
 int AddAppSpawnHook(AppSpawnHookStage stage, int prio, AppSpawnHook hook);
 int AddAppChangeHook(AppSpawnHookStage stage, int prio, ProcessChangeHook hook);
 
-int IsNWebSpawnMode(const AppSpawnMgr *content);
-int IsColdRunMode(const AppSpawnMgr *content);
-
-int GetAppSpawnMsgType(const AppSpawningCtx *property);
-const char *GetBundleName(const AppSpawningCtx *property);
-void *GetAppProperty(const AppSpawningCtx *property, uint32_t type);
-const char *GetProcessName(const AppSpawningCtx *property);
-
-/**
- * @brief Get the App Property Ex info
- *
- * @param property app 属性信息
- * @param name 变量名
- * @param len 返回变量长度
- * @return uint8_t* 返回变量值
- */
-uint8_t *GetAppPropertyExt(const AppSpawningCtx *property, const char *name, uint32_t *len);
-
-/**
- * @brief 检查app属性参数的flags是否设置
- *
- * @param property app 属性信息
- * @param type TLV_MSG_FLAGS or TLV_PERMISSION
- * @param index flags index
- * @return int
- */
-int CheckAppPropertyFlags(const AppSpawningCtx *property, uint32_t type, uint32_t index);
-int SetAppPropertyFlags(const AppSpawningCtx *property, uint32_t type, uint32_t index);
-
-__attribute__((always_inline)) inline int TestAppMsgFlagsSet(const AppSpawningCtx *property, uint32_t index)
-{
-    return CheckAppPropertyFlags(property, TLV_MSG_FLAGS, index);
-}
-__attribute__((always_inline)) inline int TestAppPermissionFlags(const AppSpawningCtx *property, uint32_t index)
-{
-    return CheckAppPropertyFlags(property, TLV_PERMISSION, index);
-}
-__attribute__((always_inline)) inline int SetAppPermissionFlags(const AppSpawningCtx *property, uint32_t index)
-{
-    return SetAppPropertyFlags(property, TLV_PERMISSION, index);
-}
-
 typedef int (*ChildLoop)(AppSpawnContent *content, AppSpawnClient *client);
 /**
  * @brief 注册子进程run函数
@@ -148,12 +106,11 @@ typedef struct {
 } MountArg;
 
 int SandboxMountPath(const MountArg *arg);
-int IsDeveloperModeOn(const AppSpawningCtx *property);
 
 // 扩展变量
 typedef struct TagSandboxContext SandboxContext;
 typedef int (*ReplaceVarHandler)(const SandboxContext *context,
-    const uint8_t *buffer, uint32_t bufferLen, uint32_t *realLen, int permission);
+    const char *buffer, uint32_t bufferLen, uint32_t *realLen);
 /**
  * @brief 注册变量替换处理函数
  *
@@ -163,9 +120,9 @@ typedef int (*ReplaceVarHandler)(const SandboxContext *context,
  */
 int AddVariableReplaceHandler(const char *name, ReplaceVarHandler handler);
 
-typedef struct TagAppSpawnSandbox AppSpawnSandbox;
+typedef struct TagAppSpawnSandboxCfg AppSpawnSandboxCfg;
 typedef int (*ProcessExpandSandboxCfg)(const SandboxContext *context,
-    const AppSpawnSandbox *appSandBox, const char *name);
+    const AppSpawnSandboxCfg *appSandBox, const char *name);
 #define EXPAND_CFG_HANDLER_PRIO_START 3
 
 /**

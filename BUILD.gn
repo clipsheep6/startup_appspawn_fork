@@ -60,6 +60,7 @@ group("appspawn_all") {
       "${appspawn_path}/modules/module_engine:libappspawn_module_engine",
       "${appspawn_path}/modules/module_engine:libappspawn_stub_empty",
     ]
+    deps += [ "service/hnp:hnp" ]
   } else {
     deps += [ "lite:appspawn_lite" ]
   }

@@ -26,7 +26,7 @@
 #include "appspawn_client.h"
 #include "appspawn_modulemgr.h"
 #include "appspawn_server.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "json_utils.h"
 #include "parameter.h"
 #include "securec.h"

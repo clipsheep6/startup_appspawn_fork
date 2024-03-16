@@ -32,6 +32,7 @@
 #include "appspawn_msg.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "appspawn_utils.h"
 #include "loop_event.h"
 #include "parameters.h"

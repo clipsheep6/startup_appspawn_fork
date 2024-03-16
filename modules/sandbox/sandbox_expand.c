@@ -28,6 +28,13 @@
 #define SANDBOX_INSTALL_PATH "/data/storage/el2/group/"
 #define SANDBOX_OVERLAY_PATH "/data/storage/overlay/"
 
+static inline void *GetSpawningMsgExtInfo(const SandboxContext *context, const char *name, uint32_t *len)
+{
+    APPSPAWN_CHECK(context != NULL && context->property != NULL,
+        return NULL, "Invalid property for name %{public}s", name);
+    return GetAppPropertyExt(context->property, name, len);
+}
+
 static inline bool CheckPath(const char *name)
 {
     return name != NULL && strcmp(name, ".") != 0 && strcmp(name, "..") != 0 && strstr(name, "/") == NULL;
@@ -56,15 +63,18 @@ static int MountAllHsp(const SandboxContext *context, const cJSON *hsps)
         APPSPAWN_CHECK(CheckPath(libBundleName) && CheckPath(libModuleName) && CheckPath(libVersion),
             return -1, "MountAllHsp: path error");
 
-        int len = sprintf_s(context->buffer[0], context->bufferLen, "%s%s/%s/%s",
+        // src path
+        int len = sprintf_s(context->buffer[0].buffer, context->buffer[0].bufferLen, "%s%s/%s/%s",
             PHYSICAL_APP_INSTALL_PATH, libBundleName, libVersion, libModuleName);
         APPSPAWN_CHECK(len > 0, return -1, "Failed to format install path");
-        len = sprintf_s(context->buffer[1], context->bufferLen, "%s%s%s/%s",
+        // sandbox path
+        len = sprintf_s(context->buffer[1].buffer, context->buffer[1].bufferLen, "%s%s%s/%s",
             context->sandboxPackagePath, SANDBOX_INSTALL_PATH, libBundleName, libModuleName);
         APPSPAWN_CHECK(len > 0, return -1, "Failed to format install path");
-        MakeDirRecursive(context->buffer[1], FILE_MODE);
+
+        MakeDirRecursive(context->buffer[1].buffer, FILE_MODE);
         MountArg mountArg = {
-            context->buffer[0], context->buffer[1], NULL, MS_REC | MS_BIND, NULL, MS_SLAVE
+            context->buffer[0].buffer, context->buffer[1].buffer, NULL, MS_REC | MS_BIND, NULL, MS_SLAVE
         };
         ret = SandboxMountPath(&mountArg);
         APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %{public}d", ret);
@@ -101,13 +111,13 @@ static int MountAllGroup(const SandboxContext *context, const cJSON *groups)
         APPSPAWN_CHECK(!CheckPath(libPhysicalPath), return -1, "MountAllGroup: path error");
 
         char *dataGroupUuid = GetLastPath(libPhysicalPath);
-        int len = sprintf_s(context->buffer[0], context->bufferLen, "%s%s%s",
+        int len = sprintf_s(context->buffer[0].buffer, context->buffer[0].bufferLen, "%s%s%s",
             context->sandboxPackagePath, SANDBOX_GROUP_PATH, dataGroupUuid);
         APPSPAWN_CHECK(len > 0, return -1, "Failed to format install path");
+        APPSPAWN_LOGV("MountAllGroup src: '%{public}s' =>'%{public}s'", libPhysicalPath, context->buffer[0].buffer);
 
-        APPSPAWN_LOGV("MountAllGroup src: '%{public}s' =>'%{public}s'", libPhysicalPath, context->buffer[0]);
-        MakeDirRecursive(context->buffer[0], FILE_MODE);
-        MountArg mountArg = {libPhysicalPath, context->buffer[0], NULL, MS_REC | MS_BIND, NULL, MS_SLAVE};
+        MakeDirRecursive(context->buffer[0].buffer, FILE_MODE);
+        MountArg mountArg = {libPhysicalPath, context->buffer[0].buffer, NULL, MS_REC | MS_BIND, NULL, MS_SLAVE};
         ret = SandboxMountPath(&mountArg);
         APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %{public}d", ret);
     }
@@ -131,33 +141,35 @@ static int SetOverlayAppPath(const char *hapPath, void *context)
     if (tmp == NULL) {
         return 0;
     }
-    int ret = strncpy_s(sandboxContext->buffer[0], sandboxContext->bufferLen, hapPath, tmp - (char *)hapPath);
+    int ret = strncpy_s(sandboxContext->buffer[0].buffer,
+        sandboxContext->buffer[0].bufferLen, hapPath, tmp - (char *)hapPath);
     APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %{public}d", ret);
 
-    if (strstr(overlayContext->mountedSrcSet, sandboxContext->buffer[0]) != NULL) {
-        APPSPAWN_LOGV("%{public}s have mounted before, no need to mount twice.", sandboxContext->buffer[0]);
+    if (strstr(overlayContext->mountedSrcSet, sandboxContext->buffer[0].buffer) != NULL) {
+        APPSPAWN_LOGV("%{public}s have mounted before, no need to mount twice.", sandboxContext->buffer[0].buffer);
         return 0;
     }
     ret = strcat_s(overlayContext->mountedSrcSet, overlayContext->srcSetLen, "|");
     APPSPAWN_CHECK(ret == 0, return ret, "Fail to add src path to set %{public}s", "|");
-    ret = strcat_s(overlayContext->mountedSrcSet, overlayContext->srcSetLen, sandboxContext->buffer[0]);
-    APPSPAWN_CHECK(ret == 0, return ret, "Fail to add src path to set %{public}s", sandboxContext->buffer[0]);
+    ret = strcat_s(overlayContext->mountedSrcSet, overlayContext->srcSetLen, sandboxContext->buffer[0].buffer);
+    APPSPAWN_CHECK(ret == 0, return ret, "Fail to add src path to set %{public}s", sandboxContext->buffer[0].buffer);
 
     // sandbox path
-    tmp = GetLastStr(sandboxContext->buffer[0], "/");
+    tmp = GetLastStr(sandboxContext->buffer[0].buffer, "/");
     if (tmp == NULL) {
         return 0;
     }
-    int len = sprintf_s(sandboxContext->buffer[1], sandboxContext->bufferLen, "%s%s",
+    int len = sprintf_s(sandboxContext->buffer[1].buffer, sandboxContext->buffer[1].bufferLen, "%s%s",
         sandboxContext->sandboxPackagePath, SANDBOX_OVERLAY_PATH);
     APPSPAWN_CHECK(len > 0, return -1, "Failed to format install path");
-
-    ret = strcat_s(sandboxContext->buffer[1], sandboxContext->bufferLen - len, tmp + 1);
+    ret = strcat_s(sandboxContext->buffer[1].buffer, sandboxContext->buffer[1].bufferLen - len, tmp + 1);
     APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %{public}d", ret);
     APPSPAWN_LOGV("SetOverlayAppPath path: '%{public}s' => '%{public}s'",
-        sandboxContext->buffer[0], sandboxContext->buffer[1]);
+        sandboxContext->buffer[0].buffer, sandboxContext->buffer[1].buffer);
 
-    MountArg mountArg = {sandboxContext->buffer[0], sandboxContext->buffer[1], NULL, MS_REC | MS_BIND, NULL, MS_SHARED};
+    MountArg mountArg = {
+        sandboxContext->buffer[0].buffer, sandboxContext->buffer[1].buffer, NULL, MS_REC | MS_BIND, NULL, MS_SHARED
+    };
     int retMount = SandboxMountPath(&mountArg);
     if (retMount != 0) {
         APPSPAWN_LOGE("Fail to mount overlay path, src is %{public}s.", hapPath);
@@ -184,7 +196,7 @@ static int SetOverlayAppSandboxConfig(const SandboxContext *context, const char 
 static inline cJSON *GetJsonObjFromProperty(const SandboxContext *context, const char *name)
 {
     uint32_t size = 0;
-    char *extInfo = (char *)(GetAppPropertyExt(context->property, name, &size));
+    char *extInfo = (char *)(GetSpawningMsgExtInfo(context, name, &size));
     if (size == 0 || extInfo == NULL) {
         return NULL;
     }
@@ -194,7 +206,7 @@ static inline cJSON *GetJsonObjFromProperty(const SandboxContext *context, const
     return root;
 }
 
-static int ProcessHSPListConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name)
+static int ProcessHSPListConfig(const SandboxContext *context, const AppSpawnSandboxCfg *appSandBox, const char *name)
 {
     cJSON *root = GetJsonObjFromProperty(context, name);
     APPSPAWN_CHECK_ONLY_EXPER(root != NULL, return 0);
@@ -203,7 +215,7 @@ static int ProcessHSPListConfig(const SandboxContext *context, const AppSpawnSan
     return ret;
 }
 
-static int ProcessDataGroupConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name)
+static int ProcessDataGroupConfig(const SandboxContext *context, const AppSpawnSandboxCfg *appSandBox, const char *name)
 {
     cJSON *root = GetJsonObjFromProperty(context, name);
     APPSPAWN_CHECK_ONLY_EXPER(root != NULL, return 0);
@@ -212,10 +224,11 @@ static int ProcessDataGroupConfig(const SandboxContext *context, const AppSpawnS
     return ret;
 }
 
-static int ProcessOverlayAppConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name)
+static int ProcessOverlayAppConfig(const SandboxContext *context,
+    const AppSpawnSandboxCfg *appSandBox, const char *name)
 {
     uint32_t size = 0;
-    char *extInfo = (char *)GetAppPropertyExt(context->property, name, &size);
+    char *extInfo = (char *)GetSpawningMsgExtInfo(context, name, &size);
     if (size == 0 || extInfo == NULL) {
         return 0;
     }
@@ -267,7 +280,7 @@ int RegisterExpandSandboxCfgHandler(const char *name, int prio, ProcessExpandSan
     return 0;
 }
 
-int ProcessExpandAppSandboxConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name)
+int ProcessExpandAppSandboxConfig(const SandboxContext *context, const AppSpawnSandboxCfg *appSandBox, const char *name)
 {
     APPSPAWN_CHECK_ONLY_EXPER(context != NULL && appSandBox != NULL, return APPSPAWN_ARG_INVALID);
     APPSPAWN_CHECK_ONLY_EXPER(name != NULL, return APPSPAWN_ARG_INVALID);

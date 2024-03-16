@@ -36,7 +36,7 @@ typedef void *AppSpawnClientHandle;
 typedef struct TagAppSpawnReqMsgMgr AppSpawnReqMsgMgr;
 typedef struct TagAppSpawningCtx AppSpawningCtx;
 typedef struct TagAppSpawnMsg AppSpawnMsg;
-typedef struct TagAppSpawnSandbox  AppSpawnSandbox;
+typedef struct TagAppSpawnSandboxCfg  AppSpawnSandboxCfg;
 typedef struct TagAppSpawnExtData AppSpawnExtData;
 typedef struct TagSandboxContext SandboxContext;
 typedef struct TagAppSpawnedProcess AppSpawnedProcess;
@@ -50,9 +50,9 @@ void ProcessSignal(const struct signalfd_siginfo *siginfo);
 int CreateClientSocket(uint32_t type, int block);
 void CloseClientSocket(int socketId);
 
-int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandbox *sandbox);
+int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandboxCfg *sandbox);
+AppSpawnSandboxCfg *CreateAppSpawnSandbox(void);
 void AppSpawnSandboxFree(AppSpawnExtData *data);
-AppSpawnSandbox *CreateAppSpawnSandbox(void);
 void AddDefaultVariable(void);
 
 int CloneAppSpawn(void *arg);

@@ -116,7 +116,7 @@ if (!defined(ohos_lite)) {
     sources += [
       "${appspawn_innerkits_path}/client/appspawn_client.c",
       "${appspawn_innerkits_path}/client/appspawn_msg.c",
-      "${appspawn_innerkits_path}/permission/appspawn_mount_permission.cpp",
+      "${appspawn_innerkits_path}/permission/appspawn_mount_permission.c",
     ]
 
     # add stub

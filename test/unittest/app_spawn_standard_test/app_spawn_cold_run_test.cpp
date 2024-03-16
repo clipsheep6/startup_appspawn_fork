@@ -28,7 +28,7 @@
 
 #include "appspawn_modulemgr.h"
 #include "appspawn_server.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "json_utils.h"
 #include "parameter.h"
 #include "securec.h"
@@ -45,7 +45,13 @@ static AppSpawnTestHelper g_testHelper;
 class AppSpawnColdRunTest : public testing::Test {
 public:
     static void SetUpTestCase() {}
-    static void TearDownTestCase() {}
+    static void TearDownTestCase()
+    {
+        StubNode *stub = GetStubNode(STUB_MOUNT);
+        if (stub) {
+            stub->flags &= ~STUB_NEED_CHECK;
+        }
+    }
     void SetUp() {}
     void TearDown() {}
 };
@@ -181,7 +187,7 @@ static std::string GetColdRunArgs(AppSpawningCtx *property, const char *arg)
     APPSPAWN_CHECK(property->forkCtx.shmId >= 0, return nullptr,
         "Failed to get shm for %{public}s errno %{public}d", GetProcessName(property), errno);
     property->forkCtx.memSize = memSize;
-    SendAppSpawnMsgToChild(&property->forkCtx, property->message);
+    SendAppSpawnMsgToChild(property, property->message);
     argStr += "null";
     argStr += "  -fd -1 0  ";
     argStr += std::to_string(property->forkCtx.shmId);

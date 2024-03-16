@@ -22,7 +22,7 @@
 
 #include "appspawn.h"
 #include "appspawn_msg.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "appspawn_utils.h"
 #include "securec.h"
 
@@ -34,12 +34,12 @@ void *GetAppSpawnMsgInfo(const AppSpawnMsgNode *message, int type)
     return (void *)(message->buffer + message->tlvOffset[type] + sizeof(AppSpawnTlv));
 }
 
-void *GetAppSpawnMsgExInfo(const AppSpawnMsgNode *message, const char *name, uint32_t *len)
+void *GetAppSpawnMsgExtInfo(const AppSpawnMsgNode *message, const char *name, uint32_t *len)
 {
     APPSPAWN_CHECK(name != NULL, return NULL, "Invalid name ");
     APPSPAWN_CHECK_ONLY_EXPER(message != NULL && message->buffer != NULL, return NULL);
 
-    APPSPAWN_LOGV("GetAppSpawnMsgExInfo tlvCount %{public}d name %{public}s", message->tlvCount, name);
+    APPSPAWN_LOGV("GetAppSpawnMsgExtInfo tlvCount %{public}d name %{public}s", message->tlvCount, name);
     for (uint32_t index = TLV_MAX; index < (TLV_MAX + message->tlvCount); index++) {
         if (message->tlvOffset[index] == INVALID_OFFSET) {
             return NULL;
@@ -58,6 +58,18 @@ void *GetAppSpawnMsgExInfo(const AppSpawnMsgNode *message, const char *name, uin
         return data + sizeof(AppSpawnTlvExt);
     }
     return NULL;
+}
+
+int CheckAppSpawnMsgFlag(const AppSpawnMsgNode *message, uint32_t type, uint32_t index)
+{
+    AppSpawnMsgFlags *msgFlags = (AppSpawnMsgFlags *)GetAppSpawnMsgInfo(message, type);
+    APPSPAWN_CHECK(msgFlags != NULL,
+        return 0, "No tlv %{public}u in msg %{public}s", type, message->msgHeader.processName);
+    uint32_t blockIndex = index / 32;  // 32 max bit in int
+    uint32_t bitIndex = index % 32;    // 32 max bit in int
+    APPSPAWN_CHECK(blockIndex < msgFlags->count, return 0,
+        "Invalid index %{public}d max: %{public}d", index, msgFlags->count);
+    return CHECK_FLAGS_BY_INDEX(msgFlags->flags[blockIndex], bitIndex);
 }
 
 static AppSpawnMsgNode *CreateAppSpawnMsg(void)
@@ -279,42 +291,19 @@ int GetAppSpawnMsgFromBuffer(const uint8_t *buffer, uint32_t bufferLen,
     return 0;
 }
 
-int SendAppSpawnMsgToChild(AppSpawnForkCtx *forkCtx, AppSpawnMsgNode *message)
+int SendAppSpawnMsgToChild(AppSpawningCtx *property, AppSpawnMsgNode *message)
 {
-    uint8_t *mem = (uint8_t *)shmat(forkCtx->shmId, NULL, 0);
+    uint8_t *mem = (uint8_t *)shmat(property->forkCtx.shmId, NULL, 0);
     APPSPAWN_CHECK(mem != (uint8_t *)(-1),
-        return -1, "Failed to attach shm errno %{public}d shmId: %{public}d", errno, forkCtx->shmId);
+        return -1, "Failed to attach shm errno %{public}d shmId: %{public}d", errno, property->forkCtx.shmId);
     // copy msg header
-    int ret = memcpy_s(mem, forkCtx->memSize, &message->msgHeader, sizeof(AppSpawnMsg));
+    int ret = memcpy_s(mem, property->forkCtx.memSize, &message->msgHeader, sizeof(AppSpawnMsg));
     APPSPAWN_CHECK(ret == 0, return APPSPAWN_SYSTEM_ERROR, "Failed to write msg header to shared memory");
-    ret = memcpy_s(mem + sizeof(AppSpawnMsg), forkCtx->memSize - sizeof(AppSpawnMsg),
+    ret = memcpy_s(mem + sizeof(AppSpawnMsg), property->forkCtx.memSize - sizeof(AppSpawnMsg),
         message->buffer, message->msgHeader.msgLen - sizeof(AppSpawnMsg));
     APPSPAWN_CHECK(ret == 0, return APPSPAWN_SYSTEM_ERROR, "Failed to write msg header to shared memory");
     APPSPAWN_LOGV("SendAppSpawnMsgToChild: %{public}s success", message->msgHeader.processName);
     return 0;
-}
-
-int GetAppSpawnMsgType(const struct TagAppSpawningCtx *appProperty)
-{
-    return (appProperty != NULL && appProperty->message != NULL) ?
-        appProperty->message->msgHeader.msgType : MAX_TYPE_INVALID;
-}
-
-const char *GetProcessName(const struct TagAppSpawningCtx *property)
-{
-    if (property == NULL || property->message == NULL) {
-        return NULL;
-    }
-    return property->message->msgHeader.processName;
-}
-
-const char *GetBundleName(const struct TagAppSpawningCtx *property)
-{
-    AppSpawnMsgBundleInfo *info = (AppSpawnMsgBundleInfo *)GetAppSpawnMsgInfo(property->message, TLV_BUNDLE_INFO);
-    if (info != NULL) {
-        return info->bundleName;
-    }
-    return NULL;
 }
 
 pid_t GetPidFromTerminationMsg(AppSpawnMsgNode *message)
@@ -324,21 +313,6 @@ pid_t GetPidFromTerminationMsg(AppSpawnMsgNode *message)
         return *pid;
     }
     return -1;
-}
-
-void *GetAppProperty(const struct TagAppSpawningCtx *property, uint32_t type)
-{
-    APPSPAWN_CHECK(property != NULL && property->message != NULL,
-        return NULL, "Invalid property for type %{public}u", type);
-    return GetAppSpawnMsgInfo(property->message, type);
-}
-
-uint8_t *GetAppPropertyExt(const struct TagAppSpawningCtx *property, const char *name, uint32_t *len)
-{
-    APPSPAWN_CHECK(name != NULL, return NULL, "Invalid name ");
-    APPSPAWN_CHECK(property != NULL && property->message != NULL,
-        return NULL, "Invalid property for name %{public}s", name);
-    return GetAppSpawnMsgExInfo(property->message, name, len);
 }
 
 static inline void DumpMsgFlags(const char *info, const AppSpawnMsgFlags *msgFlags)

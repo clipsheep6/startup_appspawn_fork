@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "appspawn_test_cmd.h"
+#include "appspawn_test_cmder.h"
 
 #include <cerrno>
 #include <cstdint>

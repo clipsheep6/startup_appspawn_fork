@@ -28,6 +28,7 @@
 #include "appspawn.h"
 #include "appspawn_hook.h"
 #include "appspawn_modulemgr.h"
+#include "appspawn_manager.h"
 #include "appspawn_msg.h"
 #include "appspawn_server.h"
 #include "appspawn_utils.h"
@@ -108,7 +109,7 @@ static void HandleDiedPid(pid_t pid, uid_t uid, int status)
         return;
     }
     // move app info to died queue in NWEBSPAWN, or delete appinfo
-    HandleProcessTerminate(&g_appSpawnMgr->processMgr, appInfo, IsNWebSpawnMode(g_appSpawnMgr));
+    ProcessProcessTerminate(&g_appSpawnMgr->processMgr, appInfo, IsNWebSpawnMode(g_appSpawnMgr));
 }
 
 APPSPAWN_STATIC void ProcessSignal(const struct signalfd_siginfo *siginfo)
@@ -323,7 +324,7 @@ static int InitForkContext(AppSpawningCtx *property)
             "Failed to get shm for %{public}s errno %{public}d", GetProcessName(property), errno);
         property->forkCtx.memSize = memSize;
         // 保存发送给子进程的参数
-        int ret = SendAppSpawnMsgToChild(&property->forkCtx, property->message);
+        int ret = SendAppSpawnMsgToChild(property, property->message);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
     }
     return 0;
@@ -501,7 +502,7 @@ void AppSpawnDestroyContent(AppSpawnContent *content)
     // release resource
     AppSpawnedProcessMgrDestroy(&appSpawnContent->processMgr);
     OH_ListRemoveAll(&appSpawnContent->extData, DataExDestroyProc);
-    if (appSpawnContent->server != NULL && appSpawnContent->servicePid == getpid()) {
+    if (appSpawnContent->server != NULL && appSpawnContent->servicePid == getpid()) { // 子进程不能处理socket
         LE_CloseStreamTask(LE_GetDefaultLoop(), appSpawnContent->server);
         appSpawnContent->server = NULL;
     }

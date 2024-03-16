@@ -29,7 +29,7 @@
 
 #include "appspawn_hook.h"
 #include "appspawn_msg.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "securec.h"
 
 static void AppPropertyDestroyProc(ListNode *node)
@@ -97,7 +97,7 @@ AppSpawnedProcess *AddSpawnedProcess(AppSpawnedProcessMgr *mgr, pid_t pid, const
     return node;
 }
 
-void HandleProcessTerminate(AppSpawnedProcessMgr *mgr, AppSpawnedProcess *node, int nwebspawn)
+void ProcessProcessTerminate(AppSpawnedProcessMgr *mgr, AppSpawnedProcess *node, int nwebspawn)
 {
     if (!nwebspawn) {
         OH_ListRemove(&node->node);
@@ -112,7 +112,7 @@ void HandleProcessTerminate(AppSpawnedProcessMgr *mgr, AppSpawnedProcess *node, 
     }
     OH_ListRemove(&node->node);
     OH_ListInit(&node->node);
-    APPSPAWN_LOGI("HandleProcessTerminate %{public}s, pid=%{public}d", node->name, node->pid);
+    APPSPAWN_LOGI("ProcessProcessTerminate %{public}s, pid=%{public}d", node->name, node->pid);
     OH_ListAddTail(&mgr->diedQueue, &node->node);
     mgr->diedAppCount++;
 }
@@ -229,18 +229,7 @@ AppSpawningCtx *GetAppSpawningCtxByPid(AppSpawnedProcessMgr *mgr, pid_t pid)
     return ListEntry(node, AppSpawningCtx, node);
 }
 
-int CheckAppPropertyFlags(const struct TagAppSpawningCtx *property, uint32_t type, uint32_t index)
-{
-    AppSpawnMsgFlags *msgFlags = (AppSpawnMsgFlags *)GetAppProperty(property, type);
-    APPSPAWN_CHECK(msgFlags != NULL, return 0, "No tlv %{public}d in msg %{public}s", type, GetProcessName(property));
-    uint32_t blockIndex = index / 32;  // 32 max bit in int
-    uint32_t bitIndex = index % 32;    // 32 max bit in int
-    APPSPAWN_CHECK(blockIndex < msgFlags->count, return 0,
-        "Invalid index %{public}d max: %{public}d", index, msgFlags->count);
-    return CHECK_FLAGS_BY_INDEX(msgFlags->flags[blockIndex], bitIndex);
-}
-
-static inline int SetAppSpawnMsgFlags(AppSpawnMsgFlags *msgFlags, uint32_t index)
+static inline int SetSpawnMsgFlags(AppSpawnMsgFlags *msgFlags, uint32_t index)
 {
     uint32_t blockIndex = index / 32;  // 32 max bit in int
     uint32_t bitIndex = index % 32;    // 32 max bit in int
@@ -251,28 +240,12 @@ static inline int SetAppSpawnMsgFlags(AppSpawnMsgFlags *msgFlags, uint32_t index
     return 0;
 }
 
-int SetAppPropertyFlags(const struct TagAppSpawningCtx *property, uint32_t type, uint32_t index)
+int SetAppSpawnMsgFlag(const AppSpawnMsgNode *message, uint32_t type, uint32_t index)
 {
-    AppSpawnMsgFlags *msgFlags = (AppSpawnMsgFlags *)GetAppProperty(property, type);
-    APPSPAWN_CHECK(msgFlags != NULL, return -1, "No tlv %{public}d in msg %{public}s", type, GetProcessName(property));
-    return SetAppSpawnMsgFlags(msgFlags, index);
-}
-
-int IsNWebSpawnMode(const struct TagAppSpawnMgr *content)
-{
-    return (content != NULL) &&
-        (content->content.mode == MODE_FOR_NWEB_SPAWN || content->content.mode == MODE_FOR_NWEB_COLD_RUN);
-}
-
-int IsColdRunMode(const struct TagAppSpawnMgr *content)
-{
-    return (content != NULL) &&
-        (content->content.mode == MODE_FOR_APP_COLD_RUN || content->content.mode == MODE_FOR_NWEB_COLD_RUN);
-}
-
-int IsDeveloperModeOn(const AppSpawningCtx *property)
-{
-    return (property != NULL && ((property->client.flags & APP_DEVELOPER_MODE) == APP_DEVELOPER_MODE));
+    AppSpawnMsgFlags *msgFlags = (AppSpawnMsgFlags *)GetAppSpawnMsgInfo(message, type);
+    APPSPAWN_CHECK(msgFlags != NULL, return -1,
+        "No tlv %{public}d in msg %{public}s", type, message->msgHeader.processName);
+    return SetSpawnMsgFlags(msgFlags, index);
 }
 
 static void DumpAppProperty(const AppSpawningCtx *property, const char *info)
@@ -317,7 +290,7 @@ void DumpApSpawn(const AppSpawnMgr *content, const AppSpawnMsgNode *message)
 {
     FILE *stream = NULL;
     uint32_t len = 0;
-    char *ptyName = GetAppSpawnMsgExInfo(message, "pty-name", &len);
+    char *ptyName = GetAppSpawnMsgExtInfo(message, "pty-name", &len);
     if (ptyName != NULL) { //
         APPSPAWN_LOGI("Dump info to file '%{public}s'", ptyName);
         stream = fopen(ptyName, "w");

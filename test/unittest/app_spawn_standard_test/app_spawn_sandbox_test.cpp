@@ -24,10 +24,11 @@
 #include <sys/types.h>
 
 #include "appspawn_sandbox.h"
-#include "appspawn_server.h"
-#include "appspawn_service.h"
-#include "appspawn_utils.h"
+#include "appspawn_permission.h"
 #include "appspawn_mount_permission.h"
+#include "appspawn_server.h"
+#include "appspawn_manager.h"
+#include "appspawn_utils.h"
 #include "json_utils.h"
 #include "cJSON.h"
 
@@ -208,12 +209,12 @@ static inline PathMountNode *GetFirstPathNodeInQueue(const SandboxSection *secti
     if (node == &section->front) {
         return NULL;
     }
-    SandboxPrivateNode *privateNode = reinterpret_cast<SandboxPrivateNode *>(ListEntry(node, SandboxNode, node));
+    SandboxPrivateNode *privateNode = reinterpret_cast<SandboxPrivateNode *>(ListEntry(node, SandboxMountNode, node));
     node = privateNode->section.front.next;
     if (node == &privateNode->section.front) {
         return NULL;
     }
-    return reinterpret_cast<PathMountNode *>(ListEntry(node, SandboxNode, node));
+    return reinterpret_cast<PathMountNode *>(ListEntry(node, SandboxMountNode, node));
 }
 
 static inline PathMountNode *GetNextPathNode(const SandboxSection *section, PathMountNode *pathNode)
@@ -221,16 +222,16 @@ static inline PathMountNode *GetNextPathNode(const SandboxSection *section, Path
     if (pathNode->sandboxNode.node.next == &section->front) {
         return NULL;
     }
-    return reinterpret_cast<PathMountNode *>(ListEntry(pathNode->sandboxNode.node.next, SandboxNode, node));
+    return reinterpret_cast<PathMountNode *>(ListEntry(pathNode->sandboxNode.node.next, SandboxMountNode, node));
 }
 
-static inline SandboxNode *GetFirstSectionNode(const SandboxSection *section)
+static inline SandboxMountNode *GetFirstSectionNode(const SandboxSection *section)
 {
     ListNode *node = section->front.next;
     if (node == &section->front) {
         return NULL;
     }
-    return reinterpret_cast<SandboxNode *>(ListEntry(node, SandboxNode, node));
+    return reinterpret_cast<SandboxMountNode *>(ListEntry(node, SandboxMountNode, node));
 }
 
 AppSpawnTestHelper g_testHelper;
@@ -242,7 +243,7 @@ public:
     void TearDown() {}
 };
 
-static int TestParseAppSandboxConfig(AppSpawnSandbox *sandbox, const char *buffer)
+static int TestParseAppSandboxConfig(AppSpawnSandboxCfg *sandbox, const char *buffer)
 {
     cJSON *config = cJSON_Parse(buffer);
     int ret = ParseAppSandboxConfig(config, sandbox);
@@ -342,7 +343,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_JsonUtil_007, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Permission_01, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     int ret = -1;
     do {
         sandbox = CreateAppSpawnSandbox();
@@ -353,17 +354,17 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Permission_01, TestSize.Level0)
         AppSpawnTestHelper testHelper;
         const std::vector<const char *> &permissions = testHelper.GetPermissions();
         for (auto permission : permissions) {
-            const SandboxPermissionNode *node = GetPermissionNode(permission);
+            const SandboxPermissionNode *node = GetPermissionNodeInQueue(&sandbox->permissionNodeQueue, permission);
             APPSPAWN_CHECK(node != nullptr && strcmp(node->name, permission) == 0,
                 break, "Failed to permission %{public}s", permission);
-            const SandboxPermissionNode *node2 = GetPermissionNodeByIndex(node->permissionIndex);
-            APPSPAWN_CHECK(node2 != nullptr && strcmp(node->name, node2->name) == 0,
+            const char *name = GetPermissionByIndex(node->permissionIndex);
+            APPSPAWN_CHECK(name != nullptr && strcmp(node->name, name) == 0,
                 break, "Failed to permission %{public}s", permission);
         }
         const char *permission = "ohos.permission.XXXXX";
-        const SandboxPermissionNode *node = GetPermissionNode(permission);
+        const SandboxPermissionNode *node = GetPermissionNodeInQueue(&sandbox->permissionNodeQueue, permission);
         APPSPAWN_CHECK_ONLY_EXPER(node == nullptr, break);
-        node = GetPermissionNode(nullptr);
+        node = GetPermissionNodeInQueue(nullptr, nullptr);
         APPSPAWN_CHECK_ONLY_EXPER(node == nullptr, break);
         ret = 0;
     } while (0);
@@ -373,7 +374,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Permission_01, TestSize.Level0)
     ASSERT_EQ(ret, 0);
 }
 
-static int ProcessTestExpandConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name)
+static int ProcessTestExpandConfig(const SandboxContext *context, const AppSpawnSandboxCfg *appSandBox, const char *name)
 {
     uint32_t size = 0;
     char *extInfo = (char *)GetAppPropertyExt(context->property, name, &size);
@@ -388,7 +389,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_01, TestSize.Level0)
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     int ret = -1;
     do {
         sandbox = CreateAppSpawnSandbox();
@@ -428,7 +429,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_02, TestSize.Level0)
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     int ret = -1;
     do {
         sandbox = CreateAppSpawnSandbox();
@@ -470,7 +471,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_03, TestSize.Level0)
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     int ret = -1;
     do {
         sandbox = CreateAppSpawnSandbox();
@@ -511,7 +512,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_04, TestSize.Level0)
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     int ret = -1;
     do {
         sandbox = CreateAppSpawnSandbox();
@@ -566,7 +567,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_ExpandCfg_04, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_01, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     int ret = -1;
     do {
         sandbox = CreateAppSpawnSandbox();
@@ -583,7 +584,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_01, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_02, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     int ret = -1;
     do {
         sandbox = CreateAppSpawnSandbox();
@@ -622,7 +623,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_02, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_03, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     int ret = -1;
     do {
         sandbox = CreateAppSpawnSandbox();
@@ -674,7 +675,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_03, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_04, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     int ret = -1;
     do {
         sandbox = CreateAppSpawnSandbox();
@@ -724,7 +725,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_04, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_05, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     int ret = -1;
     do {
         sandbox = CreateAppSpawnSandbox();
@@ -776,7 +777,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_05, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_10, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
@@ -824,7 +825,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_10, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_11, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
@@ -874,7 +875,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_11, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_12, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
@@ -900,7 +901,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_12, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
         ListNode *node = sandbox->section.front.next;
         ASSERT_EQ(node != &sandbox->section.front, 1);
-        PathMountNode *pathNode = (PathMountNode *)ListEntry(node, SandboxNode, node);
+        PathMountNode *pathNode = (PathMountNode *)ListEntry(node, SandboxMountNode, node);
         pathNode->checkErrorFlag = 1;  // 设置错误检查
 
         // set check point
@@ -930,7 +931,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_12, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_13, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
@@ -978,7 +979,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_13, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_14, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
@@ -1027,7 +1028,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_14, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_15, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
@@ -1079,7 +1080,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_15, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_16, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
@@ -1133,7 +1134,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_16, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_17, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;
@@ -1187,7 +1188,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_17, TestSize.Level0)
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_18, TestSize.Level0)
 {
-    AppSpawnSandbox *sandbox = nullptr;
+    AppSpawnSandboxCfg *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
     AppSpawningCtx *property = nullptr;

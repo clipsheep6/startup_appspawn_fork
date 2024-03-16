@@ -243,7 +243,7 @@ static PathMountNode *DecodeMountPathConfig(const cJSON *config)
     return sandboxNode;
 }
 
-static int DecodeMountPathsConfig(AppSpawnSandbox *sandbox,
+static int DecodeMountPathsConfig(AppSpawnSandboxCfg *sandbox,
     const cJSON *mountConfigs, uint32_t flagsPoint, SandboxSection *section)
 {
     APPSPAWN_CHECK_ONLY_EXPER(mountConfigs != NULL && cJSON_IsArray(mountConfigs), return -1);
@@ -259,7 +259,7 @@ static int DecodeMountPathsConfig(AppSpawnSandbox *sandbox,
     return 0;
 }
 
-static int DecodeSymbolLinksConfig(AppSpawnSandbox *sandbox,
+static int DecodeSymbolLinksConfig(AppSpawnSandboxCfg *sandbox,
     const cJSON *symbolLinkConfigs, uint32_t flagsPoint, SandboxSection *section)
 {
     APPSPAWN_CHECK_ONLY_EXPER(symbolLinkConfigs != NULL && cJSON_IsArray(symbolLinkConfigs), return -1);
@@ -283,7 +283,7 @@ static int DecodeSymbolLinksConfig(AppSpawnSandbox *sandbox,
     return 0;
 }
 
-static void SandboxSectionSetRootPath(AppSpawnSandbox *sandbox,
+static void SandboxSectionSetRootPath(AppSpawnSandboxCfg *sandbox,
     SandboxSection *section, const cJSON *configs, uint32_t flags)
 {
     // only compare with defaultRootPath
@@ -310,7 +310,7 @@ static void SandboxSectionSetRootPath(AppSpawnSandbox *sandbox,
     return;
 }
 
-static int ParseBaseConfig(AppSpawnSandbox *sandbox,
+static int ParseBaseConfig(AppSpawnSandboxCfg *sandbox,
     const cJSON *configs, SandboxSection *section, const char *configName)
 {
     int ret = 0;
@@ -350,7 +350,7 @@ static int ParseBaseConfig(AppSpawnSandbox *sandbox,
     return 0;
 }
 
-static int ParseCommConfig(AppSpawnSandbox *sandbox, const cJSON *commonConfig)
+static int ParseCommConfig(AppSpawnSandboxCfg *sandbox, const cJSON *commonConfig)
 {
     int ret = 0;
     // "top-sandbox-switch": "ON", default sandbox switch is on
@@ -377,7 +377,7 @@ static int ParseCommConfig(AppSpawnSandbox *sandbox, const cJSON *commonConfig)
     return ret;
 }
 
-static int ParsePrivateConfig(AppSpawnSandbox *sandbox, const cJSON *privateConfigs)
+static int ParsePrivateConfig(AppSpawnSandboxCfg *sandbox, const cJSON *privateConfigs)
 {
     int ret = 0;
     cJSON *config = NULL;
@@ -407,7 +407,7 @@ static int ParsePrivateConfig(AppSpawnSandbox *sandbox, const cJSON *privateConf
     return 0;
 }
 
-static int ParsePermissionConfig(AppSpawnSandbox *sandbox, const cJSON *permissionConfigs)
+static int ParsePermissionConfig(AppSpawnSandboxCfg *sandbox, const cJSON *permissionConfigs)
 {
     uint32_t gidTable[APP_MAX_GIDS] = {};
     int ret = 0;
@@ -437,7 +437,7 @@ static int ParsePermissionConfig(AppSpawnSandbox *sandbox, const cJSON *permissi
     return 0;
 }
 
-APPSPAWN_STATIC int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandbox *sandbox)
+APPSPAWN_STATIC int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandboxCfg *sandbox)
 {
     int ret = 0;
     cJSON *json = GetFirstJson(cJSON_GetObjectItemCaseSensitive(appSandboxConfig, COMM_PREFIX));
@@ -458,7 +458,7 @@ APPSPAWN_STATIC int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpaw
     return ret;
 }
 
-int LoadAppSandboxConfig(AppSpawnSandbox *sandbox)
+int LoadAppSandboxConfig(AppSpawnSandboxCfg *sandbox)
 {
     int ret = ParseSandboxConfig("etc/sandbox", "/appdata-sandbox.json", ParseAppSandboxConfig, sandbox);
     if (ret == APPSPAWN_SANDBOX_NONE) {

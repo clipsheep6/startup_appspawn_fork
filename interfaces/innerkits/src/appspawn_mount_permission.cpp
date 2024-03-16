@@ -17,6 +17,7 @@
 #include <fstream>
 #include <sstream>
 #include "interfaces/innerkits/include/appspawn_mount_permission.h"
+#include "interfaces/innerkits_new/permission/appspawn_mount_permission.h"
 #include "config_policy_utils.h"
 #include "appspawn_utils.h"
 
@@ -30,22 +31,6 @@ std::set<std::string> AppspawnMountPermission::appSandboxPremission_ = {};
 bool AppspawnMountPermission::isLoad_ = false;
 std::mutex AppspawnMountPermission::mutex_;
 
-void AppspawnMountPermission::GetPermissionFromJson(
-    std::set<std::string> &appSandboxPremissionSet, nlohmann::json &appSandboxPremission)
-{
-    auto item = appSandboxPremission.find(PERMISSION_FIELD);
-    if (item != appSandboxPremission.end()) {
-        for (auto config : appSandboxPremission[PERMISSION_FIELD]) {
-            for (auto it : config.items()) {
-            APPSPAWN_LOGI("LoadPermissionNames %{public}s", it.key().c_str());
-            appSandboxPremissionSet.insert(it.key());
-            }
-        }
-    } else {
-        APPSPAWN_LOGI("permission does not exist");
-    }
-}
-
 void AppspawnMountPermission::LoadPermissionNames(void)
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -53,25 +38,13 @@ void AppspawnMountPermission::LoadPermissionNames(void)
         return;
     }
     appSandboxPremission_.clear();
-    nlohmann::json appSandboxPremission;
-    CfgFiles *files = GetCfgFiles("etc/sandbox");
-    for (int i = 0; (files != nullptr) && (i < MAX_CFG_POLICY_DIRS_CNT); ++i) {
-        if (files->paths[i] == nullptr) {
-            continue;
+    int max = GetMaxPermissionIndex();
+    for (int i = 0; i < max; i++) {
+        const char *name = GetPermissionByIndex(i);
+        if (name != nullptr) {
+            appSandboxPremission_.insert(std::string(name));
         }
-        std::string path = files->paths[i];
-        path += APP_PERMISSION_PATH;
-        APPSPAWN_LOGI("LoadAppSandboxConfig %{public}s", path.c_str());
-        std::ifstream jsonFileStream;
-        jsonFileStream.open(path.c_str(), std::ios::in);
-        APPSPAWN_CHECK_ONLY_EXPER(jsonFileStream.is_open(), return);
-        std::stringstream buffer;
-        buffer << jsonFileStream.rdbuf();
-        appSandboxPremission = nlohmann::json::parse(buffer.str(), nullptr, false);
-        APPSPAWN_CHECK(appSandboxPremission.is_structured(), return, "Parse json file into jsonObj failed.");
-        GetPermissionFromJson(appSandboxPremission_, appSandboxPremission);
     }
-    FreeCfgFiles(files);
     APPSPAWN_LOGI("LoadPermissionNames size: %{public}lu", static_cast<unsigned long>(appSandboxPremission_.size()));
     isLoad_ = true;
 }
@@ -91,48 +64,23 @@ uint32_t AppspawnMountPermission::GenPermissionCode(const std::set<std::string> 
     if (permissions.size() == 0) {
         return result;
     }
-    uint32_t flagIndex = 1;
-    for (std::string mountPermission : GetMountPermissionList()) {
-        for (std::string inputPermission : permissions) {
-            if (mountPermission.compare(inputPermission) == 0) {
-                result |= flagIndex;
-            }
+    for (std::string inputPermission : permissions) {
+        int index = GetPermissionIndex(inputPermission.c_str());
+        if (index == INVALID_PERMISSION_INDEX) {
+            continue;
         }
-        flagIndex <<= 1;
+        result |= index <<= 1;
     }
     return result;
 }
 
 bool AppspawnMountPermission::IsMountPermission(uint32_t code, const std::string permission)
 {
-    for (std::string mountPermission : GetMountPermissionList()) {
-        if (mountPermission.compare(permission) == 0) {
-            return code & 1;
-        }
-        code >>= 1;
+    int index = GetPermissionIndex(permission.c_str());
+    if (index != INVALID_PERMISSION_INDEX) {
+        return (code >> index) & 1;
     }
     return false;
 } // AppSpawn
 } // OHOS
 }
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-int32_t GetMaxPermissionIndex(void)
-{
-    std::set<std::string> list = OHOS::AppSpawn::AppspawnMountPermission::GetMountPermissionList();
-    return list.size();
-}
-
-void DeletePermissions(void)
-{
-}
-
-int32_t GetPermissionIndex(const char *permission)
-{
-    return 0;
-}
-#ifdef __cplusplus
-}
-#endif

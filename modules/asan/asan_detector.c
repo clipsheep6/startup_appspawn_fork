@@ -14,16 +14,19 @@
  */
 #include "appspawn_hook.h"
 #include "appspawn_msg.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "appspawn_utils.h"
 #include "parameter.h"
 #include "securec.h"
+
+// for stub
+extern bool may_init_gwp_asan(bool forceInit);
 
 // ide-asan
 static int SetAsanEnabledEnv(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     const char *bundleName = GetBundleName(property);
-    if (TestAppMsgFlagsSet(property, APP_FLAGS_ASANENABLED)) {
+    if (CheckAppMsgFlagsSet(property, APP_FLAGS_ASANENABLED)) {
         char *devPath = "/dev/asanlog";
         char logPath[PATH_MAX] = {0};
         int ret = snprintf_s(logPath, sizeof(logPath), sizeof(logPath) - 1,
@@ -48,14 +51,14 @@ static int SetAsanEnabledEnv(const AppSpawnMgr *content, const AppSpawningCtx *p
 
 static void SetGwpAsanEnabled(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
-    if (!(TestAppMsgFlagsSet(property, APP_FLAGS_GWP_ENABLED_FORCE) ||
-        TestAppMsgFlagsSet(property, APP_FLAGS_GWP_ENABLED_NORMAL))) {
+    if (!(CheckAppMsgFlagsSet(property, APP_FLAGS_GWP_ENABLED_FORCE) ||
+        CheckAppMsgFlagsSet(property, APP_FLAGS_GWP_ENABLED_NORMAL))) {
         return;
     }
     if (IsDeveloperModeOn(property)) {
         APPSPAWN_LOGV("SetGwpAsanEnabled with flags: %{public}d",
-            TestAppMsgFlagsSet(property, APP_FLAGS_GWP_ENABLED_FORCE));
-        may_init_gwp_asan(TestAppMsgFlagsSet(property, APP_FLAGS_GWP_ENABLED_FORCE));
+            CheckAppMsgFlagsSet(property, APP_FLAGS_GWP_ENABLED_FORCE));
+        may_init_gwp_asan(CheckAppMsgFlagsSet(property, APP_FLAGS_GWP_ENABLED_FORCE));
     }
 }
 

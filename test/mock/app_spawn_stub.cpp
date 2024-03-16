@@ -133,6 +133,9 @@ int GetParameter(const char *key, const char *def, char *value, uint32_t len)
     if (strcmp(key, "const.security.developermode.state") == 0) {
         return g_developerMode ? (strcpy_s(value, len, "true") == 0 ? strlen("true") : -1) : -1;
     }
+    if (strcmp(key, "persist.nweb.sandbox.src_path") == 0) {
+        return strcpy_s(value, len, def) == 0 ? strlen(def) : -1;
+    }
     return -1;
 }
 

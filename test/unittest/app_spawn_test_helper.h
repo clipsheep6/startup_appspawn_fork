@@ -31,6 +31,7 @@
 #include "appspawn.h"
 #include "appspawn_hook.h"
 #include "appspawn_server.h"
+#include "appspawn_service.h"
 #include "appspawn_utils.h"
 #include "list.h"
 #include "loop_event.h"

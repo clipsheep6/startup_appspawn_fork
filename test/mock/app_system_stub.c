@@ -218,6 +218,11 @@ int Umount2Stub(const char *path, int type)
     return 0;
 }
 
+int UmountStub(const char *path)
+{
+    return 0;
+}
+
 int mallopt(int param, int value)
 {
     return 0;
