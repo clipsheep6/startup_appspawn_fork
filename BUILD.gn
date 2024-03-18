@@ -25,6 +25,7 @@ config("appspawn_config") {
     "${ability_runtime_path}/interfaces/kits/native/appkit/app",
     "//base/global/resource_management/interfaces/inner_api/include",
     "//base/security/access_token/interfaces/innerkits/token_setproc/include",
+    "//base/security/access_token/interfaces/innerkits/accesstoken/include",
     "//base/startup/init/services/log",
     "//base/startup/init/services/loopevent/include",
     "//third_party/json/include",
@@ -149,6 +150,7 @@ if (!defined(ohos_lite)) {
     ldflags = [ "-Wl,--dynamic-linker,/system/bin/linker64z" ]
     deps = [ "//third_party/selinux:libselinux" ]
     external_deps = [
+      "access_token:libaccesstoken_sdk",
       "access_token:libtoken_setproc",
       "access_token:libtokenid_sdk",
       "c_utils:utils",
