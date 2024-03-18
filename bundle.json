@@ -46,6 +46,7 @@
                 "common_event_service",
                 "hisysevent",
                 "security_component_manager",
+                "napi",
                 "netmanager",
                 "netmanager_base",
                 "ace_engine",
