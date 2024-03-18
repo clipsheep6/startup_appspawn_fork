@@ -21,8 +21,6 @@ config("appspawn_config") {
     "adapter",
     "interfaces/innerkits/include",
     "util/include",
-    "//base/startup/init/services/log",
-    "//base/startup/init/services/loopevent/include",
     "//third_party/json/include",
   ]
 
@@ -151,9 +149,9 @@ if (!defined(ohos_lite)) {
     configs = [ ":appspawn_config" ]
     ldflags = [ "-Wl,--dynamic-linker,/system/bin/linker64z" ]
     external_deps = [
+      "ability_runtime:appkit_native",
       "access_token:libtoken_setproc",
       "access_token:libtokenid_sdk",
-      "ability_runtime:appkit_native",
       "c_utils:utils",
       "config_policy:configpolicy_util",
       "eventhandler:libeventhandler",
