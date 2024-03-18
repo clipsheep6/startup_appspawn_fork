@@ -166,12 +166,37 @@ static void CheckDirRecursive(const std::string &path)
     return;
 }
 
+static void CheckAndCreatFile(const char *file)
+{
+    if (access(file, F_OK) == 0) {
+        APPSPAWN_LOGI("file %{public}s already exist", file);
+        return;
+    }
+    std::string path = file;
+    auto pos = path.find_last_of('/');
+    APPSPAWN_CHECK(pos != std::string::npos, return, "file %{public}s error", file);
+    std::string dir = path.substr(0, pos);
+    MakeDirRecursive(dir, FILE_MODE);
+    int fd = open(file, O_CREAT, FILE_MODE);
+    if (fd < 0) {
+        APPSPAWN_LOGW("failed create %{public}s, err=%{public}d", file, errno);
+    } else {
+        close(fd);
+    }
+    return;
+}
+
 int32_t SandboxUtils::DoAppSandboxMountOnce(const char *originPath, const char *destinationPath,
                                             const char *fsType, unsigned long mountFlags,
                                             const char *options, mode_t mountSharedFlag)
 {
-    // To make sure destinationPath exist
-    MakeDirRecursive(destinationPath, FILE_MODE);
+    struct stat st = {};
+    if (stat(originPath, &st) == 0 && S_ISREG(st.st_mode)) {
+        CheckAndCreatFile(destinationPath);
+    } else {
+        MakeDirRecursive(destinationPath, FILE_MODE);
+    }
+
 #ifndef APPSPAWN_TEST
     int ret = 0;
     // to mount fs and bind mount files or directory
@@ -1059,12 +1084,18 @@ int32_t SandboxUtils::MountAllGroup(const ClientSocket::AppProperty *appProperty
 }
 
 int32_t SandboxUtils::DoSandboxRootFolderCreate(const ClientSocket::AppProperty *appProperty,
-                                                std::string &sandboxPackagePath)
+                                                std::string &sandboxPackagePath, bool remount_proc)
 {
 #ifndef APPSPAWN_TEST
     int rc = mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL);
-    if (rc) {
-        return rc;
+    APPSPAWN_CHECK(rc == 0, return rc, "mount root failed, errno is %{public}d", errno);
+    if (remount_proc) {
+        // In pid namespace, mount a new procfs so that tools such as ps work correctly in ns
+        // Futher reference to pid_namespaces(7) manual page
+        rc = umount("/proc");
+        APPSPAWN_CHECK(rc == 0, return rc, "umount proc failed, errno is %{public}d", errno);
+        rc = mount("", "/proc", "proc", MS_NODEV | MS_NOEXEC | MS_NOSUID, "");
+        APPSPAWN_CHECK(rc == 0, return rc, "mount proc failed, errno is %{public}d", errno);
     }
 #endif
     DoAppSandboxMountOnce(sandboxPackagePath.c_str(), sandboxPackagePath.c_str(), "",
@@ -1318,12 +1349,13 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawnClient *client)
         appProperty->mountPermissionFlags |= GetMountPermissionFlags(FILE_CROSS_APP_MODE);
     }
 
+    bool remount_proc = (client->cloneFlags & CLONE_NEWPID) ? true : false;
     // check app sandbox switch
     if ((CheckTotalSandboxSwitchStatus(appProperty) == false) ||
         (CheckAppSandboxSwitchStatus(appProperty) == false)) {
         rc = DoSandboxRootFolderCreateAdapt(sandboxPackagePath);
     } else if (!sandboxSharedStatus) {
-        rc = DoSandboxRootFolderCreate(appProperty, sandboxPackagePath);
+        rc = DoSandboxRootFolderCreate(appProperty, sandboxPackagePath, remount_proc);
     }
     APPSPAWN_CHECK(rc == 0, return rc, "DoSandboxRootFolderCreate failed, %{public}s", bundleName.c_str());
     rc = SetSandboxProperty(appProperty, sandboxPackagePath);
@@ -1360,7 +1392,7 @@ int32_t SandboxUtils::SetAppSandboxPropertyNweb(AppSpawnClient *client)
         (CheckAppSandboxSwitchStatus(appProperty) == false)) {
         rc = DoSandboxRootFolderCreateAdapt(sandboxPackagePath);
     } else if (!sandboxSharedStatus) {
-        rc = DoSandboxRootFolderCreate(appProperty, sandboxPackagePath);
+        rc = DoSandboxRootFolderCreate(appProperty, sandboxPackagePath, false);
     }
     APPSPAWN_CHECK(rc == 0, return rc, "DoSandboxRootFolderCreate failed, %{public}s", bundleName.c_str());
     // rendering process can be created by different apps,
