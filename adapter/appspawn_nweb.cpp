@@ -46,15 +46,17 @@ struct RenderProcessNode {
 
 namespace {
     constexpr int32_t RENDER_PROCESS_MAX_NUM = 16;
+    constexpr int32_t RETRY_MAX_TIMES = 60;
+    constexpr int32_t WAIT_NWEB_LIB_MARGIN = 5;
     std::map<int32_t, RenderProcessNode> g_renderProcessMap;
     std::mutex g_mutex;
-
     void *g_nwebRenderHandle = nullptr;
 }
 
-void PreLoadWebEngineLibs()
+std::string GetNWebHapLibsPath()
 {
-    APPSPAWN_LOGI("PreLoadWebengineLibs");
+    APPSPAWN_LOGI("GetNWebHapLibsPath");
+
 #if defined(webview_arm64)
     const std::string NWEB_HAP_LIB_PATH = "/data/storage/el1/bundle/nweb/libs/arm64";
 #elif defined(webview_x86_64)
@@ -62,13 +64,34 @@ void PreLoadWebEngineLibs()
 #elif defined(webview_arm)
     const std::string NWEB_HAP_LIB_PATH = "/data/app/el1/bundle/public/com.ohos.nweb/libs/arm";
 #endif
+    std::string nwebLibenginePath = NWEB_HAP_LIB_PATH + "/libweb_engine.so";
+    std::string nwebLibrenderPath = NWEB_HAP_LIB_PATH + "/libnweb_render.so";
+    int retryCnt = 0;
+    do {
+        if ((access(nwebLibenginePath.c_str(), F_OK) == 0) && (access(nwebLibrenderPath.c_str(), F_OK) == 0)) {
+            APPSPAWN_LOGI("get nweb hap lib path success");
+            sleep(WAIT_NWEB_LIB_MARGIN);
+            return NWEB_HAP_LIB_PATH;
+        }
+        APPSPAWN_LOGW("get nweb hap lib path failed, errno = %{public}d, retry times = %{public}d", errno, retryCnt);
+        sleep(1);
+        retryCnt++;
+    } while (retryCnt < RETRY_MAX_TIMES);
+
+    APPSPAWN_LOGE("get nweb hap lib path failed, errno = %{public}d, retry times = %{public}d", errno, retryCnt);
+    return "";
+}
+
+void PreLoadWebEngineLibs()
+{
+    APPSPAWN_LOGI("PreLoadWebengineLibs");
 
     void *webEngineHandle = nullptr;
-
+    std::string webEngineLibsDir = GetNWebHapLibsPath();
 #ifdef __MUSL__
     Dl_namespace dlns;
     dlns_init(&dlns, "nweb_ns");
-    dlns_create(&dlns, NWEB_HAP_LIB_PATH.c_str());
+    dlns_create(&dlns, webEngineLibsDir.c_str());
 
     // preload libweb_engine
     webEngineHandle = dlopen_ns(&dlns, "libweb_engine.so", RTLD_NOW | RTLD_GLOBAL);
