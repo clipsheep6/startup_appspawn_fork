@@ -16,10 +16,12 @@ import("//build/ohos.gni")
 config("appspawn_config") {
   visibility = [ "./*" ]
   include_dirs = [
+    "${appspawn_path}",
     "common",
     "standard",
     "adapter",
     "interfaces/innerkits/include",
+    "interfaces/innerkits_new/include",
     "util/include",
     "//third_party/json/include",
   ]
@@ -53,7 +55,10 @@ if (!defined(ohos_lite)) {
       defines += [ "ASAN_DETECTOR" ]
     }
     configs = [ ":appspawn_config" ]
-    deps = [ "${appspawn_path}:appspawn_server" ]
+    deps = [
+      "${appspawn_path}:appspawn_server",
+      "//third_party/cJSON:cjson",
+    ]
     external_deps = [
       "ability_base:want",
       "ability_runtime:app_manager",
@@ -132,6 +137,7 @@ if (!defined(ohos_lite)) {
       "${appspawn_path}/adapter/appspawn_sandbox.cpp",
       "${appspawn_path}/common/appspawn_server.c",
       "${appspawn_path}/interfaces/innerkits/src/appspawn_mount_permission.cpp",
+      "${appspawn_path}/standard/appspawn_msgmgr.c",
       "${appspawn_path}/standard/appspawn_process.c",
       "${appspawn_path}/standard/appspawn_service.c",
       "${appspawn_path}/util/src/env_utils.cpp",
@@ -165,6 +171,7 @@ if (!defined(ohos_lite)) {
       "resource_management:global_resmgr",
       "selinux:libselinux",
     ]
+    deps = [ "//third_party/cJSON:cjson" ]
 
     if (!defined(global_parts_info) ||
         defined(global_parts_info.security_security_component_manager)) {
@@ -191,7 +198,7 @@ if (!defined(ohos_lite)) {
 
     if (appspawn_report_event) {
       cflags += [ "-DREPORT_EVENT" ]
-      deps = [ "adapter/sysevent:event_reporter" ]
+      deps += [ "adapter/sysevent:event_reporter" ]
     }
 
     subsystem_name = "${subsystem_name}"

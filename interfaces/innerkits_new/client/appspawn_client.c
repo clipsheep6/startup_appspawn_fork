@@ -133,8 +133,6 @@ static int ReadMessage(int socketFd, uint32_t sendMsgId, uint8_t *buf, int len, 
         "Read message from fd %{public}d rLen %{public}zd errno: %{public}d", socketFd, rLen, errno);
     if ((size_t)rLen >= sizeof(AppSpawnResponseMsg)) {
         AppSpawnResponseMsg *msg = (AppSpawnResponseMsg *)(buf);
-        APPSPAWN_CHECK_ONLY_LOG(sendMsgId == msg->msgHdr.msgId,
-            "Invalid msg recvd %{public}u %{public}u", sendMsgId, msg->msgHdr.msgId);
         return memcpy_s(result, sizeof(AppSpawnResult), &msg->result, sizeof(msg->result));
     }
     return APPSPAWN_TIMEOUT;
