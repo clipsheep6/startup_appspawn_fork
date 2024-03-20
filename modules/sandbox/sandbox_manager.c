@@ -18,6 +18,7 @@
 #include <sched.h>
 
 #include "appspawn_manager.h"
+#include "appspawn_permission.h"
 #include "appspawn_sandbox.h"
 #include "appspawn_utils.h"
 #include "parameter.h"
