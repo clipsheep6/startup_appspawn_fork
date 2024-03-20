@@ -41,6 +41,7 @@ static int PermissionNodeCompareProc(ListNode *node, ListNode *newNode)
     return strcmp(permissionNode->name, newPermissionNode->name);
 }
 
+#ifndef APPSPAWN_CLIENT
 SandboxPermissionNode *CreateSandboxPermissionNode(const char *name, uint32_t gidCount, uint32_t *gidTable)
 {
     size_t len = APPSPAWN_ALIGN(strlen(name) + 1);
@@ -50,19 +51,19 @@ SandboxPermissionNode *CreateSandboxPermissionNode(const char *name, uint32_t gi
     OH_ListInit(&node->sandboxNode.node);
     node->sandboxNode.type = SANDBOX_TAG_PERMISSION;
     node->permissionIndex = 0;
-#ifndef APPSPAWN_CLIENT
+
     SandboxSectionInit(&node->section, SANDBOX_TAG_PERMISSION_QUEUE);
     node->name = (char *)(((uint8_t *)node) + sizeof(SandboxPermissionNode) + sizeof(uint32_t) * gidCount);
     node->gidCount = gidCount;
     if (gidCount && gidTable != NULL) {
         (void)memcpy_s(node->gidTable, sizeof(uint32_t) * gidCount, gidTable, sizeof(uint32_t) * gidCount);
     }
-#endif
     int ret = strcpy_s(node->name, len, name);
     APPSPAWN_CHECK(ret == 0, free(node);
         return NULL, "Failed to copy name");
     return node;
 }
+#endif
 
 int AddSandboxPermissionNode(const char *name, SandboxQueue *queue)
 {

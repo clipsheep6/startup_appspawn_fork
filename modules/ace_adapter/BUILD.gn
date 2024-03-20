@@ -18,10 +18,6 @@ config("ace_config") {
   visibility = [ "./*" ]
   include_dirs = [
     "${ability_runtime_path}/interfaces/kits/native/appkit/app",
-    "//base/notification/eventhandler/interfaces/inner_api",
-    "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
-    "//foundation/arkui/napi",
-    "//third_party/libuv/include",
   ]
 }
 
@@ -51,15 +47,21 @@ ohos_shared_library("appspawn_ace") {
     "ability_runtime:app_manager",
     "ability_runtime:appkit_native",
     "ability_runtime:runtime",
+    "access_token:libtoken_setproc",
     "ace_engine:ace_forward_compatibility",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
     "config_policy:configpolicy_util",
+    "eventhandler:libeventhandler",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
+    "ipc:ipc_single",
+    "libuv:uv",
+    "napi:ace_napi",
     "os_account:os_account_innerkits",
     "resource_management:global_resmgr",
+    "selinux:libselinux",
   ]
   subsystem_name = "${subsystem_name}"
   part_name = "${part_name}"

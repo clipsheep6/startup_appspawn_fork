@@ -32,11 +32,28 @@
 #include <sys/types.h>
 
 #include "appspawn_msg.h"
+#include "appspawn_permission.h"
 #include "appspawn_utils.h"
 #include "parameter.h"
 #include "securec.h"
 
 #define FILE_CROSS_APP_MODE "ohos.permission.FILE_CROSS_APP"
+
+static void CheckAndCreatFile(const char *file)
+{
+    if (access(file, F_OK) == 0) {
+        APPSPAWN_LOGI("file %{public}s already exist", file);
+        return;
+    }
+    MakeDirRec(file, FILE_MODE, 0);
+    int fd = open(file, O_CREAT, FILE_MODE);
+    if (fd < 0) {
+        APPSPAWN_LOGW("failed create %{public}s, err=%{public}d", file, errno);
+    } else {
+        close(fd);
+    }
+    return;
+}
 
 static inline int TestMountNodeFlagsPoint(const SandboxContext *context, const PathMountNode *sandboxNode)
 {
@@ -251,6 +268,13 @@ static int DoSandboxMountNode(const SandboxContext *context,
     APPSPAWN_CHECK(args.originPath != NULL && args.destinationPath != NULL,
         return APPSPAWN_ARG_INVALID, "Invalid path %{public}s %{public}s", args.originPath, args.destinationPath);
 
+    struct stat st = {};
+    if (stat(args.originPath, &st) == 0 && S_ISREG(st.st_mode)) {
+        CheckAndCreatFile(args.destinationPath);
+    } else {
+        MakeDirRecursive(args.destinationPath, FILE_MODE);
+    }
+
     /* dlp application mount strategy */
     /* dlp is an example, we should change to real bundle name later */
     int ret = -1;
@@ -260,7 +284,6 @@ static int DoSandboxMountNode(const SandboxContext *context,
     }
     if (ret < 0) {
         APPSPAWN_LOGV("Bind path %{public}s => %{public}s", args.originPath, args.destinationPath);
-        MakeDirRecursive(args.destinationPath, FILE_MODE);
         ret = SandboxMountPath(&args);
     }
     if (ret) {

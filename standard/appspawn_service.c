@@ -335,7 +335,7 @@ static int AddChildWatcher(AppSpawningCtx *property)
     LE_WatchInfo watchInfo = {};
     watchInfo.fd = property->forkCtx.fd[0];
     watchInfo.flags = WATCHER_ONCE;
-    watchInfo.events = Event_Read;
+    watchInfo.events = EVENT_READ;
     watchInfo.processEvent = ProcessChildResponse;
     LE_STATUS status = LE_StartWatcher(LE_GetDefaultLoop(), &property->forkCtx.watcherHandle, &watchInfo, property);
     APPSPAWN_CHECK(status == LE_SUCCESS,

@@ -140,7 +140,6 @@ static int ReplaceVariable(const SandboxContext *sandboxContext,
     }
     varData[i + 1] = '\0';
     *varLen = i + 1;
-    //APPSPAWN_LOGV("ReplaceVariable var '%{public}s'", varData, *varLen);
     uint32_t valueLen = 0;
     AppSandboxVarNode *node = GetAppSandboxVarNode(varData);
     if (node != NULL) {
@@ -194,7 +193,6 @@ int HandleVariableReplace(const SandboxContext *sandboxContext, SandboxBuffer *s
 const char *GetSandboxRealVar(const SandboxContext *sandboxContext,
     uint32_t index, const char *source, const char *prefix, int permission)
 {
-    //APPSPAWN_LOGV("GetSandboxRealVar source '%{public}s' '%{public}s'", source, prefix);
     APPSPAWN_CHECK(index < ARRAY_LENGTH(sandboxContext->buffer), return NULL, "Invalid index for buffer");
     SandboxBuffer *sandboxBuffer = &((SandboxContext *)sandboxContext)->buffer[index];
     const char *tmp = source;
@@ -202,7 +200,6 @@ const char *GetSandboxRealVar(const SandboxContext *sandboxContext,
     if (prefix != NULL) { // copy prefix data
         ret = HandleVariableReplace(sandboxContext, sandboxBuffer, prefix);
         APPSPAWN_CHECK(ret == 0, return NULL, "Failed to replace source %{public}s ", prefix);
-        // �ϲ�����//
         if (tmp != NULL && sandboxBuffer->buffer[sandboxBuffer->current - 1] == '/' && *tmp == '/') {
             tmp = source + 1;
         }
@@ -214,7 +211,6 @@ const char *GetSandboxRealVar(const SandboxContext *sandboxContext,
     sandboxBuffer->buffer[sandboxBuffer->current] = '\0';
     // restore buffer
     sandboxBuffer->current = 0;
-    //APPSPAWN_LOGV("GetSandboxRealVar result '%{public}s'", sandboxBuffer->buffer);
     return sandboxBuffer->buffer;
 }
 
