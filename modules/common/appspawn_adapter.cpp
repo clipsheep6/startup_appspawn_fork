@@ -17,7 +17,7 @@
 
 #include "access_token.h"
 #include "appspawn_hook.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "appspawn_utils.h"
 #include "cJSON.h"
 #include "token_setproc.h"
@@ -82,11 +82,11 @@ int SetSelinuxCon(const AppSpawnMgr *content, const AppSpawningCtx *property)
     hapDomainInfo.apl = msgDomainInfo->apl;
     hapDomainInfo.packageName = GetProcessName(property);
     hapDomainInfo.hapFlags = msgDomainInfo->hapFlags;
-    if (TestAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE)) {
+    if (CheckAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE)) {
         hapDomainInfo.hapFlags |= SELINUX_HAP_DEBUGGABLE;
     }
     int32_t ret = hapContext.HapDomainSetcontext(hapDomainInfo);
-    if (TestAppMsgFlagsSet(property, APP_FLAGS_ASANENABLED)) {
+    if (CheckAppMsgFlagsSet(property, APP_FLAGS_ASANENABLED)) {
         ret = 0;
     }
     APPSPAWN_CHECK(ret == 0, return APPSPAWN_ACCESS_TOKEN_INVALID,
@@ -126,7 +126,7 @@ int SetSeccompFilter(const AppSpawnMgr *content, const AppSpawningCtx *property)
         return 0;
     }
     if (!SetSeccompPolicyWithName(type, appName)) {
-        APPSPAWN_LOGE("Failed to set %{public}s seccomp filter and exit", appName);
+        APPSPAWN_LOGE("Failed to set %{public}s seccomp filter and exit %{public}d", appName, errno);
         return -EINVAL;
     }
     APPSPAWN_LOGV("SetSeccompFilter success for %{public}s", GetProcessName(property));

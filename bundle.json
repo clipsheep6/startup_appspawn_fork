@@ -32,11 +32,12 @@
                 "c_utils",
                 "ipc",
                 "selinux_adapter",
+                "selinux",
+                "libuv",
                 "hilog",
                 "init",
                 "ability_runtime",
                 "access_token",
-                "common",
                 "eventhandler",
                 "config_policy",
                 "resource_management",
@@ -44,6 +45,7 @@
                 "common_event_service",
                 "hisysevent",
                 "security_component_manager",
+                "napi",
                 "netmanager",
                 "netmanager_base",
                 "ace_engine",
@@ -56,18 +58,13 @@
                 "ace_engine_lite",
                 "surface_lite",
                 "ui_lite",
-                "code_signature"
+                "code_signature",
+                "bounds_checking_function",
+                "zlib"
             ],
 	    "third_party": [
                 "bounds_checking_function",
-                "bzip2",
-                "libdrm",
-                "lz4",
-                "openssl",
-                "libusb",
                 "zlib",
-                "libuv",
-                "libpng",
                 "selinux",
                 "cJSON"
 	    ]

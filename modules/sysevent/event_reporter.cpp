@@ -16,7 +16,7 @@
 #include <hisysevent.h>
 
 #include "appspawn_hook.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "appspawn_utils.h"
 
 using namespace OHOS::HiviewDFX;

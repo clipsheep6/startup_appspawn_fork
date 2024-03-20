@@ -19,24 +19,24 @@
 #include <limits.h>
 
 #include "appspawn.h"
-#include "appspawn_utils.h"
 #include "appspawn_hook.h"
+#include "appspawn_manager.h"
+#include "appspawn_utils.h"
 #include "list.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define INVALID_PERMISSION_INDEX (-1)
-
 #define JSON_FLAGS_INTERNAL "__internal__"
 #define SANDBOX_NWEBSPAWN_ROOT_PATH APPSPAWN_BASE_DIR "/mnt/sandbox/com.ohos.render/"
-#define SANDBOX_APPSPAWN_ROOT_PATH APPSPAWN_BASE_DIR "/mnt/sandbox/"
 #define OHOS_RENDER "__internal__.com.ohos.render"
+
 #define PHYSICAL_APP_INSTALL_PATH "/data/app/el1/bundle/public/"
 #define APL_SYSTEM_CORE "system_core"
 #define APL_SYSTEM_BASIC "system_basic"
 #define MODULE_TEST_BUNDLE_NAME "moduleTestProcessName"
+#define DEFAULT_NWEB_SANDBOX_SEC_PATH "/data/app/el1/bundle/public/com.ohos.nweb"  // persist.nweb.sandbox.src_path
 
 #define PARAMETER_PACKAGE_NAME "<PackageName>"
 #define PARAMETER_USER_ID "<currentUserId>"
@@ -48,173 +48,277 @@ extern "C" {
 #define DLP_FUSE_FD 1000
 #define APP_FLAGS_SECTION 0x80000000
 #define BASIC_MOUNT_FLAGS (MS_REC | MS_BIND)
+#define INVALID_UID ((uint32_t)-1)
+
+#ifdef APPSPAWN_64
+#define APPSPAWN_LIB_NAME "lib64"
+#else
+#define APPSPAWN_LIB_NAME "lib"
+#endif
+
+#define MOUNT_MODE_NONE 0       // "none"
+#define MOUNT_MODE_ALWAYS 1     // "always"
+#define MOUNT_MODE_NOT_EXIST 2  // "not-exists"
+
+#define MOUNT_PATH_OP_NO_SYMLINK 0x01
+#define MOUNT_PATH_OP_UNMOUNT 0x02
+
+#define FILE_CROSS_APP_MODE "ohos.permission.FILE_CROSS_APP"
 
 typedef enum SandboxTag {
     SANDBOX_TAG_MOUNT_PATH = 0,
+    SANDBOX_TAG_MOUNT_FILE,
     SANDBOX_TAG_SYMLINK,
     SANDBOX_TAG_PERMISSION,
-    SANDBOX_TAG_PRIVATE,
-    SANDBOX_TAG_COMMON_QUEUE,
-    SANDBOX_TAG_PRIVATE_QUEUE,
-    SANDBOX_TAG_PERMISSION_QUEUE,
+    SANDBOX_TAG_PACKAGE_NAME,
+    SANDBOX_TAG_SPAWN_FLAGS,
+    SANDBOX_TAG_NAME_GROUP,
+    SANDBOX_TAG_SYSTEM_CONST,
+    SANDBOX_TAG_APP_VARIABLE,
+    SANDBOX_TAG_APP_CONST,
+    SANDBOX_TAG_REQUIRED,
     SANDBOX_TAG_INVALID
 } SandboxNodeType;
 
 typedef struct {
     struct ListNode node;
     uint32_t type;
-} SandboxNode;
+} SandboxMountNode;
 
-typedef struct tagPathMountNode {
-    SandboxNode sandboxNode;
-    char *source;  // source 目录，一般是全局的fs 目录
-    char *target;  // 沙盒化后的目录
-    unsigned long mountFlags; // "sandbox-flags" : [ "bind", "rec" ],
-    unsigned long customizedFlags;  // "sandbox-flags-customized": [ "MS_NODEV", "MS_RDONLY" ],
-    mode_t destMode;    // "dest-mode": "S_IRUSR | S_IWOTH | S_IRWXU "
+typedef struct TagSandboxQueue {
+    struct ListNode front;
+    uint32_t type;
+} SandboxQueue;
 
-    uint32_t flagsPoint : 8; // flags-point" : [{ "flags": "NOT_SUPPORTED",
-    uint32_t isFlagsPoint : 1; // flags-point" : [{ "flags": "NOT_SUPPORTED",
-    uint32_t dacOverrideSensitive : 1; // "dac-override-sensitive": "true",
-    uint32_t mountSharedFlag : 1; // "mount-shared-flag" : "true",
+typedef struct TagPathMountNode {
+    SandboxMountNode sandboxNode;
+    char *source;                  // source 目录，一般是全局的fs 目录
+    char *target;                  // 沙盒化后的目录
+    mode_t destMode;               // "dest-mode": "S_IRUSR | S_IWOTH | S_IRWXU "  默认值：0
+    uint32_t mountSharedFlag : 1;  // "mount-shared-flag" : "true", 默认值：false
     uint32_t checkErrorFlag : 1;
-
-    char *options;
-    char *fsType; // "fs-type": "sharefs"
+    uint32_t category;
     char *appAplName;
 } PathMountNode;
 
-typedef struct tagSymbolLinkNode {
-    SandboxNode sandboxNode;
+typedef struct TagSymbolLinkNode {
+    SandboxMountNode sandboxNode;
     char *target;
     char *linkName;
-    mode_t destMode;    // "dest-mode": "S_IRUSR | S_IWOTH | S_IRWXU "
+    mode_t destMode;  // "dest-mode": "S_IRUSR | S_IWOTH | S_IRWXU "
     uint32_t checkErrorFlag : 1;
 } SymbolLinkNode;
 
-typedef struct tagSandboxSection {
-    struct ListNode front;
-    uint32_t type;
-#ifndef APPSPAWN_CLIENT
-    uint32_t sandboxSwitch : 1; // "sandbox-switch": "ON",
-    uint32_t sandboxShared : 1; // "sandbox-switch": "ON",
-    char *rootFlagsPath[2];     // 2 for DLP_MANAGER/START_FLAGS_BACKUP
-    char *rootPath;             // "sandbox-root" : "/mnt/sandbox/<PackageName>",
-#endif
+typedef struct TagSandboxSection {
+    SandboxMountNode sandboxNode;
+    struct ListNode front;  // mount-path
+    char *name;
+    uint32_t number : 16;
+    uint32_t gidCount : 16;
+    gid_t *gidTable;             // "gids": [1006, 1008],
+    uint32_t sandboxSwitch : 1;  // "sandbox-switch": "ON",
+    uint32_t sandboxShared : 1;  // "sandbox-switch": "ON",
+    SandboxMountNode **nameGroups;
 } SandboxSection;
 
-#ifndef APPSPAWN_CLIENT
+typedef struct {
+    SandboxSection section;
+} SandboxPackageNameNode;
+
+typedef struct {
+    SandboxSection section;
+    uint32_t flagIndex;
+} SandboxFlagsNode;
+
+typedef struct TagSandboxGroupNode {
+    SandboxSection section;
+    uint32_t caps;  // "caps": [ "shared" ],
+    uint32_t destType;
+    PathMountNode *depNode;
+    uint32_t mountMode;
+} SandboxNameGroupNode;
+
 typedef struct TagPermissionNode {
-    SandboxNode sandboxNode;
     SandboxSection section;
     int32_t permissionIndex;
-    char *name;
-    int32_t gidCount;
-    gid_t gidTable[0];  // "gids": [1006, 1008],
 } SandboxPermissionNode;
-#else
-typedef struct TagPermissionNode {
-    SandboxNode sandboxNode;
-    uint32_t permissionIndex;
-    char name[0];
-} SandboxPermissionNode;
-#endif
 
-typedef struct PathIndividualNode {
-    SandboxNode sandboxNode;
-    SandboxSection section;
-    char name[0];
-} SandboxPrivateNode;
-
-typedef struct TagAppSpawnSandbox {
+typedef struct TagAppSpawnSandboxCfg {
     AppSpawnExtData extData;
-    SandboxSection section;
-    SandboxSection permissionNodeQueue;
-    SandboxSection privateNodeQueue;
-    int32_t permissionMaxIndex;
-    uint32_t sandboxNsFlags[2]; // "sandbox-ns-flags": [ "pid", "net" ], // for appspawn and newspawn
+    SandboxQueue requiredQueue;
+    SandboxQueue permissionQueue;
+    SandboxQueue packageNameQueue;  // SandboxSection
+    SandboxQueue spawnFlagsQueue;
+    SandboxQueue nameGroupsQueue;
+    uint32_t depNodeCount;
+    SandboxNameGroupNode **depGroupNodes;
+    int32_t maxPermissionIndex;
+    uint32_t sandboxNsFlags;  // "sandbox-ns-flags": [ "pid", "net" ], // for appspawn and newspawn
     // for comm section
-    uint32_t topSandboxSwitch : 1; // "top-sandbox-switch": "ON",
+    uint32_t topSandboxSwitch : 1;  // "top-sandbox-switch": "ON",
     uint32_t appFullMountEnable : 1;
     uint32_t pidNamespaceSupport : 1;
-    char *appResourcesPath; // 2 for app-base/app-resources
-    char defaultRootPath[0];     // "sandbox-root" : "/mnt/sandbox/<PackageName>",
-} AppSpawnSandbox;
+    uint32_t systemUids[10];
+    char *rootPath;
+} AppSpawnSandboxCfg;
+
+enum {
+    BUFFER_FOR_SOURCE,
+    BUFFER_FOR_TARGET,
+    MAX_BUFFER
+};
+
+typedef struct TagSandboxBuffer {
+    uint32_t bufferLen;
+    uint32_t current;
+    char *buffer;
+} SandboxBuffer;
 
 typedef struct TagSandboxContext {
-    uint32_t bufferLen;
-    char *buffer[2];
-    char *realRootPath;
-    char *sandboxPackagePath;
-    char *defaultRootPath;
+    SandboxBuffer buffer[MAX_BUFFER];
     const char *bundleName;
-    const char *sandboxSectionName;
-    const AppSpawningCtx *property;
+    const AppSpawnMsgNode *message;  // 修改成操作消息
     uint32_t sandboxSwitch : 1;
     uint32_t sandboxShared : 1;
     uint32_t bundleHasWps : 1;
     uint32_t dlpBundle : 1;
     uint32_t dlpUiExtType : 1;
     uint32_t appFullMountEnable : 1;
-    uint32_t permissionCfg : 1;
     uint32_t nwebspawn : 1;
+    char *rootPath;
+    char *sandboxPackagePath;
 } SandboxContext;
 
+/**
+ * @brief AppSpawnSandboxCfg op
+ *
+ * @return AppSpawnSandboxCfg*
+ */
+AppSpawnSandboxCfg *CreateAppSpawnSandbox(void);
+AppSpawnSandboxCfg *GetAppSpawnSandbox(const AppSpawnMgr *content);
+void DeleteAppSpawnSandbox(AppSpawnSandboxCfg *sandbox);
+int LoadAppSandboxConfig(AppSpawnSandboxCfg *sandbox, int nwebSpawn);
+void DumpAppSpawnSandboxCfg(AppSpawnSandboxCfg *sandbox);
+
+/**
+ * @brief SandboxSection op
+ *
+ */
+SandboxSection *CreateSandboxSection(const char *name, uint32_t dataLen, uint32_t type);
+SandboxSection *GetSandboxSection(const SandboxQueue *queue, const char *name);
+void AddSandboxSection(SandboxSection *node, SandboxQueue *queue);
+void DeleteSandboxSection(SandboxSection *node);
+__attribute__((always_inline)) inline uint32_t GetSectionType(const SandboxSection *section)
+{
+    return section != NULL ? section->sandboxNode.type : SANDBOX_TAG_INVALID;
+}
+
+/**
+ * @brief SandboxMountNode op
+ *
+ */
+SandboxMountNode *CreateSandboxMountNode(uint32_t dataLen, uint32_t type);
+SandboxMountNode *GetFirstSandboxMountNode(const SandboxSection *section);
+void DeleteSandboxMountNode(SandboxMountNode *mountNode);
+void AddSandboxMountNode(SandboxMountNode *node, SandboxSection *section);
+
+/**
+ * @brief sandbox mount interface
+ *
+ */
+int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx *property, int nwebspawn);
+int StagedMountSystemConst(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx *property, int nwebspawn);
+int StagedMountPreUnShare(const SandboxContext *context, const AppSpawnSandboxCfg *sandbox);
+int StagedMountPostUnshare(const SandboxContext *context, const AppSpawnSandboxCfg *sandbox);
+int UnmountSandboxConfigs(const AppSpawnSandboxCfg *sandbox);
+
+/**
+ * @brief Variable op
+ *
+ */
 typedef struct {
     struct ListNode node;
     ReplaceVarHandler replaceVar;
     char name[0];
 } AppSandboxVarNode;
 
-typedef int (*SetExpandAppSandboxCfgProc)(SandboxContext *context, AppSpawnSandbox *appSandBox, const char *name);
-typedef struct {
-    struct ListNode node;
-    SetExpandAppSandboxCfgProc setConfig;
-    char name[0];
-} ExpandAppSandboxNode;
-
-int LoadAppSandboxConfig(AppSpawnSandbox *sandBox);
-int DumpSandboxNode(ListNode *node, void *data);
-void DumpMountFlags(const char *info, unsigned long mountFlags);
-void DumpMode(const char *info, mode_t mode);
-
-SandboxPermissionNode *CreateSandboxPermissionNode(const char *name, uint32_t gidCount, uint32_t *gidTable);
-int AddPathNode(SandboxNode *node, SandboxSection *queue);
-void FreePathNode(SandboxNode *node);
-
-SymbolLinkNode *CreateSymbolLinkNode(void);
-PathMountNode *CreatePathMountNode(void);
-void SandboxSectionInit(SandboxSection *section, uint32_t type);
-
-// SandboxPrivateNode create and find
-SandboxPrivateNode *CreateSandboxPrivateNode(const char *name);
-SandboxPrivateNode *GetSandboxPrivateNode(const AppSpawnSandbox *sandBox, const char *name);
-
-int32_t GetPermissionIndexInQueue(SandboxSection *queue, const char *permission);
-const SandboxPermissionNode *GetPermissionNodeInQueue(SandboxSection *queue, const char *permission);
-const SandboxPermissionNode *GetPermissionNodeInQueueByIndex(SandboxSection *queue, int32_t index);
-int32_t PermissionRenumber(SandboxSection *queue);
-
-AppSpawnSandbox *GetAppSpawnSandbox(const AppSpawnMgr *content);
-
-int PrepareSandbox(AppSpawnMgr *content, AppSpawningCtx *property);
-int SetSandboxConfigs(const AppSpawnSandbox *appSandBox, AppSpawningCtx *property, int nwebspawn);
+typedef struct TagVarExtraData {
+    uint32_t sandboxTag;
+    union {
+        PathMountNode *depNode;
+    } data;
+} VarExtraData;
 
 void ClearVariable(void);
 void AddDefaultVariable(void);
-const char *GetSandboxRealVar(const SandboxContext *sandboxContext,
-    uint32_t index, const char *source, const char *target, int permission);
+const char *GetSandboxRealVar(const SandboxContext *context,
+    uint32_t bufferType, const char *source, const char *prefix, const VarExtraData *extraData);
 
+/**
+ * @brief expand config
+ *
+ */
 typedef struct {
     struct ListNode node;
     ProcessExpandSandboxCfg cfgHandle;
     int prio;
     char name[0];
 } AppSandboxExpandAppCfgNode;
-
-int ProcessExpandAppSandboxConfig(const SandboxContext *context, const AppSpawnSandbox *appSandBox, const char *name);
+int ProcessExpandAppSandboxConfig(const SandboxContext *context,
+    const AppSpawnSandboxCfg *appSandBox, const char *name);
 void AddDefaultExpandAppSandboxConfigHandle(void);
 void ClearExpandAppSandboxConfigHandle(void);
+
+__attribute__((always_inline)) inline void *GetSpawningMsgInfo(const SandboxContext *context, uint32_t type)
+{
+    APPSPAWN_CHECK(context->message != NULL,
+        return NULL, "Invalid property for type %{public}u", type);
+    return GetAppSpawnMsgInfo(context->message, type);
+}
+
+/**
+ * @brief Sandbox Context op
+ *
+ * @return SandboxContext*
+ */
+SandboxContext *GetSandboxContext(void);
+void DeleteSandboxContext(SandboxContext *context);
+
+/**
+ * @brief defineMount Arg Template and operation
+ *
+ */
+enum {
+    MOUNT_TMP_DEFAULT,
+    MOUNT_TMP_RDONLY,
+    MOUNT_TMP_EPFS,
+    MOUNT_TMP_DAC_OVERRIDE,
+    MOUNT_TMP_FUSE,
+    MOUNT_TMP_DLP_FUSE,
+    MOUNT_TMP_SHRED,
+    MOUNT_TMP_MAX
+};
+
+typedef struct {
+    char *name;
+    uint32_t category;
+    const char *fsType;
+    unsigned long mountFlags;
+    const char *options;
+    mode_t mountSharedFlag;
+} MountArgTemplate;
+
+typedef struct {
+    const char *name;
+    unsigned long flags;
+} SandboxFlagInfo;
+
+uint32_t GetMountCategory(const char *name);
+const MountArgTemplate *GetMountArgTemplate(uint32_t category);
+const SandboxFlagInfo *GetSandboxFlagInfo(const char *key, const SandboxFlagInfo *flagsInfos, uint32_t count);
+int GetPathMode(const char *name);
+
+void DumpMountPathMountNode(const PathMountNode *pathNode);
 
 #ifdef __cplusplus
 }

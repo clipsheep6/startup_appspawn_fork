@@ -16,6 +16,7 @@ import("//build/ohos.gni")
 
 ohos_shared_library("appspawn_sandbox") {
   sources = [
+    "appspawn_mount_template.c",
     "appspawn_permission.c",
     "appspawn_sandbox.c",
     "sandbox_cfgvar.c",
@@ -48,6 +49,7 @@ ohos_shared_library("appspawn_sandbox") {
   install_enable = true
   if (target_cpu == "arm64" || target_cpu == "x86_64" ||
       target_cpu == "riscv64") {
+    defines += [ "APPSPAWN_64" ]
     module_install_dir = "lib64/appspawn/common"
   } else {
     module_install_dir = "lib/appspawn/common"

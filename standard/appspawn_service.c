@@ -40,7 +40,7 @@
 #include "event_reporter.h"
 #endif
 #ifndef APPSPAWN_TEST
-#define TV_SEC 60
+#define TV_SEC 3
 #define APPSPAWN_EXIT_TIME 60000
 #else
 #define TV_SEC 2
@@ -412,6 +412,7 @@ static int WaitChild(int fd, int pid, const AppSpawnClientExt *appProperty)
     if (ret == 0) {  // timeout
         APPSPAWN_LOGI("Time out for child %{public}s %{public}d fd %{public}d",
             appProperty->property.processName, pid, fd);
+        kill(pid, SIGABRT);
         result = 0;
     } else if (ret == -1) {
         APPSPAWN_LOGI("Error for child %{public}s %{public}d", appProperty->property.processName, pid);
@@ -794,10 +795,14 @@ AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcNam
     (void)memset_s(&appSpawnContent->content, sizeof(appSpawnContent->content), 0, sizeof(appSpawnContent->content));
     appSpawnContent->content.longProcName = longProcName;
     appSpawnContent->content.longProcNameLen = longProcNameLen;
-    if (strcmp(longProcName, NWEBSPAWN_SERVER_NAME) == 0) {
+    if (strcmp(socketName, NWEBSPAWN_SOCKET_NAME) == 0) {
         appSpawnContent->content.isNweb = true;
+        appSpawnContent->content.loadExtendLib = LoadExtendLibNweb;
+        appSpawnContent->content.runChildProcessor = RunChildProcessorNweb;
     } else {
         appSpawnContent->content.isNweb = false;
+        appSpawnContent->content.loadExtendLib = LoadExtendLib;
+        appSpawnContent->content.runChildProcessor = RunChildProcessor;
     }
     appSpawnContent->timer = NULL;
     appSpawnContent->flags = 0;

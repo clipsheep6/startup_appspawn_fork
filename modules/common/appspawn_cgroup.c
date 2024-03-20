@@ -27,7 +27,7 @@
 
 #include "appspawn_adapter.h"
 #include "appspawn_hook.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "appspawn_utils.h"
 #include "securec.h"
 
@@ -94,7 +94,7 @@ static void KillProcessesByCGroup(const char *path, AppSpawnMgr *content, const 
         if (pid == appInfo->pid) {
             continue;
         }
-        AppSpawnedProcess *tmp = GetSpawnedProcess(&content->processMgr, pid);
+        AppSpawnedProcess *tmp = GetSpawnedProcess(pid);
         if (tmp != NULL) {
             APPSPAWN_LOGI("Got app %{public}s in same group for pid %{public}d.", tmp->name, pid);
             continue;
@@ -135,7 +135,7 @@ static int ProcessAppAdd(const AppSpawnMgr *content, const AppSpawnedProcess *ap
     APPSPAWN_LOGV("ProcessAppAdd %{public}d %{public}d to cgroup ", appInfo->pid, appInfo->uid);
     int ret = GetCgroupPath(appInfo, path, sizeof(path));
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to get real path errno: %d", errno);
-    (void)MakeDirRecursive(path, 0755);  // 0755 default mode
+    (void)CreateSandboxDir(path, 0755);  // 0755 default mode
     uint32_t pathLen = strlen(path);
     ret = strcat_s(path, sizeof(path), "cgroup.procs");
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to strcat_s errno: %{public}d", errno);

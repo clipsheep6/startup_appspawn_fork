@@ -16,10 +16,15 @@
 #include "appspawn_modulemgr.h"
 
 #include "appspawn_hook.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "appspawn_utils.h"
 #include "hookmgr.h"
 #include "modulemgr.h"
+
+typedef struct {
+    const AppSpawnContent *content;
+    const AppSpawnedProcess *appInfo;
+} AppSpawnAppArg;
 
 static struct {
     MODULE_MGR *moduleMgr;

@@ -40,7 +40,7 @@
 #include "appspawn_adapter.h"
 #include "appspawn_hook.h"
 #include "appspawn_msg.h"
-#include "appspawn_service.h"
+#include "appspawn_manager.h"
 #include "init_param.h"
 #include "parameter.h"
 #include "securec.h"
@@ -194,7 +194,7 @@ static int SetXpmConfig(const AppSpawnMgr *content, const AppSpawningCtx *proper
     int ret = InitXpmRegion();
     APPSPAWN_CHECK(ret == 0, return ret, "init xpm region failed: %{public}d", ret);
 
-    if (TestAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE)) {
+    if (CheckAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE)) {
         ret = SetXpmOwnerId(PROCESS_OWNERID_DEBUG, NULL);
     } else if (ownerInfo == NULL) {
         ret = SetXpmOwnerId(PROCESS_OWNERID_COMPAT, NULL);
@@ -232,7 +232,7 @@ static int SetUidGid(const AppSpawnMgr *content, const AppSpawningCtx *property)
     APPSPAWN_CHECK(ret == 0, return errno,
         "setuid(%{public}u) failed: %{public}d", dacInfo->uid, errno);
 
-    if (TestAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE) && IsDeveloperModeOn(property)) {
+    if (CheckAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE) && IsDeveloperModeOn(property)) {
         setenv("HAP_DEBUGGABLE", "true", 1);
         if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) {
             APPSPAWN_LOGE("Failed to set app dumpable: %{public}s", strerror(errno));
@@ -303,7 +303,7 @@ static int32_t CheckTraceStatus(void)
 static int32_t WaitForDebugger(const AppSpawningCtx *property)
 {
     // wait for debugger only debugging is required and process is debuggable
-    if (TestAppMsgFlagsSet(property, APP_FLAGS_NATIVEDEBUG) && TestAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE)) {
+    if (CheckAppMsgFlagsSet(property, APP_FLAGS_NATIVEDEBUG) && CheckAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE)) {
         uint32_t count = 0;
         while (CheckTraceStatus() != 0) {
 #ifndef APPSPAWN_TEST
@@ -322,61 +322,6 @@ static int32_t WaitForDebugger(const AppSpawningCtx *property)
         }
     }
     return 0;
-}
-
-static bool IsUnlockStatus(uint32_t uid)
-{
-    uid = uid / UID_BASE;
-    if (uid == 0) {
-        return true;
-    }
-    const char rootPath[] = APPSPAWN_BASE_DIR "/data/app/el2/";
-    const char basePath[] = "/base";
-    size_t allPathSize = strlen(rootPath) + strlen(basePath) + USER_ID_BUFFER_SIZE + 1;
-    char *path = (char *)malloc(sizeof(char) * allPathSize);
-    APPSPAWN_CHECK(path != NULL, return true, "Failed to malloc path");
-    size_t len = sprintf_s(path, allPathSize, "%s%u%s", rootPath, uid, basePath);
-    APPSPAWN_CHECK(len > 0 && (len < allPathSize), free(path);
-        return true, "Failed to get base path");
-    APPSPAWN_LOGV("IsUnlockStatus %{public}s uid: %{public}u", path, uid);
-    if (access(path, F_OK) == 0) {
-        free(path);
-        return true;
-    }
-    free(path);
-    APPSPAWN_LOGI("this is lock status");
-    return false;
-}
-
-static int MountAppEl2Dir(const AppSpawningCtx *property)
-{
-    const char rootPath[] = APPSPAWN_BASE_DIR "/mnt/sandbox/";
-    const char el2Path[] = "/data/storage/el2";
-    AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
-    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_TLV_NONE,
-        "No dac info in msg %{public}s", GetProcessName(property));
-
-    if (IsUnlockStatus(dacInfo->uid)) {
-        return 0;
-    }
-    const char *bundleName = GetBundleName(property);
-    size_t allPathSize = strlen(rootPath) + strlen(el2Path) + strlen(bundleName) + USER_ID_BUFFER_SIZE + 2;
-    char *path = (char *)malloc(sizeof(char) * (allPathSize));
-    APPSPAWN_CHECK(path != NULL, return -1, "Failed to malloc path");
-    size_t len = sprintf_s(path, allPathSize, "%s%u/%s%s", rootPath, dacInfo->uid / UID_BASE, bundleName, el2Path);
-    APPSPAWN_CHECK(len > 0 && (len < allPathSize), free(path);
-        return -1, "Failed to get el2 path");
-    APPSPAWN_LOGV("MountAppEl2Dir %{public}s processName:  %{public}s", path, GetProcessName(property));
-    if (access(path, F_OK) == 0) {
-        free(path);
-        return 0;
-    }
-
-    int ret = MakeDirRecursive(path, DEFAULT_DIR_MODE);
-    MountArg arg = {path, path, NULL, MS_BIND | MS_REC, NULL, MS_SHARED};
-    ret = SandboxMountPath(&arg);
-    free(path);
-    return ret;
 }
 
 static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
@@ -472,13 +417,12 @@ static int CheckEnabled(const char *param, const char *value)
 static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Spawning: prepare app %{public}s", GetProcessName(property));
-    if (TestAppMsgFlagsSet(property, APP_FLAGS_COLD_BOOT)) {
+    if (CheckAppMsgFlagsSet(property, APP_FLAGS_COLD_BOOT)) {
         // check cold start
         property->client.flags |= CheckEnabled("startup.appspawn.cold.boot", "true") ? APP_COLD_START : 0;
     }
     // check developer mode
     property->client.flags |= CheckEnabled("const.security.developermode.state", "true") ? APP_DEVELOPER_MODE : 0;
-    MountAppEl2Dir(property);
     return 0;
 }
 

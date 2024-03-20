@@ -30,9 +30,6 @@ extern "C" {
 
 #define HOOK_STOP_WHEN_ERROR 0x2
 
-typedef struct TagAppSpawnContent AppSpawnContent;
-typedef struct TagAppSpawnClient AppSpawnClient;
-typedef struct TagAppSpawnedProcess AppSpawnedProcess;
 typedef enum {
     MODULE_DEFAULT,
     MODULE_APPSPAWN,
@@ -52,14 +49,7 @@ int AppSpawnModuleMgrInstall(const char *mgrName);
 int AppSpawnLoadAutoRunModules(int type);
 void AppSpawnModuleMgrUnInstall(int type);
 void DeleteAppSpawnHookMgr(void);
-
 int PreloadHookExecute(AppSpawnContent *content);
-
-typedef struct {
-    const struct TagAppSpawnContent *content;
-    const AppSpawnedProcess *appInfo;
-} AppSpawnAppArg;
-
 int AppChangeHookExecute(AppSpawnHookStage stage, const AppSpawnContent *content, const AppSpawnedProcess *appInfo);
 int AppSpawnHookExecute(AppSpawnHookStage stage, uint32_t flags, AppSpawnContent *content, AppSpawnClient *client);
 #ifdef __cplusplus

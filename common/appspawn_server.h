@@ -73,8 +73,9 @@ typedef struct AppSpawnContent_ {
 
     void (*notifyResToParent)(struct AppSpawnContent_ *content, AppSpawnClient *client, int result);
     void (*runChildProcessor)(struct AppSpawnContent_ *content, AppSpawnClient *client);
+#ifndef ASAN_DETECTOR
     int (*setAsanEnabledEnv)(struct AppSpawnContent_ *content, AppSpawnClient *client);
-
+#endif
     // for pid namespace
     int (*enablePidNs)(struct AppSpawnContent_ *content);
 
@@ -99,25 +100,22 @@ pid_t AppSpawnFork(int (*childFunc)(void *arg), void *args);
 #define UNUSED(x) (void)(x)
 
 #ifndef OHOS_LITE
-#define APPSPAWN_LOG(logLevel, domain, tag, fmt, ...) \
-    HiLogPrint(LOG_CORE, (LogLevel)logLevel, domain, tag, \
-        "[%{public}s:%{public}d]" fmt,  (FILE_NAME), (__LINE__), ##__VA_ARGS__)
 
-#ifndef APPSPAWN_LABEL
-#define APPSPAWN_LABEL "APPSPAWN"
-#endif
-#define APPSPAWN_DOMAIN (BASE_DOMAIN + 0x11)
+#undef LOG_TAG
+#define LOG_TAG "APPSPAWN"
+#undef LOG_DOMAIN
+#define LOG_DOMAIN (BASE_DOMAIN + 0x11)
 
 #define APPSPAWN_LOGI(fmt, ...) \
-    APPSPAWN_LOG(LOG_INFO, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+    HILOG_INFO(LOG_CORE, "[%{public}s:%{public}d]" fmt, (FILE_NAME), (__LINE__), ##__VA_ARGS__)
 #define APPSPAWN_LOGE(fmt, ...) \
-    APPSPAWN_LOG(LOG_ERROR, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+    HILOG_ERROR(LOG_CORE, "[%{public}s:%{public}d]" fmt, (FILE_NAME), (__LINE__), ##__VA_ARGS__)
 #define APPSPAWN_LOGV(fmt, ...) \
-    APPSPAWN_LOG(LOG_DEBUG, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+    HILOG_DEBUG(LOG_CORE, "[%{public}s:%{public}d]" fmt, (FILE_NAME), (__LINE__), ##__VA_ARGS__)
 #define APPSPAWN_LOGW(fmt, ...) \
-    APPSPAWN_LOG(LOG_WARN, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+    HILOG_WARN(LOG_CORE, "[%{public}s:%{public}d]" fmt, (FILE_NAME), (__LINE__), ##__VA_ARGS__)
 #define APPSPAWN_LOGF(fmt, ...) \
-    APPSPAWN_LOG(LOG_FATAL, APPSPAWN_DOMAIN, APPSPAWN_LABEL, fmt, ##__VA_ARGS__)
+    HILOG_FATAL(LOG_CORE, "[%{public}s:%{public}d]" fmt, (FILE_NAME), (__LINE__), ##__VA_ARGS__)
 
 #else
 
