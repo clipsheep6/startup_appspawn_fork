@@ -31,6 +31,7 @@ extern "C" {
 #define HNP_HEAD_MAGIC 0x12345678
 #define HNP_HEAD_VERSION 1
 #define HNP_VERSION_LEN 32
+#define HNP_COMMAND_LEN 128
 
 #ifdef _WIN32
 #define DIR_SPLIT_SYMBOL '\\'
@@ -137,6 +138,9 @@ enum {
 // 0x80110d 获取文件属性失败
 #define HNP_ERRNO_GET_FILE_ATTR_FAILED          HNP_ERRNO_COMMON(HNP_MID_BASE, 0xd)
 
+// 0x801113 进程正在运行
+#define HNP_ERRNO_PROGRAM_RUNNING               HNP_ERRNO_COMMON(HNP_MID_BASE, 0x13)
+
 int GetFileSizeByHandle(FILE *file, int *size);
 
 int ReadFileToStream(const char *filePath, char **stream, int *streamLen);
@@ -150,6 +154,10 @@ int HnpUnZip(const char *inputFile, const char *outputDir);
 int HnpWriteToZipHead(const char *zipFile, char *buff, int len);
 
 void HnpLogPrintf(int logLevel, char *module, const char *format, ...);
+
+int HnpProgramRunCheck(const char *programName);
+
+int HnpDeleteFolder(const char *path);
 
 #define HNP_LOGI(args...) \
     HnpLogPrintf(HNP_LOG_INFO, "HNP", ##args)
