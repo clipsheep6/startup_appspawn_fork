@@ -216,7 +216,7 @@ int SetXpmConfig(struct AppSpawnContent_ *content, AppSpawnClient *client)
     APPSPAWN_CHECK(ret == 0, return ret, "init xpm region failed: %{public}d", ret);
 
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
-    if (appProperty->property.flags & APP_DEBUGGABLE) {
+    if (strcasecmp(appProperty->property.provisionType, PROVISION_TYPE_DEBUG) == 0) {
         ret = SetXpmOwnerId(PROCESS_OWNERID_DEBUG, NULL);
     } else if ((appProperty->property.ownerId[0] == '\0') ||
         (strcmp(appProperty->property.ownerId, "NULL") == 0)) {
@@ -425,6 +425,10 @@ static int EncodeAppClient(AppSpawnClient *client, char *param, int32_t originLe
     if (appProperty->ownerId[0] == '\0') {
         strcpy_s(appProperty->ownerId, sizeof(appProperty->ownerId), "NULL");
     }
+    // provisionType
+    if (appProperty->provisionType[0] == '\0') {
+        strcpy_s(appProperty->provisionType, sizeof(appProperty->provisionType), "NULL");
+    }
     len = sprintf_s(param + startLen, originLen - startLen, ":%s:%s:%s:%u:%s:%s:%s:%u:%" PRIu64 "",
         appProperty->processName, appProperty->bundleName, appProperty->soPath,
         appProperty->accessTokenId, appProperty->apl, appProperty->renderCmd, appProperty->ownerId,
@@ -554,6 +558,7 @@ int GetAppSpawnClientFromArg(int argc, char *const argv[], AppSpawnClientExt *cl
     ret += GetStringFromArg(NULL, &end, client->property.apl, sizeof(client->property.apl));
     ret += GetStringFromArg(NULL, &end, client->property.renderCmd, sizeof(client->property.renderCmd));
     ret += GetStringFromArg(NULL, &end, client->property.ownerId, sizeof(client->property.ownerId));
+    ret += GetStringFromArg(NULL, &end, client->property.provisionType, sizeof(client->property.provisionType));
     ret += GetUInt32FromArg(NULL, &end, &value);
     client->property.hapFlags = value;
     ret += GetUInt64FromArg(NULL, &end, &client->property.accessTokenIdEx);

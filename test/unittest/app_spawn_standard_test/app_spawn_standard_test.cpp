@@ -197,7 +197,10 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_003, TestSize.Level0)
     if (strcpy_s(client->property.renderCmd, APP_RENDER_CMD_MAX_LEN, "xxx") != 0) {
         GTEST_LOG_(INFO) << "strcpy_s failed";
     }
-    if (strcpy_s(client->property.ownerId, APP_RENDER_CMD_MAX_LEN, "xxx") != 0) {
+    if (strcpy_s(client->property.ownerId, APP_OWNER_ID_LEN, "xxx") != 0) {
+        GTEST_LOG_(INFO) << "strcpy_s failed";
+    }
+    if (strcpy_s(client->property.provisionType, APP_PROVISION_TYPE_MAX_LEN, "debug") != 0) {
         GTEST_LOG_(INFO) << "strcpy_s failed";
     }
     client->property.flags = 0;
@@ -551,6 +554,7 @@ static int RunClient(AppSpawnContentExt *content, int flags, AppOperateType code
     (void)strcpy_s(property.renderCmd, sizeof(property.renderCmd), processName.c_str());
     (void)strcpy_s(property.soPath, sizeof(property.soPath), processName.c_str());
     (void)strcpy_s(property.ownerId, sizeof(property.ownerId), processName.c_str());
+    (void)strcpy_s(property.provisionType, sizeof(property.provisionType), "debug");
     (void)strcpy_s(property.apl, sizeof(property.apl), "system_core");
     property.flags = flags;
     property.code = code;
