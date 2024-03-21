@@ -50,6 +50,7 @@ typedef struct AppSpawnContent_ {
     uint32_t longProcNameLen;
     uint32_t sandboxNsFlags;
     bool isNweb;
+    pid_t nsInitPid;
 
     // system
     void (*loadExtendLib)(struct AppSpawnContent_ *content);
