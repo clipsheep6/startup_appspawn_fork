@@ -191,9 +191,9 @@ static void InitDebugParams(struct AppSpawnContent_ *content, AppSpawnClient *cl
 #ifndef APPSPAWN_TEST
     AppSpawnClientExt *appProperty = (AppSpawnClientExt *)client;
 #if defined (__aarch64__) || defined (__x86_64__)
-    const char *debugSoPath = "/system/lib64/libhidebug.so";
+    const char *debugSoPath = "/system/lib64/platformsdk/libhidebug.so";
 #else
-    const char *debugSoPath = "/system/lib/libhidebug.so";
+    const char *debugSoPath = "/system/lib/platformsdk/libhidebug.so";
 #endif
     bool isRet = access(debugSoPath, F_OK) != 0;
     APPSPAWN_CHECK(!isRet, return, "access failed, errno = %{public}d", errno);
