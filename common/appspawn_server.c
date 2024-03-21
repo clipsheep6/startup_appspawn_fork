@@ -217,6 +217,19 @@ static int CloneAppSpawn(void *arg)
     return 0;
 }
 
+int SetPidNamespace(pid_t pid, int nsType)
+{
+    char nsPath[256];
+    snprintf(nsPath, sizeof(nsPath), "/proc/%d/ns/pid", pid);
+    int nsFd = open(nsPath, O_RDONLY);
+    if(nsFd < 0) {
+        return -1;
+    }
+    setns(nsFd, nsType);
+    close(nsFd);
+    return 0;
+}
+
 int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
 {
     APPSPAWN_CHECK(sandbox != NULL && sandbox->content != NULL, return -1, "Invalid content for appspawn");
@@ -227,9 +240,12 @@ int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
     if (sandbox->content->isNweb) {
         pid = clone(CloneAppSpawn, NULL, sandbox->client->cloneFlags | SIGCHLD, (void *)sandbox);
     } else {
+        SetPidNamespace(sandbox->content->nsInitPid, 0); // 进入ns_pid_init进程的pid namespace
         pid = fork();
         if (pid == 0) {
             ProcessExit(AppSpawnChild((void *)sandbox));
+        } else {
+            SetPidNamespace(getpid(), 0); // 回到调用者的namespace，0表示不改变nsType
         }
     }
     APPSPAWN_CHECK(pid >= 0, return -errno, "fork child process error: %{public}d", -errno);
