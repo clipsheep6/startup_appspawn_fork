@@ -185,10 +185,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_001, TestSize.Level0)
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
 
         // spawn
-        AppSpawnForkArg arg;
-        arg.client = &property->client;
-        arg.content = content;
-        ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
+        ret = AppSpawnChild(content, &property->client);
         property = nullptr;
         content = nullptr;
     } while (0);
@@ -232,10 +229,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_002, TestSize.Level0)
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
 
         // spawn
-        AppSpawnForkArg arg;
-        arg.client = &property->client;
-        arg.content = content;
-        ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
+        ret = AppSpawnChild(content, &property->client);
         property = nullptr;
         content = nullptr;
     } while (0);
@@ -280,10 +274,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_004, TestSize.Level0)
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
         // spawn
-        AppSpawnForkArg arg;
-        arg.client = &property->client;
-        arg.content = content;
-        ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
+        ret = AppSpawnChild(content, &property->client);
         property = nullptr;
         content = nullptr;
     } while (0);
@@ -328,10 +319,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_005, TestSize.Level0)
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
         // spawn
-        AppSpawnForkArg arg;
-        arg.client = &property->client;
-        arg.content = content;
-        ret = CloneAppSpawn(reinterpret_cast<void *>(&arg));
+        ret = AppSpawnChild(content, &property->client);
         property = nullptr;
         content = nullptr;
     } while (0);

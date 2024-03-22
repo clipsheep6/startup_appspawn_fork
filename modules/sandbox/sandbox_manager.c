@@ -21,8 +21,8 @@
 #include "appspawn_permission.h"
 #include "appspawn_sandbox.h"
 #include "appspawn_utils.h"
-#include "parameter.h"
 #include "modulemgr.h"
+#include "parameter.h"
 #include "securec.h"
 
 static void FreePathMountNode(SandboxMountNode *node)
@@ -35,14 +35,6 @@ static void FreePathMountNode(SandboxMountNode *node)
     if (sandboxNode->target) {
         free(sandboxNode->target);
         sandboxNode->target = NULL;
-    }
-    if (sandboxNode->options) {
-        free(sandboxNode->options);
-        sandboxNode->options = NULL;
-    }
-    if (sandboxNode->fsType) {
-        free(sandboxNode->fsType);
-        sandboxNode->fsType = NULL;
     }
     if (sandboxNode->appAplName) {
         free(sandboxNode->appAplName);
@@ -65,47 +57,6 @@ static void FreeSymbolLinkNode(SandboxMountNode *node)
     free(sandboxNode);
 }
 
-static void PermissionQueueDestroyProc(ListNode *node)
-{
-    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
-    FreePathNode(sandboxNode);
-}
-
-static void PrivateQueueDestroyProc(ListNode *node)
-{
-    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
-    FreePathNode(sandboxNode);
-}
-
-static void PathNodeDestroyProc(ListNode *node)
-{
-    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
-    switch (sandboxNode->type) {
-        case SANDBOX_TAG_MOUNT_PATH:
-            FreePathMountNode(sandboxNode);
-            break;
-        case SANDBOX_TAG_SYMLINK:
-            FreeSymbolLinkNode(sandboxNode);
-            break;
-        default:
-            break;
-    }
-}
-
-static int PermissionNodeCompareProc(ListNode *node, ListNode *newNode)
-{
-    SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)ListEntry(node, SandboxMountNode, node);
-    SandboxPermissionNode *newPermissionNode = (SandboxPermissionNode *)ListEntry(newNode, SandboxMountNode, node);
-    return strcmp(permissionNode->name, newPermissionNode->name);
-}
-
-static int PrivateNodeCompareProc(ListNode *node, ListNode *newNode)
-{
-    SandboxPrivateNode *privateNode = (SandboxPrivateNode *)ListEntry(node, SandboxMountNode, node);
-    SandboxPrivateNode *newPrivateNode = (SandboxPrivateNode *)ListEntry(newNode, SandboxMountNode, node);
-    return strcmp(privateNode->name, newPrivateNode->name);
-}
-
 static int SandboxNodeCompareProc(ListNode *node, ListNode *newNode)
 {
     SandboxMountNode *sandbox1 = (SandboxMountNode *)ListEntry(node, SandboxMountNode, node);
@@ -113,208 +64,59 @@ static int SandboxNodeCompareProc(ListNode *node, ListNode *newNode)
     return sandbox1->type - sandbox2->type;
 }
 
-PathMountNode *CreatePathMountNode(void)
+SandboxMountNode *CreateSandboxMountNode(uint32_t dataLen, uint32_t type)
 {
-    PathMountNode *node = (PathMountNode *)malloc(sizeof(PathMountNode));
-    APPSPAWN_CHECK(node != NULL, return NULL, "Failed to create mount node");
-    (void)memset_s(node, sizeof(PathMountNode), 0, sizeof(PathMountNode));
-    OH_ListInit(&node->sandboxNode.node);
-    node->sandboxNode.type = SANDBOX_TAG_MOUNT_PATH;
-    node->source = NULL;
-    node->target = NULL;
-    node->options = NULL;
-    node->fsType = NULL;
+    APPSPAWN_CHECK(dataLen >= sizeof(SandboxMountNode) && dataLen <= sizeof(PathMountNode),
+        return NULL, "Invalid dataLen %{public}u", dataLen);
+    SandboxMountNode *node = (SandboxMountNode *)calloc(1, dataLen);
+    APPSPAWN_CHECK(node != NULL, return NULL, "Failed to create mount node %{public}u", type);
+    OH_ListInit(&node->node);
+    node->type = type;
     return node;
 }
 
-SymbolLinkNode *CreateSymbolLinkNode(void)
+void AddSandboxMountNode(SandboxMountNode *node, SandboxSection *queue)
 {
-    SymbolLinkNode *node = (SymbolLinkNode *)malloc(sizeof(SymbolLinkNode));
-    APPSPAWN_CHECK(node != NULL, return NULL, "Failed to create symbol node");
-    (void)memset_s(node, sizeof(SymbolLinkNode), 0, sizeof(SymbolLinkNode));
-    OH_ListInit(&node->sandboxNode.node);
-    node->sandboxNode.type = SANDBOX_TAG_SYMLINK;
-    node->target = NULL;
-    node->linkName = NULL;
-    return node;
+    OH_ListAddWithOrder(&queue->front, &node->node, SandboxNodeCompareProc);
 }
 
-static void SandboxSectionFree(SandboxSection *section)
+void DeleteSandboxMountNode(SandboxMountNode *sandboxNode)
 {
-    if (section->rootPath) {
-        free(section->rootPath);
-        section->rootPath = NULL;
-    }
-    if (section->rootFlagsPath[0]) {
-        free(section->rootFlagsPath[0]);
-        section->rootFlagsPath[0] = NULL;
-    }
-    if (section->rootFlagsPath[1]) {
-        free(section->rootFlagsPath[1]);
-        section->rootFlagsPath[1] = NULL;
-    }
-    OH_ListRemoveAll(&section->front, PathNodeDestroyProc);
-}
-
-SandboxPrivateNode *CreateSandboxPrivateNode(const char *name)
-{
-    size_t len = strlen(name) + 1;
-    SandboxPrivateNode *node = (SandboxPrivateNode *)malloc(sizeof(SandboxPrivateNode) + len);
-    APPSPAWN_CHECK(node != NULL, return NULL, "Failed to create symbol node");
-    (void)memset_s(node, sizeof(SandboxPrivateNode), 0, sizeof(SandboxPrivateNode));
-    OH_ListInit(&node->sandboxNode.node);
-    node->sandboxNode.type = SANDBOX_TAG_PRIVATE;
-    SandboxSectionInit(&node->section, SANDBOX_TAG_PRIVATE_QUEUE);
-    int ret = strcpy_s(node->name, len, name);
-    APPSPAWN_CHECK(ret == 0, free(node);
-        return NULL, "Failed to copy name");
-    return node;
-}
-
-static int PrivateNodeCompareName(ListNode *node, void *data)
-{
-    SandboxPrivateNode *tmpNode = (SandboxPrivateNode *)ListEntry(node, SandboxMountNode, node);
-    return strcmp(tmpNode->name, (char *)data);
-}
-
-SandboxPrivateNode *GetSandboxPrivateNode(const AppSpawnSandboxCfg *sandbox, const char *name)
-{
-    ListNode *node = OH_ListFind(&sandbox->privateNodeQueue.front, (void *)name, PrivateNodeCompareName);
-    if (node == NULL) {
-        return NULL;
-    }
-    return (SandboxPrivateNode *)ListEntry(node, SandboxMountNode, node);
-}
-
-void FreePathNode(SandboxMountNode *node)
-{
-    // delete node
-    OH_ListRemove(&node->node);
-
-    switch (node->type) {
+    switch (sandboxNode->type) {
         case SANDBOX_TAG_MOUNT_PATH:
-            FreePathMountNode(node);
+        case SANDBOX_TAG_MOUNT_FILE:
+            FreePathMountNode(sandboxNode);
             break;
         case SANDBOX_TAG_SYMLINK:
-            FreeSymbolLinkNode(node);
+            FreeSymbolLinkNode(sandboxNode);
             break;
-        case SANDBOX_TAG_PERMISSION: {
-            SandboxPermissionNode *sandboxNode = (SandboxPermissionNode *)node;
-            SandboxSectionFree(&sandboxNode->section);
-            free(node);
-            break;
-        }
-        case SANDBOX_TAG_PRIVATE:{
-            SandboxPrivateNode *sandboxNode = (SandboxPrivateNode *)node;
-            SandboxSectionFree(&sandboxNode->section);
-            free(node);
-            break;
-        }
         default:
+            APPSPAWN_LOGE("Invalid type %{public}u", sandboxNode->type);
+            free(sandboxNode);
             break;
     }
 }
 
-void SandboxSectionInit(SandboxSection *section, uint32_t type)
+SandboxMountNode *GetFirstSandboxMountNode(const SandboxSection *section)
 {
-    OH_ListInit(&section->front);
-    section->type = type;
-    section->sandboxSwitch = 0;
-    section->sandboxShared = 0;
-    section->rootPath = NULL;
-    section->rootFlagsPath[0] = NULL;
-    section->rootFlagsPath[1] = NULL;
-}
-
-int AddPathNode(SandboxMountNode *node, SandboxSection *queue)
-{
-    switch (node->type) {
-        case SANDBOX_TAG_PERMISSION:
-            OH_ListAddWithOrder(&queue->front, &node->node, PermissionNodeCompareProc);
-            break;
-        case SANDBOX_TAG_PRIVATE:
-            OH_ListAddWithOrder(&queue->front, &node->node, PrivateNodeCompareProc);
-            break;
-        default:
-            OH_ListAddWithOrder(&queue->front, &node->node, SandboxNodeCompareProc);
-            break;
-    }
-    return 0;
-}
-
-APPSPAWN_STATIC void AppSpawnSandboxFree(AppSpawnExtData *data)
-{
-    AppSpawnSandboxCfg *sandbox = (AppSpawnSandboxCfg *)data;
-    OH_ListRemove(&sandbox->extData.node);
-    OH_ListInit(&sandbox->extData.node);
-
-    // delete all queue
-    OH_ListRemoveAll(&sandbox->permissionNodeQueue.front, PermissionQueueDestroyProc);
-    OH_ListRemoveAll(&sandbox->privateNodeQueue.front, PrivateQueueDestroyProc);
-    SandboxSectionFree(&sandbox->section);
-    // delete all var
-    ClearVariable();
-    ClearExpandAppSandboxConfigHandle();
-
-    free(sandbox);
-    sandbox = NULL;
-}
-
-static int AppSpawnExtDataCompareDataId(ListNode *node, void *data)
-{
-    AppSpawnExtData *extData = (AppSpawnExtData *)ListEntry(node, AppSpawnExtData, node);
-    return extData->dataId - *(uint32_t *)data;
-}
-
-AppSpawnSandboxCfg *GetAppSpawnSandbox(const AppSpawnMgr *content)
-{
-    uint32_t dataId = EXT_DATA_SANDBOX;
-    ListNode *node = OH_ListFind(&content->extData, (void *)&dataId, AppSpawnExtDataCompareDataId);
-    if (node == NULL) {
+    if (ListEmpty(section->front)) {
         return NULL;
     }
-    return (AppSpawnSandboxCfg *)ListEntry(node, AppSpawnSandboxCfg, extData);
+    return (SandboxMountNode *)ListEntry(section->front.next, SandboxMountNode, node);
 }
 
-static void DumpSandboxSection(const char *info, const SandboxSection *section)
+void DumpSandboxMountNode(const SandboxMountNode *sandboxNode, uint32_t index)
 {
-    APPSPAPWN_DUMP("    ========================================= ");
-    APPSPAPWN_DUMP("    Section %{public}s", info);
-    APPSPAPWN_DUMP("    sandboxSwitch %{public}s", section->sandboxSwitch ? "true" : "false");
-    APPSPAPWN_DUMP("    sandboxShared %{public}s", section->sandboxShared ? "true" : "false");
-    APPSPAPWN_DUMP("    rootPath %{public}s", section->rootPath ? section->rootPath : "null");
-    APPSPAPWN_DUMP("    flags-point path of DLP_MANAGER %{public}s",
-        section->rootFlagsPath[0] ? section->rootFlagsPath[0] : "null");
-    APPSPAPWN_DUMP("    flags-point path of START_FLAGS_BACKUP %{public}s",
-        section->rootFlagsPath[1] ? section->rootFlagsPath[1] : "null");
-}
-
-int DumpSandboxNode(ListNode *node, void *data)
-{
-    if (data != NULL) {
-        (*(uint32_t *)data)++;
-    }
-    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
     switch (sandboxNode->type) {
-        case SANDBOX_TAG_MOUNT_PATH: {
+        case SANDBOX_TAG_MOUNT_PATH:
+        case SANDBOX_TAG_MOUNT_FILE: {
             PathMountNode *pathNode = (PathMountNode *)sandboxNode;
-            APPSPAPWN_DUMP("        ****************************** %{public}u", (data == NULL) ? 0 : *(uint32_t *)data);
+            APPSPAPWN_DUMP("        ****************************** %{public}u", index);
             APPSPAPWN_DUMP("        sandbox node source: %{public}s", pathNode->source ? pathNode->source : "null");
             APPSPAPWN_DUMP("        sandbox node target: %{public}s", pathNode->target ? pathNode->target : "null");
-            APPSPAPWN_DUMP("        sandbox node options: %{public}s", pathNode->options ? pathNode->options : "null");
-            APPSPAPWN_DUMP("        sandbox node fsType: %{public}s", pathNode->fsType ? pathNode->fsType : "null");
+            DumpMountPathMountNode(pathNode);
             APPSPAPWN_DUMP("        sandbox node apl: %{public}s",
                 pathNode->appAplName ? pathNode->appAplName : "null");
-            DumpMountFlags("        sandbox node mountFlags: ", pathNode->mountFlags);
-            DumpMountFlags("        sandbox node customizedFlags: ", pathNode->customizedFlags);
-            DumpMode("        sandbox node destMode: ", pathNode->destMode);
-            APPSPAPWN_DUMP("        sandbox node flagsPoint: %{public}s",
-                (CHECK_FLAGS_BY_INDEX(pathNode->flagsPoint, APP_FLAGS_BACKUP_EXTENSION)) ? "START_FLAGS_BACKUP" :
-                (CHECK_FLAGS_BY_INDEX(pathNode->flagsPoint, APP_FLAGS_DLP_MANAGER)) ? "DLP_MANAGER" : "null");
-            APPSPAPWN_DUMP("        sandbox node dacOverrideSensitive: %{public}s",
-                pathNode->dacOverrideSensitive ? "true" : "false");
-            APPSPAPWN_DUMP("        sandbox node mountSharedFlag: %{public}s",
-                pathNode->mountSharedFlag ? "true" : "false");
             APPSPAPWN_DUMP("        sandbox node checkErrorFlag: %{public}s",
                 pathNode->checkErrorFlag ? "true" : "false");
             break;
@@ -333,121 +135,297 @@ int DumpSandboxNode(ListNode *node, void *data)
         default:
             break;
     }
-    return 0;
 }
 
-static int DumpSandboxPrivateNode(ListNode *node, void *data)
+static inline void InitSandboxSection(SandboxSection *section, int type)
 {
-    (*(uint32_t *)data)++;
-    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
-    SandboxPrivateNode *privateNode = (SandboxPrivateNode *)sandboxNode;
-    DumpSandboxSection(privateNode->name, &privateNode->section);
-    uint32_t count = 0;
-    OH_ListTraversal((ListNode *)&privateNode->section.front, (void *)&count, DumpSandboxNode, 0);
-    return 0;
+    OH_ListInit(&section->front);
+    section->sandboxSwitch = 0;
+    section->sandboxShared = 0;
+    section->number = 0;
+    section->gidCount = 0;
+    section->gidTable = NULL;
+    section->nameGroups = NULL;
+    section->name = NULL;
+    OH_ListInit(&section->sandboxNode.node);
+    section->sandboxNode.type = type;
 }
 
-static int DumpSandboxPermissionNode(ListNode *node, void *data)
+static void ClearSandboxSection(SandboxSection *section)
 {
-    (*(uint32_t *)data)++;
-    SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
-    SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)sandboxNode;
-    DumpSandboxSection(permissionNode->name, &permissionNode->section);
-    APPSPAPWN_DUMP("    gidCount: %{public}u", permissionNode->gidCount);
-    for (uint32_t index = 0; index < permissionNode->gidCount; index++) {
-        APPSPAPWN_DUMP("    gidTable[%{public}u]: %{public}u", index, permissionNode->gidTable[index]);
+    if (section->gidTable) {
+        free(section->gidTable);
+        section->gidTable = NULL;
     }
-    APPSPAPWN_DUMP("    permissionIndex: %{public}u", permissionNode->permissionIndex);
+    // free name group
+    if (section->nameGroups) {
+        free(section->nameGroups);
+        section->nameGroups = NULL;
+    }
+
+    // free mount path
+    ListNode *node = section->front.next;
+    while (node != &section->front) {
+        SandboxMountNode *sandboxNode = ListEntry(node, SandboxMountNode, node);
+        // delete node
+        OH_ListRemove(&sandboxNode->node);
+        OH_ListInit(&sandboxNode->node);
+        DeleteSandboxMountNode(sandboxNode);
+        // get next
+        node = section->front.next;
+    }
+}
+
+static void DumpSandboxQueue(const ListNode *front,
+    void (*dumpSandboxMountNode)(const SandboxMountNode *node, uint32_t count))
+{
     uint32_t count = 0;
-    OH_ListTraversal((ListNode *)&permissionNode->section.front, (void *)&count, DumpSandboxNode, 0);
-    return 0;
+    ListNode *node = front->next;
+    while (node != front) {
+        SandboxMountNode *sandboxNode = (SandboxMountNode *)ListEntry(node, SandboxMountNode, node);
+        count++;
+        dumpSandboxMountNode(sandboxNode, count);
+        // get next
+        node = node->next;
+    }
+}
+
+static void DumpSandboxSection(const SandboxSection *section)
+{
+    APPSPAPWN_DUMP("    ========================================= ");
+    APPSPAPWN_DUMP("    Section %{public}s", section->name);
+    APPSPAPWN_DUMP("    sandboxSwitch %{public}s", section->sandboxSwitch ? "true" : "false");
+    APPSPAPWN_DUMP("    sandboxShared %{public}s", section->sandboxShared ? "true" : "false");
+    APPSPAPWN_DUMP("    gidCount: %{public}u", section->gidCount);
+    for (uint32_t index = 0; index < section->gidCount; index++) {
+        APPSPAPWN_DUMP("        gidTable[%{public}u]: %{public}u", index, section->gidTable[index]);
+    }
+    APPSPAPWN_DUMP("    mount group count: %{public}u", section->number);
+    for (uint32_t i = 0; i < section->number; i++) {
+        if (section->nameGroups[i]) {
+            SandboxNameGroupNode *groupNode = (SandboxNameGroupNode *)section->nameGroups[i];
+            APPSPAPWN_DUMP("        name[%{public}d] %{public}s", i, groupNode->section.name);
+        }
+    }
+    APPSPAPWN_DUMP("    mount-paths: ");
+    DumpSandboxQueue(&section->front, DumpSandboxMountNode);
+}
+
+SandboxSection *CreateSandboxSection(const char *name, uint32_t dataLen, uint32_t type)
+{
+    APPSPAWN_CHECK(name != NULL, return NULL, "Invalid name %{public}u", type);
+    APPSPAWN_CHECK(dataLen >= sizeof(SandboxSection), return NULL, "Invalid dataLen %{public}u", dataLen);
+    APPSPAWN_CHECK(dataLen <= sizeof(SandboxNameGroupNode), return NULL, "Invalid dataLen %{public}u", dataLen);
+    SandboxSection *section = (SandboxSection *)calloc(1, dataLen);
+    APPSPAWN_CHECK(section != NULL, return NULL, "Failed to create base node");
+    InitSandboxSection(section, type);
+    section->name = strdup(name);
+    if (section->name == NULL) {
+        ClearSandboxSection(section);
+        free(section);
+        return NULL;
+    }
+    return section;
+}
+
+static int SandboxConditionalNodeCompareName(ListNode *node, void *data)
+{
+    SandboxSection *tmpNode = (SandboxSection *)ListEntry(node, SandboxMountNode, node);
+    return strcmp(tmpNode->name, (char *)data);
+}
+
+static int SandboxConditionalNodeCompareNode(ListNode *node, ListNode *newNode)
+{
+    SandboxSection *tmpNode = (SandboxSection *)ListEntry(node, SandboxMountNode, node);
+    SandboxSection *tmpNewNode = (SandboxSection *)ListEntry(newNode, SandboxMountNode, node);
+    return strcmp(tmpNode->name, tmpNewNode->name);
+}
+
+SandboxSection *GetSandboxSection(const SandboxQueue *queue, const char *name)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(name != NULL && queue != NULL, return NULL);
+    ListNode *node = OH_ListFind(&queue->front, (void *)name, SandboxConditionalNodeCompareName);
+    if (node == NULL) {
+        return NULL;
+    }
+    return (SandboxSection *)ListEntry(node, SandboxMountNode, node);
+}
+
+void AddSandboxSection(SandboxSection *node, SandboxQueue *queue)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(node != NULL && queue != NULL, return);
+    OH_ListAddWithOrder(&queue->front, &node->sandboxNode.node, SandboxConditionalNodeCompareNode);
+}
+
+void DeleteSandboxSection(SandboxSection *section)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(section != NULL, return);
+    // delete node
+    OH_ListRemove(&section->sandboxNode.node);
+    OH_ListInit(&section->sandboxNode.node);
+    ClearSandboxSection(section);
+    free(section);
+}
+
+static void SandboxQueueClear(SandboxQueue *queue)
+{
+    ListNode *node = queue->front.next;
+    while (node != &queue->front) {
+        SandboxSection *sandboxNode = (SandboxSection *)ListEntry(node, SandboxMountNode, node);
+        DeleteSandboxSection(sandboxNode);
+        // get first
+        node = queue->front.next;
+    }
+}
+
+static int AppSpawnExtDataCompareDataId(ListNode *node, void *data)
+{
+    AppSpawnExtData *extData = (AppSpawnExtData *)ListEntry(node, AppSpawnExtData, node);
+    return extData->dataId - *(uint32_t *)data;
+}
+
+AppSpawnSandboxCfg *GetAppSpawnSandbox(const AppSpawnMgr *content)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return NULL);
+    uint32_t dataId = EXT_DATA_SANDBOX;
+    ListNode *node = OH_ListFind(&content->extData, (void *)&dataId, AppSpawnExtDataCompareDataId);
+    if (node == NULL) {
+        return NULL;
+    }
+    return (AppSpawnSandboxCfg *)ListEntry(node, AppSpawnSandboxCfg, extData);
+}
+
+void DeleteAppSpawnSandbox(AppSpawnSandboxCfg *sandbox)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(sandbox != NULL, return);
+    APPSPAWN_LOGV("DeleteAppSpawnSandbox");
+    OH_ListRemove(&sandbox->extData.node);
+    OH_ListInit(&sandbox->extData.node);
+
+    // delete all queue
+    SandboxQueueClear(&sandbox->requiredQueue);
+    SandboxQueueClear(&sandbox->permissionQueue);
+    SandboxQueueClear(&sandbox->packageNameQueue);
+    SandboxQueueClear(&sandbox->spawnFlagsQueue);
+    SandboxQueueClear(&sandbox->nameGroupsQueue);
+    free(sandbox->depGroupNodes);
+    sandbox->depGroupNodes = NULL;
+
+    free(sandbox);
+    sandbox = NULL;
+}
+
+static void DumpSandboxSectionNode(const SandboxMountNode *node, uint32_t index)
+{
+    SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)node;
+    DumpSandboxSection(&permissionNode->section);
 }
 
 static void DumpSandbox(struct TagAppSpawnExtData *data)
 {
-    uint32_t count = 0;
     AppSpawnSandboxCfg *sandbox = (AppSpawnSandboxCfg *)data;
-    APPSPAPWN_DUMP("Sandbox defaultRootPath: %{public}s", sandbox->defaultRootPath);
-    APPSPAPWN_DUMP("Sandbox sandboxNsFlags: %{public}x %{public}x",
-        sandbox->sandboxNsFlags[0], sandbox->sandboxNsFlags[1]);
-    APPSPAPWN_DUMP("Sandbox topSandboxSwitch: %{public}s", sandbox->topSandboxSwitch ? "true" : "false");
-    APPSPAPWN_DUMP("Sandbox appFullMountEnable: %{public}s", sandbox->appFullMountEnable ? "true" : "false");
-    APPSPAPWN_DUMP("Sandbox pidNamespaceSupport: %{public}s", sandbox->pidNamespaceSupport ? "true" : "false");
-    APPSPAPWN_DUMP("Sandbox common info: ");
-    DumpSandboxSection("common", &sandbox->section);
-    OH_ListTraversal((ListNode *)&sandbox->section.front, (void *)&count, DumpSandboxNode, 0);
-
-    APPSPAPWN_DUMP("Sandbox private info: ");
-    DumpSandboxSection("private", &sandbox->privateNodeQueue);
-    OH_ListTraversal((ListNode *)&sandbox->privateNodeQueue.front, (void *)&count, DumpSandboxPrivateNode, 0);
-
-    APPSPAPWN_DUMP("Sandbox permission max: %{public}d info: ", sandbox->permissionMaxIndex);
-    DumpSandboxSection("permission", &sandbox->permissionNodeQueue);
-    OH_ListTraversal((ListNode *)&sandbox->permissionNodeQueue.front, (void *)&count, DumpSandboxPermissionNode, 0);
+    DumpAppSpawnSandboxCfg(sandbox);
 }
 
-APPSPAWN_STATIC AppSpawnSandboxCfg *CreateAppSpawnSandbox(void)
+static inline void InitSandboxQueue(SandboxQueue *queue, uint32_t type)
 {
-#ifdef APPSPAWN_TEST
-    const char *sandBoxRootDir = APPSPAWN_BASE_DIR "/mnt/sandbox/<PackageName>";
-#else
-    const char *sandBoxRootDir = "/mnt/sandbox/<PackageName>";
-#endif
-    size_t rootDirLen = strlen(sandBoxRootDir) + 1;
+    OH_ListInit(&queue->front);
+    queue->type = type;
+}
+
+static void FreeAppSpawnSandbox(struct TagAppSpawnExtData *data)
+{
+    AppSpawnSandboxCfg *sandbox = ListEntry(data, AppSpawnSandboxCfg, extData);
+    if (sandbox->mounted) {
+        UnmountSandboxConfigs(sandbox);
+    }
+    // delete all var
+    DeleteAppSpawnSandbox(sandbox);
+}
+
+static void ClearAppSpawnSandbox(struct TagAppSpawnExtData *data)
+{
+    // clear no use sand box config
+}
+
+AppSpawnSandboxCfg *CreateAppSpawnSandbox(void)
+{
     // create sandbox
-    AppSpawnSandboxCfg *sandbox = (AppSpawnSandboxCfg *)malloc(sizeof(AppSpawnSandboxCfg) + rootDirLen);
+    AppSpawnSandboxCfg *sandbox = (AppSpawnSandboxCfg *)calloc(1, sizeof(AppSpawnSandboxCfg));
     APPSPAWN_CHECK(sandbox != NULL, return NULL, "Failed to create sandbox");
-    (void)memset_s(sandbox, sizeof(AppSpawnSandboxCfg), 0, sizeof(AppSpawnSandboxCfg));
+
     // ext data init
     OH_ListInit(&sandbox->extData.node);
     sandbox->extData.dataId = EXT_DATA_SANDBOX;
-    sandbox->extData.freeNode = AppSpawnSandboxFree;
+    sandbox->extData.freeNode = FreeAppSpawnSandbox;
+    sandbox->extData.clearNode = ClearAppSpawnSandbox;
     sandbox->extData.dumpNode = DumpSandbox;
 
     // queue
-    SandboxSectionInit(&sandbox->section, SANDBOX_TAG_COMMON_QUEUE);
-    SandboxSectionInit(&sandbox->permissionNodeQueue, SANDBOX_TAG_PERMISSION_QUEUE);
-    SandboxSectionInit(&sandbox->privateNodeQueue, SANDBOX_TAG_PRIVATE_QUEUE);
+    InitSandboxQueue(&sandbox->requiredQueue, SANDBOX_TAG_REQUIRED);
+    InitSandboxQueue(&sandbox->permissionQueue, SANDBOX_TAG_PERMISSION);
+    InitSandboxQueue(&sandbox->packageNameQueue, SANDBOX_TAG_PACKAGE_NAME);
+    InitSandboxQueue(&sandbox->spawnFlagsQueue, SANDBOX_TAG_SPAWN_FLAGS);
+    InitSandboxQueue(&sandbox->nameGroupsQueue, SANDBOX_TAG_NAME_GROUP);
+
     sandbox->topSandboxSwitch = 0;
     sandbox->appFullMountEnable = 0;
     sandbox->topSandboxSwitch = 0;
     sandbox->pidNamespaceSupport = 0;
-    sandbox->sandboxNsFlags[0] = 0;
-    sandbox->sandboxNsFlags[1] = 0;
-    sandbox->permissionMaxIndex = -1;
-    int ret = strcpy_s(sandbox->defaultRootPath, rootDirLen, sandBoxRootDir);
-    APPSPAWN_CHECK(ret == 0, free(sandbox); return NULL,
-        "Failed to create copy root dir %{public}s", sandBoxRootDir);
+    sandbox->sandboxNsFlags = 0;
+    sandbox->maxPermissionIndex = -1;
+    sandbox->depNodeCount = 0;
+    sandbox->depGroupNodes = NULL;
+
+    for (uint32_t i = 0; i < ARRAY_LENGTH(sandbox->systemUids); i++) {
+        sandbox->systemUids[i] = INVALID_UID;
+    }
+
+    AddDefaultVariable();
+    AddDefaultExpandAppSandboxConfigHandle();
     return sandbox;
+}
+
+void DumpAppSpawnSandboxCfg(AppSpawnSandboxCfg *sandbox)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(sandbox != NULL, return);
+    APPSPAPWN_DUMP("Sandbox sandboxNsFlags: %{public}x ", sandbox->sandboxNsFlags);
+    APPSPAPWN_DUMP("Sandbox topSandboxSwitch: %{public}s", sandbox->topSandboxSwitch ? "true" : "false");
+    APPSPAPWN_DUMP("Sandbox appFullMountEnable: %{public}s", sandbox->appFullMountEnable ? "true" : "false");
+    APPSPAPWN_DUMP("Sandbox pidNamespaceSupport: %{public}s", sandbox->pidNamespaceSupport ? "true" : "false");
+    APPSPAPWN_DUMP("Sandbox common info: ");
+
+    DumpSandboxQueue(&sandbox->requiredQueue.front, DumpSandboxSectionNode);
+    DumpSandboxQueue(&sandbox->packageNameQueue.front, DumpSandboxSectionNode);
+    DumpSandboxQueue(&sandbox->permissionQueue.front, DumpSandboxSectionNode);
+    DumpSandboxQueue(&sandbox->spawnFlagsQueue.front, DumpSandboxSectionNode);
+    DumpSandboxQueue(&sandbox->nameGroupsQueue.front, DumpSandboxSectionNode);
 }
 
 static int LoadSandbox(AppSpawnMgr *content)
 {
     AppSpawnSandboxCfg *sandbox = GetAppSpawnSandbox(content);
     APPSPAWN_CHECK(sandbox == NULL, return 0, "Sandbox has been load");
+
     sandbox = CreateAppSpawnSandbox();
     APPSPAWN_CHECK_ONLY_EXPER(sandbox != NULL, return APPSPAWN_SYSTEM_ERROR);
     OH_ListAddTail(&sandbox->extData.node, &content->extData);
 
     // load app sandbox config
-    LoadAppSandboxConfig(sandbox);
-    sandbox->permissionMaxIndex = PermissionRenumber(&sandbox->permissionNodeQueue);
-
-    AddDefaultVariable();
-    AddDefaultExpandAppSandboxConfigHandle();
+    LoadAppSandboxConfig(sandbox, IsNWebSpawnMode(content));
+    sandbox->maxPermissionIndex = PermissionRenumber(&sandbox->permissionQueue);
 
     content->content.sandboxNsFlags = 0;
     if (IsNWebSpawnMode(content) || sandbox->pidNamespaceSupport) {
-        content->content.sandboxNsFlags =
-            IsNWebSpawnMode(content) ? sandbox->sandboxNsFlags[1] : sandbox->sandboxNsFlags[0];
+        content->content.sandboxNsFlags = sandbox->sandboxNsFlags;
     }
     return 0;
 }
 
 int SandboxConfigSet(AppSpawnMgr *content, AppSpawningCtx *property)
 {
-    AppSpawnSandboxCfg *appSandBox = GetAppSpawnSandbox(content);
-    APPSPAWN_CHECK(appSandBox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));
+    AppSpawnSandboxCfg *appSandbox = GetAppSpawnSandbox(content);
+    APPSPAWN_CHECK(appSandbox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));
     // CLONE_NEWPID 0x20000000
     // CLONE_NEWNET 0x40000000
     if ((content->content.sandboxNsFlags & CLONE_NEWPID) == CLONE_NEWPID) {
@@ -456,9 +434,98 @@ int SandboxConfigSet(AppSpawnMgr *content, AppSpawningCtx *property)
             return ret;
         }
     }
-    int ret = SetSandboxConfigs(appSandBox, property, IsNWebSpawnMode(content));
-    if (ret != 0) {
-        return APPSPAWN_SANDBOX_LOAD_FAIL;
+    int ret = MountSandboxConfigs(appSandbox, property, IsNWebSpawnMode(content));
+    appSandbox->mounted = 1;
+    // for module test do not create sandbox
+    if (strncmp(GetBundleName(property), MODULE_TEST_BUNDLE_NAME, strlen(MODULE_TEST_BUNDLE_NAME)) == 0) {
+        return 0;
+    }
+    return ret == 0 ? 0 : APPSPAWN_SANDBOX_MOUNT_FAIL;
+}
+
+static int AppendPermissionGid(const AppSpawnSandboxCfg *sandbox, AppSpawningCtx *property)
+{
+    AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
+    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_TLV_NONE,
+        "No tlv %{public}d in msg %{public}s", TLV_DAC_INFO, GetProcessName(property));
+
+    ListNode *node = sandbox->permissionQueue.front.next;
+    while (node != &sandbox->permissionQueue.front) {
+        SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)ListEntry(node, SandboxMountNode, node);
+        if (!CheckAppPermissionFlagSet(property, (uint32_t)permissionNode->permissionIndex)) {
+            node = node->next;
+            continue;
+        }
+        if (permissionNode->section.gidCount == 0) {
+            node = node->next;
+            continue;
+        }
+        size_t copyLen = permissionNode->section.gidCount;
+        if ((permissionNode->section.gidCount + dacInfo->gidCount) > APP_MAX_GIDS) {
+            APPSPAWN_LOGW("More gid for %{public}s msg count %{public}u permission %{public}u",
+                GetProcessName(property), dacInfo->gidCount, permissionNode->section.gidCount);
+            copyLen = APP_MAX_GIDS - dacInfo->gidCount;
+        }
+        int ret = memcpy_s(&dacInfo->gidTable[dacInfo->gidCount], sizeof(gid_t) * copyLen,
+            permissionNode->section.gidTable, sizeof(gid_t) * copyLen);
+        if (ret != EOK) {
+            APPSPAWN_LOGW("Failed to append permission %{public}s gid to %{public}s",
+                permissionNode->section.name, GetProcessName(property));
+        }
+        node = node->next;
+    }
+    return 0;
+}
+
+static bool IsSystemConstMounted(const AppSpawnSandboxCfg *sandbox, AppSpawnMsgDacInfo *info)
+{
+    uid_t uid = info->uid / UID_BASE;
+    for (uint32_t i = 0; i < ARRAY_LENGTH(sandbox->systemUids); i++) {
+        if (sandbox->systemUids[i] == uid) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static int SetSystemConstMounted(AppSpawnSandboxCfg *sandbox, AppSpawnMsgDacInfo *info)
+{
+    uid_t uid = info->uid / UID_BASE;
+    for (uint32_t i = 0; i < ARRAY_LENGTH(sandbox->systemUids); i++) {
+        if (sandbox->systemUids[i] == INVALID_UID) {
+            sandbox->systemUids[i] = uid;
+            break;
+        }
+    }
+    return 0;
+}
+
+int PrepareSandbox(AppSpawnMgr *content, AppSpawningCtx *property)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return -1);
+    APPSPAWN_CHECK_ONLY_EXPER(property != NULL, return -1);
+    APPSPAWN_LOGV("Prepare sandbox config %{public}s", GetProcessName(property));
+    AppSpawnSandboxCfg *sandbox = GetAppSpawnSandbox(content);
+    APPSPAWN_CHECK(sandbox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));
+
+    if (sandbox->appFullMountEnable) {
+        int index = GetPermissionIndexInQueue(&sandbox->permissionQueue, FILE_CROSS_APP_MODE);
+        if (index > 0) {
+            SetAppPermissionFlags(property, index);
+        }
+    }
+    int ret = AppendPermissionGid(sandbox, property);
+    APPSPAWN_CHECK(ret == 0, return ret, "Failed to add gid for %{public}s", GetProcessName(property));
+
+    AppSpawnMsgDacInfo *info = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
+    APPSPAWN_CHECK(info != NULL, return APPSPAWN_TLV_NONE,
+        "No tlv %{public}d in msg %{public}s", TLV_DAC_INFO, GetProcessName(property));
+    if (!IsSystemConstMounted(sandbox, info)) {
+        ret = StagedMountSystemConst(sandbox, property, IsNWebSpawnMode(content));
+        APPSPAWN_CHECK(ret == 0, return ret, "Failed to mount system-const for %{public}s", GetProcessName(property));
+        SetSystemConstMounted(sandbox, info);
+    } else {
+        APPSPAWN_LOGW("System-const config [uid: %{public}u] has been set", info->uid / UID_BASE);
     }
     return 0;
 }
@@ -467,7 +534,12 @@ MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load sandbox module ...");
     AddPreloadHook(HOOK_PRIO_SANDBOX, LoadSandbox);
-    // fork
     AddAppSpawnHook(HOOK_SPAWN_PREPARE, HOOK_PRIO_SANDBOX, PrepareSandbox);
     AddAppSpawnHook(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_PRIO_SANDBOX, SandboxConfigSet);
+}
+
+MODULE_DESTRUCTOR(void)
+{
+    ClearVariable();
+    ClearExpandAppSandboxConfigHandle();
 }

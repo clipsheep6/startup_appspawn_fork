@@ -25,11 +25,15 @@
 extern "C" {
 #endif
 
-#ifdef APPSPAWN_CLIENT
-typedef struct TagSandboxSection {
+typedef struct TagSandboxQueue {
     struct ListNode front;
     uint32_t type;
 } SandboxQueue;
+
+typedef struct TagAppSpawnSandboxCfg {
+    SandboxQueue permissionQueue;
+    int32_t maxPermissionIndex;
+} AppSpawnSandboxCfg;
 
 typedef struct {
     struct ListNode node;
@@ -40,10 +44,28 @@ typedef struct TagPermissionNode {
     uint32_t permissionIndex;
     char name[0];
 } SandboxPermissionNode;
-#endif
 
+/**
+ * @brief Get the permission index by permission name
+ *
+ * @param permission permission name
+ * @return int32_t permission index, if not exit, return INVALID_PERMISSION_INDEX
+ */
 int32_t GetPermissionIndex(const char *permission);
+
+/**
+ * @brief Get the max permission Index
+ *
+ * @return int32_t max permission Index
+ */
 int32_t GetMaxPermissionIndex(void);
+
+/**
+ * @brief Get the permission name by index
+ *
+ * @param index permission index
+ * @return const char* permission name
+ */
 const char *GetPermissionByIndex(int32_t index);
 
 #ifdef __cplusplus

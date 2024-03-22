@@ -35,8 +35,6 @@
 #include "securec.h"
 #include "thread_manager.h"
 
-#include "app_spawn_stub.h"
-
 #define MAX_THREAD 10
 #define MAX_SEND 200
 #define PTY_PATH_SIZE 128
@@ -136,6 +134,29 @@ int AppSpawnTestCommander::ProcessArgs(int argc, char *const argv[])
         return 1;
     }
     return 0;
+}
+
+uint32_t AppSpawnTestCommander::GetUint32ArrayFromJson(const cJSON *json,
+    const char *name, uint32_t dataArray[], uint32_t maxCount)
+{
+    APPSPAWN_CHECK(json != NULL, return 0, "Invalid json");
+    APPSPAWN_CHECK(name != NULL, return 0, "Invalid name");
+    APPSPAWN_CHECK(dataArray != NULL, return 0, "Invalid dataArray");
+    APPSPAWN_CHECK(cJSON_IsObject(json), return 0, "json is not object.");
+    cJSON *array = cJSON_GetObjectItemCaseSensitive(json, name);
+    APPSPAWN_CHECK_ONLY_EXPER(array != NULL, return 0);
+    APPSPAWN_CHECK(cJSON_IsArray(array), return 0, "json is not object.");
+
+    uint32_t count = 0;
+    uint32_t arrayLen = cJSON_GetArraySize(array);
+    for (int i = 0; i < arrayLen; i++) {
+        cJSON *item = cJSON_GetArrayItem(array, i);
+        uint32_t value = (uint32_t)cJSON_GetNumberValue(item);
+        if (count < maxCount) {
+            dataArray[count++] = value;
+        }
+    }
+    return count;
 }
 
 int AppSpawnTestCommander::AddBundleInfoFromJson(const cJSON *appInfoConfig, AppSpawnReqMsgHandle reqHandle)

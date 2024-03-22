@@ -30,32 +30,34 @@ static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int32_t g_maxPermissionIndex = -1;
 static SandboxQueue g_permissionQueue = {0};
 
-static int ParsePermissionConfig(const cJSON *permissionConfigs)
+static int ParseAppSandboxConfig(const cJSON *root, AppSpawnSandboxCfg *context)
 {
-    cJSON *config = NULL;
-    cJSON_ArrayForEach(config, permissionConfigs)
-    {
-        const char *name = config->string;
-        APPSPAWN_LOGV("ParsePermissionConfig %{public}s", name);
+    // conditional
+    cJSON *json = cJSON_GetObjectItemCaseSensitive(root, "conditional");
+    if (json == NULL) {
+        return 0;
+    }
+    // permission
+    cJSON *config = cJSON_GetObjectItemCaseSensitive(json, "permission");
+    if (config == NULL || !cJSON_IsArray(config)) {
+        return 0;
+    }
+
+    uint32_t configSize = cJSON_GetArraySize(config);
+    for (uint32_t i = 0; i < configSize; i++) {
+        cJSON *json = cJSON_GetArrayItem(config, i);
+        if (json == NULL) {
+            continue;
+        }
+        char *name = GetStringFromJsonObj(json, "name");
+        if (name == NULL) {
+            APPSPAWN_LOGE("No name in permission configs");
+            continue;
+        }
         int ret = AddSandboxPermissionNode(name, &g_permissionQueue);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
     }
     return 0;
-}
-
-static int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandboxCfg *context)
-{
-    cJSON *configs = cJSON_GetObjectItemCaseSensitive(appSandboxConfig, "permission");
-    APPSPAWN_CHECK(configs != NULL && cJSON_IsArray(configs), return 0, "No permission in json");
-
-    int ret = 0;
-    uint32_t configSize = cJSON_GetArraySize(configs);
-    for (uint32_t i = 0; i < configSize; i++) {
-        cJSON *json = cJSON_GetArrayItem(configs, i);
-        ret = ParsePermissionConfig(json);
-        APPSPAWN_CHECK(ret == 0, return ret, "Parse permission config fail result: %{public}d ", ret);
-    }
-    return ret;
 }
 
 static int LoadPermissionConfig(void)
@@ -86,7 +88,11 @@ const char *GetPermissionByIndex(int32_t index)
         return NULL;
     }
     const SandboxPermissionNode *node = GetPermissionNodeInQueueByIndex(&g_permissionQueue, index);
+#ifdef APPSPAWN_CLIENT
     return node == NULL ? NULL : node->name;
+#else
+    return node == NULL ? NULL : node->section.name;
+#endif
 }
 
 static void LoadPermission(void)

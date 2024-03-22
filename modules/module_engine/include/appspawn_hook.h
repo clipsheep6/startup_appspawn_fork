@@ -44,10 +44,12 @@ typedef enum {
 struct TagAppSpawnExtData;
 typedef void (*AppSpawnExtDataFree)(struct TagAppSpawnExtData *data);
 typedef void (*AppSpawnExtDataDump)(struct TagAppSpawnExtData *data);
+typedef void (*AppSpawnExtDataClear)(struct TagAppSpawnExtData *data);
 typedef struct TagAppSpawnExtData {
     ListNode node;
     uint32_t dataId;
     AppSpawnExtDataFree freeNode;
+    AppSpawnExtDataClear clearNode;
     AppSpawnExtDataDump dumpNode;
 } AppSpawnExtData;
 
@@ -91,7 +93,7 @@ void RegChildLooper(AppSpawnContent *content, ChildLoop loop);
  * @return int 结果
  */
 int MakeDirRec(const char *path, mode_t mode, int lastPath);
-__attribute__((always_inline)) inline int MakeDirRecursive(const char *path, mode_t mode)
+__attribute__((always_inline)) inline int CreateSandboxDir(const char *path, mode_t mode)
 {
     return MakeDirRec(path, mode, 1);
 }
@@ -109,8 +111,9 @@ int SandboxMountPath(const MountArg *arg);
 
 // 扩展变量
 typedef struct TagSandboxContext SandboxContext;
+typedef struct TagVarExtraData VarExtraData;
 typedef int (*ReplaceVarHandler)(const SandboxContext *context,
-    const char *buffer, uint32_t bufferLen, uint32_t *realLen);
+    const char *buffer, uint32_t bufferLen, uint32_t *realLen, const VarExtraData *extraData);
 /**
  * @brief 注册变量替换处理函数
  *

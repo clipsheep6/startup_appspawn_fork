@@ -67,6 +67,7 @@ extern "C" {
 #define APPSPAWN_USEC_TO_NSEC 1000
 #define APPSPAWN_SEC_TO_MSEC 1000
 
+#define SET_FLAGS_BY_INDEX(flags, index) (flags) |= (1 << (index))
 #define CHECK_FLAGS_BY_INDEX(flags, index) ((((flags) >> (index)) & 0x1) == 0x1)
 #ifndef ARRAY_LENGTH
 #define ARRAY_LENGTH(array) (sizeof((array)) / sizeof((array)[0]))

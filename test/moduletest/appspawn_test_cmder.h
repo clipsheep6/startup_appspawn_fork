@@ -73,7 +73,7 @@ private:
     int GetInternetPermissionInfoFromJson(const cJSON *appInfoConfig, AppSpawnMsgInternetInfo &info);
     int GetAccessTokenFromJson(const cJSON *appInfoConfig, AppSpawnMsgAccessToken &info);
     int AddDomainInfoFromJson(const cJSON *appInfoConfig, AppSpawnReqMsgHandle reqHandle);
-
+    uint32_t GetUint32ArrayFromJson(const cJSON *json, const char *name, uint32_t dataArray[], uint32_t maxCount);
     static AppSpawnTestCommander *ConvertTo(const ThreadContext *context)
     {
         return const_cast<AppSpawnTestCommander *>(reinterpret_cast<const AppSpawnTestCommander *>(context));

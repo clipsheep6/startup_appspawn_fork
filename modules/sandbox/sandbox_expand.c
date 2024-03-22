@@ -28,13 +28,6 @@
 #define SANDBOX_INSTALL_PATH "/data/storage/el2/group/"
 #define SANDBOX_OVERLAY_PATH "/data/storage/overlay/"
 
-static inline void *GetSpawningMsgExtInfo(const SandboxContext *context, const char *name, uint32_t *len)
-{
-    APPSPAWN_CHECK(context != NULL && context->property != NULL,
-        return NULL, "Invalid property for name %{public}s", name);
-    return GetAppPropertyExt(context->property, name, len);
-}
-
 static inline bool CheckPath(const char *name)
 {
     return name != NULL && strcmp(name, ".") != 0 && strcmp(name, "..") != 0 && strstr(name, "/") == NULL;
@@ -72,7 +65,7 @@ static int MountAllHsp(const SandboxContext *context, const cJSON *hsps)
             context->sandboxPackagePath, SANDBOX_INSTALL_PATH, libBundleName, libModuleName);
         APPSPAWN_CHECK(len > 0, return -1, "Failed to format install path");
 
-        MakeDirRecursive(context->buffer[1].buffer, FILE_MODE);
+        CreateSandboxDir(context->buffer[1].buffer, FILE_MODE);
         MountArg mountArg = {
             context->buffer[0].buffer, context->buffer[1].buffer, NULL, MS_REC | MS_BIND, NULL, MS_SLAVE
         };
@@ -116,7 +109,7 @@ static int MountAllGroup(const SandboxContext *context, const cJSON *groups)
         APPSPAWN_CHECK(len > 0, return -1, "Failed to format install path");
         APPSPAWN_LOGV("MountAllGroup src: '%{public}s' =>'%{public}s'", libPhysicalPath, context->buffer[0].buffer);
 
-        MakeDirRecursive(context->buffer[0].buffer, FILE_MODE);
+        CreateSandboxDir(context->buffer[0].buffer, FILE_MODE);
         MountArg mountArg = {libPhysicalPath, context->buffer[0].buffer, NULL, MS_REC | MS_BIND, NULL, MS_SLAVE};
         ret = SandboxMountPath(&mountArg);
         APPSPAWN_CHECK(ret == 0, return ret, "mount library failed %{public}d", ret);
@@ -196,7 +189,7 @@ static int SetOverlayAppSandboxConfig(const SandboxContext *context, const char 
 static inline cJSON *GetJsonObjFromProperty(const SandboxContext *context, const char *name)
 {
     uint32_t size = 0;
-    char *extInfo = (char *)(GetSpawningMsgExtInfo(context, name, &size));
+    char *extInfo = (char *)(GetAppSpawnMsgExtInfo(context->message, name, &size));
     if (size == 0 || extInfo == NULL) {
         return NULL;
     }
@@ -228,7 +221,7 @@ static int ProcessOverlayAppConfig(const SandboxContext *context,
     const AppSpawnSandboxCfg *appSandBox, const char *name)
 {
     uint32_t size = 0;
-    char *extInfo = (char *)GetSpawningMsgExtInfo(context, name, &size);
+    char *extInfo = (char *)GetAppSpawnMsgExtInfo(context->message, name, &size);
     if (size == 0 || extInfo == NULL) {
         return 0;
     }

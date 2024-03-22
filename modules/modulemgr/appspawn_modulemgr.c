@@ -50,7 +50,11 @@ int AppSpawnModuleMgrInstall(const char *moduleName)
     if (g_moduleMgr[type].moduleMgr == NULL) {
         return -1;
     }
+#ifndef APPSPAWN_TEST
     return ModuleMgrInstall(g_moduleMgr[type].moduleMgr, moduleName, 0, NULL);
+#else
+    return 0;
+#endif
 }
 
 void AppSpawnModuleMgrUnInstall(int type)
@@ -74,8 +78,12 @@ int AppSpawnLoadAutoRunModules(int type)
         return 0;
     }
     APPSPAWN_LOGI("AppSpawnLoadAutoRunModules: %{public}d moduleName: %{public}s", type, g_moduleMgr[type].moduleName);
+#ifndef APPSPAWN_TEST
     g_moduleMgr[type].moduleMgr = ModuleMgrScan(g_moduleMgr[type].moduleName);
     return g_moduleMgr[type].moduleMgr == NULL ? -1 : 0;
+#else
+    return 0;
+#endif
 }
 
 HOOK_MGR *GetAppSpawnHookMgr(void)

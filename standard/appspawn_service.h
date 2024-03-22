@@ -41,8 +41,6 @@ extern "C" {
 #endif
 
 typedef struct TagAppSpawnMsgNode AppSpawnMsgNode;
-typedef struct TagAppSpawnClient AppSpawnClient;
-
 typedef struct TagAppSpawnMsgReceiverCtx {
     uint32_t nextMsgId;              // 校验消息id
     uint32_t msgRecvLen;             // 已经接收的长度

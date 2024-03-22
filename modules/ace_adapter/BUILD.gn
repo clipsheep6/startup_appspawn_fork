@@ -14,13 +14,6 @@
 import("//base/startup/appspawn/appspawn.gni")
 import("//build/ohos.gni")
 
-config("ace_config") {
-  visibility = [ "./*" ]
-  include_dirs = [
-    "${ability_runtime_path}/interfaces/kits/native/appkit/app",
-  ]
-}
-
 ohos_shared_library("appspawn_ace") {
   sources = [
     "ace_adapter.cpp",
@@ -32,7 +25,6 @@ ohos_shared_library("appspawn_ace") {
     "${appspawn_path}/standard",
     "${appspawn_path}/util/include",
   ]
-  configs = [ ":ace_config" ]
   deps = [
     "${appspawn_path}/modules/module_engine:libappspawn_module_engine",
     "${appspawn_path}/util:libappspawn_util",

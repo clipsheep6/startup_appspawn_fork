@@ -41,6 +41,7 @@ typedef void *AppSpawnReqMsgHandle;
  */
 typedef void *AppSpawnClientHandle;
 
+#define INVALID_PERMISSION_INDEX (-1)
 #define INVALID_REQ_HANDLE NULL
 #define NWEBSPAWN_SERVER_NAME "nwebspawn"
 #define APPSPAWN_SERVER_NAME "appspawn"

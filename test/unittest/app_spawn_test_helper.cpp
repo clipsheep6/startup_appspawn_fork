@@ -111,7 +111,7 @@ void *AppSpawnTestServer::ServiceThread(void *arg)
             RegChildLooper(server->content_, ChildLoopRun);
             AppSpawnMgr *content = reinterpret_cast<AppSpawnMgr *>(server->content_);
             APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return nullptr);
-            AppSpawnedProcess *info = GetSpawnedProcessByName(&content->processMgr, NWEBSPAWN_SERVER_NAME);
+            AppSpawnedProcess *info = GetSpawnedProcessByName(NWEBSPAWN_SERVER_NAME);
             if (info != NULL) {
                 APPSPAWN_LOGV("Save nwebspawn pid: %{public}d %{public}d", info->pid, server->serverId_);
                 server->appPid_.store(info->pid);
@@ -479,7 +479,7 @@ AppSpawningCtx *AppSpawnTestHelper::GetAppProperty(AppSpawnClientHandle handle, 
     int ret = DecodeAppSpawnMsg(msgNode);
     APPSPAWN_CHECK(ret == 0, DeleteAppSpawnMsg(msgNode);
         return nullptr, "Decode msg fail");
-    AppSpawningCtx *property = CreateAppSpawningCtx(nullptr);
+    AppSpawningCtx *property = CreateAppSpawningCtx();
     APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, DeleteAppSpawnMsg(msgNode);
         return nullptr);
     property->message = msgNode;

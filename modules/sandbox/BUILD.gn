@@ -16,6 +16,7 @@ import("//build/ohos.gni")
 
 ohos_shared_library("appspawn_sandbox") {
   sources = [
+    "appspawn_mount_template.c",
     "appspawn_permission.c",
     "appspawn_sandbox.c",
     "sandbox_cfgvar.c",

@@ -13,7 +13,7 @@
     { "name": "SandboxMountPath" },
     { "name": "AddVariableReplaceHandler" },
     { "name": "GetSpawnedProcess" },
-    { "name": "DumpNormalProperty" },
+    { "name": "DumpAppSpawnMsg" },
     { "name": "AppSpawnDump" },
     { "name": "RegisterExpandSandboxCfgHandler" }
 ]

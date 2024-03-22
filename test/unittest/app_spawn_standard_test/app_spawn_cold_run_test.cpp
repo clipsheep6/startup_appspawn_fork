@@ -347,8 +347,8 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         ASSERT_EQ(content->mode, MODE_FOR_APP_COLD_RUN);
         // add property to content
-        OH_ListAddTail(&(reinterpret_cast<AppSpawnMgr *>(content))->processMgr.appSpawnQueue, &property->node);
-        DumpApSpawn(reinterpret_cast<AppSpawnMgr *>(content), nullptr);
+        OH_ListAddTail(&GetAppSpawnMgr()->appSpawnQueue, &property->node);
+        ProcessAppSpawnDumpMsg(nullptr);
         // spawn prepare process
         AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
         AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, 0, content, &property->client);

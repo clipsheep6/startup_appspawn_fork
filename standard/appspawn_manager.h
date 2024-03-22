@@ -92,41 +92,59 @@ typedef struct TagAppSpawnedProcess {
     char name[0];
 } AppSpawnedProcess;
 
-typedef struct {
-    struct ListNode appQueue;  // save app pid and name
-    uint32_t diedAppCount;
-    struct ListNode diedQueue;      // save app pid and name
-    struct ListNode appSpawnQueue;  // save app pid and name
-} AppSpawnedProcessMgr;
-
 typedef struct TagAppSpawnMgr {
     AppSpawnContent content;
     TaskHandle server;
     SignalHandle sigHandler;
     pid_t servicePid;
-    AppSpawnedProcessMgr processMgr;
+    struct ListNode appQueue;  // save app pid and name
+    uint32_t diedAppCount;
+    struct ListNode diedQueue;      // save app pid and name
+    struct ListNode appSpawnQueue;  // save app pid and name
     struct timespec perLoadStart;
     struct timespec perLoadEnd;
     struct ListNode extData;
 } AppSpawnMgr;
 
-int AppSpawnedProcessMgrInit(AppSpawnedProcessMgr *mgr);
-int AppSpawnedProcessMgrDestroy(AppSpawnedProcessMgr *mgr);
-AppSpawnedProcess *AddSpawnedProcess(AppSpawnedProcessMgr *mgr, pid_t pid, const char *processName);
-AppSpawnedProcess *GetSpawnedProcess(AppSpawnedProcessMgr *mgr, pid_t pid);
-AppSpawnedProcess *GetSpawnedProcessByName(AppSpawnedProcessMgr *mgr, const char *name);
-void ProcessProcessTerminate(AppSpawnedProcessMgr *mgr, AppSpawnedProcess *node, int nwebspawn);
-int GetProcessTerminationStatus(AppSpawnedProcessMgr *mgr, pid_t pid);
+/**
+ * @brief App Spawn Mgr object op
+ *
+ */
+AppSpawnMgr *CreateAppSpawnMgr(int mode);
+AppSpawnMgr *GetAppSpawnMgr(void);
+void DeleteAppSpawnMgr(AppSpawnMgr *mgr);
+void ClearAppSpawnMgr(AppSpawnMgr *mgr);
+AppSpawnContent *GetAppSpawnContent(void);
 
-AppSpawningCtx *GetAppSpawningCtxByPid(AppSpawnedProcessMgr *mgr, pid_t pid);
-AppSpawningCtx *CreateAppSpawningCtx(AppSpawnedProcessMgr *mgr);
+/**
+ * @brief 孵化成功后进程或者app实例的操作
+ *
+ */
+typedef void (*AppTraversal)(const AppSpawnMgr *mgr, AppSpawnedProcess *appInfo, void *data);
+void TraversalSpawnedProcess(AppTraversal traversal, void *data);
+AppSpawnedProcess *AddSpawnedProcess(pid_t pid, const char *processName);
+AppSpawnedProcess *GetSpawnedProcess(pid_t pid);
+AppSpawnedProcess *GetSpawnedProcessByName(const char *name);
+void TerminateSpawnedProcess(AppSpawnedProcess *node);
+
+/**
+ * @brief 孵化过程中的ctx对象的操作
+ *
+ */
+typedef void (*ProcessTraversal)(const AppSpawnMgr *mgr, AppSpawningCtx *ctx, void *data);
+void AppSpawningCtxTraversal(ProcessTraversal traversal, void *data);
+AppSpawningCtx *GetAppSpawningCtxByPid(pid_t pid);
+AppSpawningCtx *CreateAppSpawningCtx();
 void DeleteAppSpawningCtx(AppSpawningCtx *property);
+int KillAndWaitStatus(pid_t pid, int sig);
 
-// dump
-void DumpApSpawn(const AppSpawnMgr *content, const AppSpawnMsgNode *message);
-void DumpNormalProperty(const AppSpawningCtx *property);
+/**
+ * @brief 消息解析、处理
+ *
+ */
+void ProcessAppSpawnDumpMsg(const AppSpawnMsgNode *message);
+int ProcessTerminationStatusMsg(const AppSpawnMsgNode *message, AppSpawnResult *result);
 
-pid_t GetPidFromTerminationMsg(AppSpawnMsgNode *message);
 void DeleteAppSpawnMsg(AppSpawnMsgNode *msgNode);
 int CheckAppSpawnMsg(const AppSpawnMsgNode *message);
 int DecodeAppSpawnMsg(AppSpawnMsgNode *message);
@@ -134,6 +152,11 @@ int GetAppSpawnMsgFromBuffer(const uint8_t *buffer, uint32_t bufferLen,
     AppSpawnMsgNode **outMsg, uint32_t *msgRecvLen, uint32_t *reminder);
 int SendAppSpawnMsgToChild(AppSpawningCtx *forkCtx, AppSpawnMsgNode *message);
 
+/**
+ * @brief 消息内容操作接口
+ *
+ */
+void DumpAppSpawnMsg(const AppSpawnMsgNode *message);
 void *GetAppSpawnMsgInfo(const AppSpawnMsgNode *message, int type);
 void *GetAppSpawnMsgExtInfo(const AppSpawnMsgNode *message, const char *name, uint32_t *len);
 int CheckAppSpawnMsgFlag(const AppSpawnMsgNode *message, uint32_t type, uint32_t index);

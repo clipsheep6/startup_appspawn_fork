@@ -247,9 +247,11 @@ int AppSpawnSocket::WriteSocketMessage(int socketFd, const void *buf, int len)
         APPSPAWN_LOGE("Invalid args: socket %{public}d, len %{public}d, buf might be nullptr", socketFd, len);
         return -1;
     }
+    APPSPAWN_LOGV("WriteSocketMessage len %{public}u", len);
 #ifdef APPSPAWN_NEW_CLIENT
     int ret = 0;
     if (currMsgLen_ == 0) {
+        message_.clear();
         const AppParameter *parameter = reinterpret_cast<const AppParameter *>(buf);
         if (parameter->extraInfo.totalLength == 0) {
             ret = SendMessage(reinterpret_cast<const uint8_t *>(buf), static_cast<uint32_t>(len));
@@ -260,9 +262,10 @@ int AppSpawnSocket::WriteSocketMessage(int socketFd, const void *buf, int len)
         }
         message_.resize(sizeof(AppParameter) + parameter->extraInfo.totalLength);
         ret = memcpy_s(message_.data(), message_.size(), buf, len);
-        APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy msg: %{public}u recv: %{public}u", currMsgLen_, len);
+        APPSPAWN_LOGV("WriteSocketMessage total %{public}u AppParameter %{public}u %{public}u",
+            message_.size(), sizeof(AppParameter), parameter->extraInfo.totalLength);
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy msg: %{public}u recv: %{public}u", errno, len);
         currMsgLen_ = len;
-        APPSPAWN_LOGV("WriteSocketMessage total %{public}u", message_.size());
     } else if ((currMsgLen_ + len) > message_.size()) {
         APPSPAWN_LOGE("WriteSocketMessage invalid msg: %{public}u recv: %{public}u", currMsgLen_, len);
         return -1;

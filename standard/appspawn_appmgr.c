@@ -32,27 +32,97 @@
 #include "appspawn_manager.h"
 #include "securec.h"
 
-static void AppPropertyDestroyProc(ListNode *node)
+static AppSpawnMgr *g_appSpawnMgr = NULL;
+
+AppSpawnMgr *CreateAppSpawnMgr(int mode)
+{
+    AppSpawnMgr *appMgr = (AppSpawnMgr *)calloc(1, sizeof(AppSpawnMgr));
+    APPSPAWN_CHECK(appMgr != NULL, return NULL, "Failed to alloc memory for appspawn");
+    appMgr->content.longProcName = NULL;
+    appMgr->content.longProcNameLen = 0;
+    appMgr->content.mode = mode;
+    appMgr->content.sandboxNsFlags = 0;
+    appMgr->servicePid = getpid();
+    appMgr->server = NULL;
+    appMgr->sigHandler = NULL;
+    OH_ListInit(&appMgr->appQueue);
+    OH_ListInit(&appMgr->diedQueue);
+    OH_ListInit(&appMgr->appSpawnQueue);
+    appMgr->diedAppCount = 0;
+    OH_ListInit(&appMgr->extData);
+    g_appSpawnMgr = appMgr;
+    return appMgr;
+}
+
+AppSpawnMgr *GetAppSpawnMgr(void)
+{
+    return g_appSpawnMgr;
+}
+
+AppSpawnContent *GetAppSpawnContent(void)
+{
+    return g_appSpawnMgr == NULL ? NULL : &g_appSpawnMgr->content;
+}
+
+static void SpawningQueueDestroy(ListNode *node)
 {
     AppSpawningCtx *property = ListEntry(node, AppSpawningCtx, node);
     DeleteAppSpawningCtx(property);
 }
 
-int AppSpawnedProcessMgrInit(AppSpawnedProcessMgr *mgr)
+static void ExtDataDestroy(ListNode *node)
 {
-    OH_ListInit(&mgr->appQueue);
-    OH_ListInit(&mgr->diedQueue);
-    OH_ListInit(&mgr->appSpawnQueue);
-    mgr->diedAppCount = 0;
+    AppSpawnExtData *extData = ListEntry(node, AppSpawnExtData, node);
+    AppSpawnExtDataFree freeNode = extData->freeNode;
+    if (freeNode) {
+        freeNode(extData);
+    }
+}
+
+static int ExtDataClear(ListNode *node, void *data)
+{
+    AppSpawnExtData *extData = ListEntry(node, AppSpawnExtData, node);
+    AppSpawnExtDataClear clearNode = extData->clearNode;
+    if (clearNode) {
+        clearNode(extData);
+    }
     return 0;
 }
 
-int AppSpawnedProcessMgrDestroy(AppSpawnedProcessMgr *mgr)
+void ClearAppSpawnMgr(AppSpawnMgr *mgr)
 {
+    APPSPAWN_CHECK_ONLY_EXPER(mgr != NULL, return);
     OH_ListRemoveAll(&mgr->appQueue, NULL);
     OH_ListRemoveAll(&mgr->diedQueue, NULL);
-    OH_ListRemoveAll(&mgr->appSpawnQueue, AppPropertyDestroyProc);
-    return 0;
+    OH_ListRemoveAll(&mgr->appSpawnQueue, SpawningQueueDestroy);
+    OH_ListTraversal(&mgr->extData, NULL, ExtDataClear, 0);
+}
+
+void DeleteAppSpawnMgr(AppSpawnMgr *mgr)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(mgr != NULL, return);
+    OH_ListRemoveAll(&mgr->appQueue, NULL);
+    OH_ListRemoveAll(&mgr->diedQueue, NULL);
+    OH_ListRemoveAll(&mgr->appSpawnQueue, SpawningQueueDestroy);
+    OH_ListRemoveAll(&mgr->extData, ExtDataDestroy);
+
+    APPSPAWN_LOGV("DeleteAppSpawnMgr %{public}d %{public}d", mgr->servicePid, getpid());
+    free(mgr);
+    if (g_appSpawnMgr == mgr) {
+        g_appSpawnMgr = NULL;
+    }
+}
+
+void TraversalSpawnedProcess(AppTraversal traversal, void *data)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(g_appSpawnMgr != NULL && traversal != NULL, return);
+    ListNode *node = g_appSpawnMgr->appQueue.next;
+    while (node != &g_appSpawnMgr->appQueue) {
+        ListNode *next = node->next;
+        AppSpawnedProcess *appInfo = ListEntry(node, AppSpawnedProcess, node);
+        traversal(g_appSpawnMgr, appInfo, data);
+        node = next;
+    }
 }
 
 static int AppInfoPidComparePro(ListNode *node, void *data)
@@ -75,9 +145,9 @@ static int AppInfoCompareProc(ListNode *node, ListNode *newNode)
     return node1->pid - node2->pid;
 }
 
-AppSpawnedProcess *AddSpawnedProcess(AppSpawnedProcessMgr *mgr, pid_t pid, const char *processName)
+AppSpawnedProcess *AddSpawnedProcess(pid_t pid, const char *processName)
 {
-    APPSPAWN_CHECK(mgr != NULL && processName != NULL, return NULL, "Invalid mgr or process name");
+    APPSPAWN_CHECK(g_appSpawnMgr != NULL && processName != NULL, return NULL, "Invalid mgr or process name");
     APPSPAWN_CHECK(pid > 0, return NULL, "Invalid pid for %{public}s", processName);
     size_t len = strlen(processName) + 1;
     AppSpawnedProcess *node = (AppSpawnedProcess *)calloc(1, sizeof(AppSpawnedProcess) + len + 1);
@@ -93,62 +163,52 @@ AppSpawnedProcess *AddSpawnedProcess(AppSpawnedProcessMgr *mgr, pid_t pid, const
 
     OH_ListInit(&node->node);
     APPSPAWN_LOGI("Add %{public}s, pid=%{public}d success", processName, pid);
-    OH_ListAddWithOrder(&mgr->appQueue, &node->node, AppInfoCompareProc);
+    OH_ListAddWithOrder(&g_appSpawnMgr->appQueue, &node->node, AppInfoCompareProc);
     return node;
 }
 
-void ProcessProcessTerminate(AppSpawnedProcessMgr *mgr, AppSpawnedProcess *node, int nwebspawn)
+void TerminateSpawnedProcess(AppSpawnedProcess *node)
 {
-    if (!nwebspawn) {
+    APPSPAWN_CHECK_ONLY_EXPER(g_appSpawnMgr != NULL && node != NULL, return);
+    if (!IsNWebSpawnMode(g_appSpawnMgr)) {
         OH_ListRemove(&node->node);
         free(node);
         return;
     }
-    if (mgr->diedAppCount >= MAX_DIED_PROCESS_COUNT) {
-        AppSpawnedProcess *oldApp = ListEntry(mgr->diedQueue.next, AppSpawnedProcess, node);
+    if (g_appSpawnMgr->diedAppCount >= MAX_DIED_PROCESS_COUNT) {
+        AppSpawnedProcess *oldApp = ListEntry(g_appSpawnMgr->diedQueue.next, AppSpawnedProcess, node);
         OH_ListRemove(&oldApp->node);
         free(node);
-        mgr->diedAppCount--;
+        g_appSpawnMgr->diedAppCount--;
     }
     OH_ListRemove(&node->node);
     OH_ListInit(&node->node);
-    APPSPAWN_LOGI("ProcessProcessTerminate %{public}s, pid=%{public}d", node->name, node->pid);
-    OH_ListAddTail(&mgr->diedQueue, &node->node);
-    mgr->diedAppCount++;
+    APPSPAWN_LOGI("ProcessAppDied %{public}s, pid=%{public}d", node->name, node->pid);
+    OH_ListAddTail(&g_appSpawnMgr->diedQueue, &node->node);
+    g_appSpawnMgr->diedAppCount++;
 }
 
-AppSpawnedProcess *GetSpawnedProcess(AppSpawnedProcessMgr *mgr, pid_t pid)
+AppSpawnedProcess *GetSpawnedProcess(pid_t pid)
 {
-    ListNode *node = OH_ListFind(&mgr->appQueue, &pid, AppInfoPidComparePro);
+    APPSPAWN_CHECK_ONLY_EXPER(g_appSpawnMgr != NULL, return NULL);
+    ListNode *node = OH_ListFind(&g_appSpawnMgr->appQueue, &pid, AppInfoPidComparePro);
     APPSPAWN_CHECK_ONLY_EXPER(node != NULL, return NULL);
     return ListEntry(node, AppSpawnedProcess, node);
 }
 
-AppSpawnedProcess *GetSpawnedProcessByName(AppSpawnedProcessMgr *mgr, const char *name)
+AppSpawnedProcess *GetSpawnedProcessByName(const char *name)
 {
-    ListNode *node = OH_ListFind(&mgr->appQueue, (void *)name, AppInfoNameComparePro);
+    APPSPAWN_CHECK_ONLY_EXPER(g_appSpawnMgr != NULL, return NULL);
+    ListNode *node = OH_ListFind(&g_appSpawnMgr->appQueue, (void *)name, AppInfoNameComparePro);
     APPSPAWN_CHECK_ONLY_EXPER(node != NULL, return NULL);
     return ListEntry(node, AppSpawnedProcess, node);
 }
 
-int GetProcessTerminationStatus(AppSpawnedProcessMgr *mgr, pid_t pid)
+int KillAndWaitStatus(pid_t pid, int sig)
 {
-    APPSPAWN_LOGV("GetProcessTerminationStatus pid: %{public}d ", pid);
-    if (pid <= 0) {
-        return 0;
-    }
     int exitStatus = 0;
-    ListNode *node = OH_ListFind(&mgr->diedQueue, &pid, AppInfoPidComparePro);
-    if (node != NULL) {
-        AppSpawnedProcess *info = ListEntry(node, AppSpawnedProcess, node);
-        exitStatus = info->exitStatus;
-        OH_ListRemove(node);
-        free(info);
-        return exitStatus;
-    }
-
-    if (kill(pid, SIGKILL) != 0) {
-        APPSPAWN_LOGE("unable to kill render process, pid: %{public}d ret %{public}d", pid, errno);
+    if (kill(pid, sig) != 0) {
+        APPSPAWN_LOGE("unable to kill process, pid: %{public}d ret %{public}d", pid, errno);
     }
 
     pid_t exitPid = waitpid(pid, &exitStatus, 0);
@@ -159,7 +219,26 @@ int GetProcessTerminationStatus(AppSpawnedProcessMgr *mgr, pid_t pid)
     return exitStatus;
 }
 
-AppSpawningCtx *CreateAppSpawningCtx(AppSpawnedProcessMgr *mgr)
+static int GetProcessTerminationStatus(pid_t pid)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(g_appSpawnMgr != NULL, return -1);
+    APPSPAWN_LOGV("GetProcessTerminationStatus pid: %{public}d ", pid);
+    if (pid <= 0) {
+        return 0;
+    }
+    int exitStatus = 0;
+    ListNode *node = OH_ListFind(&g_appSpawnMgr->diedQueue, &pid, AppInfoPidComparePro);
+    if (node != NULL) {
+        AppSpawnedProcess *info = ListEntry(node, AppSpawnedProcess, node);
+        exitStatus = info->exitStatus;
+        OH_ListRemove(node);
+        free(info);
+        return exitStatus;
+    }
+    return KillAndWaitStatus(pid, SIGKILL);
+}
+
+AppSpawningCtx *CreateAppSpawningCtx(void)
 {
     static uint32_t requestId = 0;
     AppSpawningCtx *property = (AppSpawningCtx *)malloc(sizeof(AppSpawningCtx));
@@ -176,8 +255,8 @@ AppSpawningCtx *CreateAppSpawningCtx(AppSpawnedProcessMgr *mgr)
     property->pid = 0;
     property->state = APP_STATE_IDLE;
     OH_ListInit(&property->node);
-    if (mgr) {
-        OH_ListAddTail(&mgr->appSpawnQueue, &property->node);
+    if (g_appSpawnMgr) {
+        OH_ListAddTail(&g_appSpawnMgr->appSpawnQueue, &property->node);
     }
     return property;
 }
@@ -222,11 +301,24 @@ static int AppPropertyComparePid(ListNode *node, void *data)
     return 1;
 }
 
-AppSpawningCtx *GetAppSpawningCtxByPid(AppSpawnedProcessMgr *mgr, pid_t pid)
+AppSpawningCtx *GetAppSpawningCtxByPid(pid_t pid)
 {
-    ListNode *node = OH_ListFind(&mgr->appSpawnQueue, (void *)&pid, AppPropertyComparePid);
+    APPSPAWN_CHECK_ONLY_EXPER(g_appSpawnMgr != NULL, return NULL);
+    ListNode *node = OH_ListFind(&g_appSpawnMgr->appSpawnQueue, (void *)&pid, AppPropertyComparePid);
     APPSPAWN_CHECK_ONLY_EXPER(node != NULL, return NULL);
     return ListEntry(node, AppSpawningCtx, node);
+}
+
+void AppSpawningCtxTraversal(ProcessTraversal traversal, void *data)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(g_appSpawnMgr != NULL && traversal != NULL, return);
+    ListNode *node = g_appSpawnMgr->appSpawnQueue.next;
+    while (node != &g_appSpawnMgr->appSpawnQueue) {
+        ListNode *next = node->next;
+        AppSpawningCtx *ctx = ListEntry(node, AppSpawningCtx, node);
+        traversal(g_appSpawnMgr, ctx, data);
+        node = next;
+    }
 }
 
 static inline int SetSpawnMsgFlags(AppSpawnMsgFlags *msgFlags, uint32_t index)
@@ -242,30 +334,21 @@ static inline int SetSpawnMsgFlags(AppSpawnMsgFlags *msgFlags, uint32_t index)
 
 int SetAppSpawnMsgFlag(const AppSpawnMsgNode *message, uint32_t type, uint32_t index)
 {
+    APPSPAWN_CHECK_ONLY_EXPER(message != NULL, return -1);
     AppSpawnMsgFlags *msgFlags = (AppSpawnMsgFlags *)GetAppSpawnMsgInfo(message, type);
     APPSPAWN_CHECK(msgFlags != NULL, return -1,
         "No tlv %{public}d in msg %{public}s", type, message->msgHeader.processName);
     return SetSpawnMsgFlags(msgFlags, index);
 }
 
-static void DumpAppProperty(const AppSpawningCtx *property, const char *info)
-{
-    APPSPAPWN_DUMP("%{public}s app property id: %{public}u flags: %{public}x",
-        info, property->client.id, property->client.flags);
-    APPSPAPWN_DUMP("%{public}s app property state: %{public}d", info, property->state);
-    if (property->message) {
-        APPSPAPWN_DUMP("%{public}s app property msgId: %{public}u msgLen: %{public}u tlvCount: %{public}u",
-            info, property->message->msgHeader.msgId, property->message->msgHeader.msgLen, property->message->tlvCount);
-        APPSPAPWN_DUMP("%{public}s app property process name: %{public}s",
-            info, property->message->msgHeader.processName);
-    }
-    DumpNormalProperty(property);
-}
-
 static int DumpAppSpawnQueue(ListNode *node, void *data)
 {
     AppSpawningCtx *property = ListEntry(node, AppSpawningCtx, node);
-    DumpAppProperty(property, "");
+    APPSPAPWN_DUMP("app property id: %{public}u flags: %{public}x",
+        property->client.id, property->client.flags);
+    APPSPAPWN_DUMP("app property state: %{public}d", property->state);
+
+    DumpAppSpawnMsg(property->message);
     return 0;
 }
 
@@ -286,8 +369,9 @@ static int DumpExtData(ListNode *node, void *data)
     return 0;
 }
 
-void DumpApSpawn(const AppSpawnMgr *content, const AppSpawnMsgNode *message)
+void ProcessAppSpawnDumpMsg(const AppSpawnMsgNode *message)
 {
+    APPSPAWN_CHECK_ONLY_EXPER(g_appSpawnMgr != NULL && message != NULL, return);
     FILE *stream = NULL;
     uint32_t len = 0;
     char *ptyName = GetAppSpawnMsgExtInfo(message, "pty-name", &len);
@@ -298,16 +382,15 @@ void DumpApSpawn(const AppSpawnMgr *content, const AppSpawnMsgNode *message)
     } else {
         SetDumpToStream(stdout);
     }
-    APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return);
     APPSPAPWN_DUMP("Dump appspawn info start ... ");
     APPSPAPWN_DUMP("APP spawning queue: ");
-    OH_ListTraversal((ListNode *)&content->processMgr.appSpawnQueue, NULL, DumpAppSpawnQueue, 0);
+    OH_ListTraversal((ListNode *)&g_appSpawnMgr->appSpawnQueue, NULL, DumpAppSpawnQueue, 0);
     APPSPAPWN_DUMP("APP queue: ");
-    OH_ListTraversal((ListNode *)&content->processMgr.appQueue, "App queue", DumpAppQueue, 0);
+    OH_ListTraversal((ListNode *)&g_appSpawnMgr->appQueue, "App queue", DumpAppQueue, 0);
     APPSPAPWN_DUMP("APP died queue: ");
-    OH_ListTraversal((ListNode *)&content->processMgr.diedQueue, "App died queue", DumpAppQueue, 0);
+    OH_ListTraversal((ListNode *)&g_appSpawnMgr->diedQueue, "App died queue", DumpAppQueue, 0);
     APPSPAPWN_DUMP("Ext data: ");
-    OH_ListTraversal((ListNode *)&content->extData, "Ext data", DumpExtData, 0);
+    OH_ListTraversal((ListNode *)&g_appSpawnMgr->extData, "Ext data", DumpExtData, 0);
     APPSPAPWN_DUMP("Dump appspawn info finish ");
     if (stream != NULL) {
         (void)fflush(stream);
@@ -318,4 +401,23 @@ void DumpApSpawn(const AppSpawnMgr *content, const AppSpawnMsgNode *message)
         SetDumpToStream(NULL);
 #endif
     }
+}
+
+int ProcessTerminationStatusMsg(const AppSpawnMsgNode *message, AppSpawnResult *result)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(g_appSpawnMgr != NULL && message != NULL, return -1);
+    APPSPAWN_CHECK_ONLY_EXPER(result != NULL, return -1);
+    if (!IsNWebSpawnMode(g_appSpawnMgr)) {
+        return APPSPAWN_MSG_INVALID;
+    }
+    result->result = -1;
+    result->pid = 0;
+    pid_t *pid = (pid_t *)GetAppSpawnMsgInfo(message, TLV_RENDER_TERMINATION_INFO);
+    if (pid == NULL) {
+        return -1;
+    }
+    // get render process termination status, only nwebspawn need this logic.
+    result->pid = *pid;
+    result->result = GetProcessTerminationStatus(*pid);
+    return 0;
 }

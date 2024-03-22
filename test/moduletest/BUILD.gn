@@ -25,7 +25,7 @@ ohos_executable("AppSpawnTest") {
     "${appspawn_path}/modules/ace_adapter",
     "${appspawn_path}/modules/common",
     "${appspawn_path}/modules/sandbox",
-    "${appspawn_path}/modules/threadpool",
+    "${appspawn_path}/test/moduletest/threadpool",
     "${appspawn_innerkits_path}/include",
     "${appspawn_innerkits_path}/client",
     "${appspawn_innerkits_path}/permission",
@@ -33,17 +33,13 @@ ohos_executable("AppSpawnTest") {
     "${appspawn_path}/test/mock",
     "${appspawn_path}/test/unittest",
     "${appspawn_path}/util/include",
-    "${startup_path}/init/interfaces/innerkits/include",
-    "${startup_path}/init/interfaces/innerkits/include/syspara",
-    "${startup_path}/init/interfaces/innerkits/include/param",
-    "//commonlibrary/c_utils/base/include",
   ]
 
   configs = [ "${appspawn_path}:appspawn_config" ]
 
   deps = [
     "${appspawn_innerkits_path}/client:appspawn_client",
-    "${appspawn_path}/modules/threadpool:libappspawn_threadpool",
+    "${appspawn_path}/test/moduletest/threadpool:libappspawn_threadpool",
     "${appspawn_path}/util:libappspawn_util",
     "//third_party/cJSON:cjson",
   ]
@@ -82,9 +78,6 @@ ohos_moduletest("AppSpawnModuleTest") {
     "${appspawn_path}/test/mock",
     "${appspawn_path}/test/unittest",
     "${appspawn_path}/util/include",
-    "${startup_path}/init/interfaces/innerkits/include",
-    "${startup_path}/init/interfaces/innerkits/include/syspara",
-    "${startup_path}/init/interfaces/innerkits/include/param",
     "//commonlibrary/c_utils/base/include",
   ]
 
@@ -100,7 +93,6 @@ ohos_moduletest("AppSpawnModuleTest") {
   ]
 
   external_deps = [
-    #"bundle_framework:appexecfwk_base",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hilog:libhilog",

@@ -250,7 +250,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_004, TestSize.Level0)
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
-        DumpNormalProperty(property);
+        DumpAppSpawnMsg(property->message);
         uint32_t len = 0;
         char *renderCmdMsg = reinterpret_cast<char *>(GetAppPropertyExt(property, MSG_EXT_NAME_RENDER_CMD, &len));
         APPSPAWN_CHECK(renderCmdMsg != nullptr, break, "Can not find render cmd in msg");

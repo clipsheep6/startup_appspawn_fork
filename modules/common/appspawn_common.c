@@ -110,16 +110,16 @@ static int SetKeepCapabilities(const AppSpawnMgr *content, const AppSpawningCtx 
 static int SetCapabilities(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     // init cap
-    struct __user_cap_header_struct cap_header;
+    struct __user_cap_header_struct capHeader;
 
-    bool isRet = memset_s(&cap_header, sizeof(cap_header), 0, sizeof(cap_header)) != EOK;
+    bool isRet = memset_s(&capHeader, sizeof(capHeader), 0, sizeof(capHeader)) != EOK;
     APPSPAWN_CHECK(!isRet, return -EINVAL, "Failed to memset cap header");
 
-    cap_header.version = _LINUX_CAPABILITY_VERSION_3;
-    cap_header.pid = 0;
+    capHeader.version = _LINUX_CAPABILITY_VERSION_3;
+    capHeader.pid = 0;
 
-    struct __user_cap_data_struct cap_data[2];
-    isRet = memset_s(&cap_data, sizeof(cap_data), 0, sizeof(cap_data)) != EOK;
+    struct __user_cap_data_struct capData[2]; // 2 is data number
+    isRet = memset_s(&capData, sizeof(capData), 0, sizeof(capData)) != EOK;
     APPSPAWN_CHECK(!isRet, return -EINVAL, "Failed to memset cap data");
 
     // init inheritable permitted effective zero
@@ -133,15 +133,15 @@ static int SetCapabilities(const AppSpawnMgr *content, const AppSpawningCtx *pro
     const uint64_t effective = 0x3fffffffff;
 #endif
 
-    cap_data[0].inheritable = (__u32)(inheriTable);
-    cap_data[1].inheritable = (__u32)(inheriTable >> BITLEN32);
-    cap_data[0].permitted = (__u32)(permitted);
-    cap_data[1].permitted = (__u32)(permitted >> BITLEN32);
-    cap_data[0].effective = (__u32)(effective);
-    cap_data[1].effective = (__u32)(effective >> BITLEN32);
+    capData[0].inheritable = (__u32)(inheriTable);
+    capData[1].inheritable = (__u32)(inheriTable >> BITLEN32);
+    capData[0].permitted = (__u32)(permitted);
+    capData[1].permitted = (__u32)(permitted >> BITLEN32);
+    capData[0].effective = (__u32)(effective);
+    capData[1].effective = (__u32)(effective >> BITLEN32);
 
     // set capabilities
-    isRet = capset(&cap_header, &cap_data[0]) != 0;
+    isRet = capset(&capHeader, &capData[0]) != 0;
     APPSPAWN_CHECK(!isRet, return -errno, "Failed to capset errno: %{public}d", errno);
     return 0;
 }
@@ -324,61 +324,6 @@ static int32_t WaitForDebugger(const AppSpawningCtx *property)
     return 0;
 }
 
-static bool IsUnlockStatus(uint32_t uid)
-{
-    uid = uid / UID_BASE;
-    if (uid == 0) {
-        return true;
-    }
-    const char rootPath[] = APPSPAWN_BASE_DIR "/data/app/el2/";
-    const char basePath[] = "/base";
-    size_t allPathSize = strlen(rootPath) + strlen(basePath) + USER_ID_BUFFER_SIZE + 1;
-    char *path = (char *)malloc(sizeof(char) * allPathSize);
-    APPSPAWN_CHECK(path != NULL, return true, "Failed to malloc path");
-    size_t len = sprintf_s(path, allPathSize, "%s%u%s", rootPath, uid, basePath);
-    APPSPAWN_CHECK(len > 0 && (len < allPathSize), free(path);
-        return true, "Failed to get base path");
-    APPSPAWN_LOGV("IsUnlockStatus %{public}s uid: %{public}u", path, uid);
-    if (access(path, F_OK) == 0) {
-        free(path);
-        return true;
-    }
-    free(path);
-    APPSPAWN_LOGI("this is lock status");
-    return false;
-}
-
-static int MountAppEl2Dir(const AppSpawningCtx *property)
-{
-    const char rootPath[] = APPSPAWN_BASE_DIR "/mnt/sandbox/";
-    const char el2Path[] = "/data/storage/el2";
-    AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
-    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_TLV_NONE,
-        "No dac info in msg %{public}s", GetProcessName(property));
-
-    if (IsUnlockStatus(dacInfo->uid)) {
-        return 0;
-    }
-    const char *bundleName = GetBundleName(property);
-    size_t allPathSize = strlen(rootPath) + strlen(el2Path) + strlen(bundleName) + USER_ID_BUFFER_SIZE + 2;
-    char *path = (char *)malloc(sizeof(char) * (allPathSize));
-    APPSPAWN_CHECK(path != NULL, return -1, "Failed to malloc path");
-    size_t len = sprintf_s(path, allPathSize, "%s%u/%s%s", rootPath, dacInfo->uid / UID_BASE, bundleName, el2Path);
-    APPSPAWN_CHECK(len > 0 && (len < allPathSize), free(path);
-        return -1, "Failed to get el2 path");
-    APPSPAWN_LOGV("MountAppEl2Dir %{public}s processName:  %{public}s", path, GetProcessName(property));
-    if (access(path, F_OK) == 0) {
-        free(path);
-        return 0;
-    }
-
-    int ret = MakeDirRecursive(path, DEFAULT_DIR_MODE);
-    MountArg arg = {path, path, NULL, MS_BIND | MS_REC, NULL, MS_SHARED};
-    ret = SandboxMountPath(&arg);
-    free(path);
-    return ret;
-}
-
 static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Spawning: clear env");
@@ -478,7 +423,6 @@ static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
     }
     // check developer mode
     property->client.flags |= CheckEnabled("const.security.developermode.state", "true") ? APP_DEVELOPER_MODE : 0;
-    MountAppEl2Dir(property);
     return 0;
 }
 

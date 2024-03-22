@@ -126,7 +126,7 @@ int SetSeccompFilter(const AppSpawnMgr *content, const AppSpawningCtx *property)
         return 0;
     }
     if (!SetSeccompPolicyWithName(type, appName)) {
-        APPSPAWN_LOGE("Failed to set %{public}s seccomp filter and exit", appName);
+        APPSPAWN_LOGE("Failed to set %{public}s seccomp filter and exit %{public}d", appName, errno);
         return -EINVAL;
     }
     APPSPAWN_LOGV("SetSeccompFilter success for %{public}s", GetProcessName(property));

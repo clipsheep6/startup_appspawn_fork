@@ -83,9 +83,6 @@ static int CheckSupportColdStart(const char *bundleName)
 static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Prepare spawn app %{public}s", GetProcessName(property));
-    if (IsNWebSpawnMode(content)) {
-        return 0;
-    }
 #ifdef ASAN_DETECTOR
     if (CheckSupportColdStart(GetBundleName(property)) == 0) {
         property->client.flags |= APP_COLD_START;
@@ -104,7 +101,7 @@ static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
 
 static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
 {
-    if (IsNWebSpawnMode(content) || GetAppSpawnMsgType(property) == MSG_SPAWN_NATIVE_PROCESS) {
+    if (GetAppSpawnMsgType(property) == MSG_SPAWN_NATIVE_PROCESS) {
         return 0;
     }
     int ret = SetAsanEnabledEnv(content, property);

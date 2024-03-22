@@ -49,6 +49,7 @@ static void CheckPreload(char *const argv[])
 // appspawn -mode appspawn | cold | nwebspawn -param app_property -fd clientFd
 int main(int argc, char *const argv[])
 {
+    APPSPAWN_LOGE("main argc: %{public}d", argc);
     if (argc <= 0) {
         return 0;
     }
@@ -75,6 +76,7 @@ int main(int argc, char *const argv[])
     } else if (strcmp(argv[MODE_VALUE_INDEX], "nweb_cold") == 0) {  // cold start
         APPSPAWN_CHECK(argc > PARAM_VALUE_INDEX, return 0, "Invalid arg for cold start %{public}d", argc);
         arg.mode = MODE_FOR_NWEB_COLD_RUN;
+        arg.moduleType = MODULE_NWEBSPAWN;
         arg.serviceName = NWEBSPAWN_SERVER_NAME;
         arg.initArg = 0;
     } else if (strcmp(argv[MODE_VALUE_INDEX], NWEBSPAWN_SERVER_NAME) == 0) {  // nweb spawn start

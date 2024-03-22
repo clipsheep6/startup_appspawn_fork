@@ -34,12 +34,11 @@ static void NotifyResToParent(struct TagAppSpawnContent *content, AppSpawnClient
 static void ProcessExit(int code)
 {
     APPSPAWN_LOGI("App exit code: %{public}d", code);
-#ifndef APPSPAWN_TEST
+
 #ifdef OHOS_LITE
     _exit(0x7f); // 0x7f user exit
 #else
     quick_exit(0);
-#endif
 #endif
 }
 
@@ -60,7 +59,7 @@ void exit(int code)
 }
 #endif
 
-static int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
+APPSPAWN_STATIC int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_CHECK(content != NULL && client != NULL, return -1, "Invalid arg for appspawn child");
     APPSPAWN_LOGI("AppSpawnChild %{public}u flags: 0x%{public}x", client->id, client->flags);
@@ -90,13 +89,13 @@ static int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
     if (content->runChildProcessor != NULL) {
         ret = content->runChildProcessor(content, client);
     }
-    if (ret != 0) {  // clear env
-        AppSpawnEnvClear(content, client);
+    if (content->processChildExit) {
+        content->processChildExit(content, ret);
     }
     return 0;
 }
 
-APPSPAWN_STATIC int CloneAppSpawn(void *arg)
+static int CloneAppSpawn(void *arg)
 {
     APPSPAWN_CHECK(arg != NULL, return -1, "Invalid content for appspawn");
     AppSpawnForkArg *forkArg = (AppSpawnForkArg *)arg;

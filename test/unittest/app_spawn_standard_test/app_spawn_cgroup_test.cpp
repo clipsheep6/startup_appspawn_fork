@@ -68,7 +68,7 @@ static int GetTestCGroupFilePath(const AppSpawnedProcess *appInfo, const char *f
 {
     int ret = GetCgroupPath(appInfo, path, PATH_MAX);
     APPSPAWN_CHECK(ret == 0, return errno, "Failed to get real path errno: %{public}d", errno);
-    (void)MakeDirRecursive(path, 0755);  // 0755 default mode
+    (void)CreateSandboxDir(path, 0755);  // 0755 default mode
     ret = strcat_s(path, PATH_MAX, fileName);
     APPSPAWN_CHECK(ret == 0, return errno, "Failed to strcat_s errno: %{public}d", errno);
     if (create) {
@@ -272,7 +272,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_006, TestSize.Level0)
 
         AppSpawnedProcess *appInfo2 = CreateTestAppInfo(name);
         APPSPAWN_CHECK(appInfo2 != nullptr, break, "Failed to create appInfo");
-        OH_ListAddTail(&((AppSpawnMgr *)content)->processMgr.appQueue, &appInfo2->node);
+        OH_ListAddTail(&GetAppSpawnMgr()->appQueue, &appInfo2->node);
         appInfo2->pid = 102;
         AppChangeHookExecute(HOOK_APP_ADD, content, appInfo2);
         // died

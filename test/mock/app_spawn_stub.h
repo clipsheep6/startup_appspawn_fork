@@ -52,10 +52,9 @@ void CloseClientSocket(int socketId);
 
 int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandboxCfg *sandbox);
 AppSpawnSandboxCfg *CreateAppSpawnSandbox(void);
-void AppSpawnSandboxFree(AppSpawnExtData *data);
 void AddDefaultVariable(void);
 
-int CloneAppSpawn(void *arg);
+int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client);
 
 int WriteToFile(const char *path, int truncated, pid_t pids[], uint32_t count);
 int GetCgroupPath(const AppSpawnedProcess *appInfo, char *buffer, uint32_t buffLen);

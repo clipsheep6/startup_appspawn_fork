@@ -170,14 +170,10 @@ int MountStub(const char *originPath, const char *destinationPath,
     }
     MountArg *args = (MountArg *)node->arg;
 
-    printf("args->originPath %s \n", args->originPath);
-    printf("args->destinationPath %s \n", args->destinationPath);
-    printf("args->fsType %s \n", args->fsType);
-    printf("args->options %s \n", args->options);
-    printf("originPath %s \n", originPath);
-    printf("destinationPath %s \n", destinationPath);
-    printf("fsType %s \n", fsType);
-    printf("options %s \n", options);
+    printf("args->originPath %s == %s \n", args->originPath, originPath);
+    printf("args->destinationPath %s == %s \n", args->destinationPath, destinationPath);
+    printf("args->fsType %s == %s \n", args->fsType, fsType);
+    printf("args->options %s == %s \n", args->options, options);
     printf("mountFlags %lx args->mountFlags %lx \n", mountFlags, args->mountFlags);
 
     if (originPath != NULL && (strcmp(originPath, args->originPath) == 0)) {

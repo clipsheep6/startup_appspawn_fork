@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <pwd.h>
+#include <grp.h>
 
 #include <linux/capability.h>
 #include <sys/socket.h>
@@ -136,6 +137,9 @@ int GetParameter(const char *key, const char *def, char *value, uint32_t len)
     if (strcmp(key, "persist.nweb.sandbox.src_path") == 0) {
         return strcpy_s(value, len, def) == 0 ? strlen(def) : -1;
     }
+    if (strcmp(key, "test.variable.001") == 0) {
+        return strcpy_s(value, len, "test.variable.001") == 0 ? strlen("test.variable.001") : -1;
+    }
     return -1;
 }
 
@@ -168,6 +172,32 @@ uid_t DecodeUid(const char *name)
         return -1;
     }
     return p->pw_uid;
+}
+
+gid_t DecodeGid(const char *name)
+{
+    if (name == nullptr) {
+        return -1;
+    }
+    if (strcmp(name, "file_manager") == 0) {
+        return 1006;
+    }
+    if (strcmp(name, "user_data_rw") == 0) {
+        return 1008;
+    }
+    gid_t gid = 0;
+    struct group *data = getgrnam(name);
+    if (data != NULL) {
+        return data->gr_gid;
+    }
+    while ((data = getgrent()) != NULL) {
+        if ((data->gr_name != NULL) && (strcmp(data->gr_name, name) == 0)) {
+            gid = data->gr_gid;
+            break;
+        }
+    }
+    endgrent();
+    return gid;
 }
 
 #ifdef __cplusplus

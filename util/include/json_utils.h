@@ -25,16 +25,15 @@
 extern "C" {
 #endif  // __cplusplus
 
+#define MAX_JSON_FILE_LEN 102400
 typedef struct TagAppSpawnSandboxCfg AppSpawnSandboxCfg;
 typedef int (*ParseConfig)(const cJSON *root, AppSpawnSandboxCfg *context);
-int ParseSandboxConfig(const char *basePath, const char *fileName, ParseConfig parseConfig, AppSpawnSandboxCfg *context);
-uint32_t GetUint32ArrayFromJson(const cJSON *json, const char *name, uint32_t dataArray[], uint32_t maxCount);
+int ParseSandboxConfig(const char *path, const char *fileName, ParseConfig parseConfig, AppSpawnSandboxCfg *context);
 cJSON *GetJsonObjFromFile(const char *jsonPath);
 
 __attribute__((always_inline)) inline char *GetStringFromJsonObj(const cJSON *json, const char *key)
 {
-    APPSPAWN_CHECK(json != NULL, return 0, "Invalid json");
-    APPSPAWN_CHECK(key != NULL, return 0, "Invalid key");
+    APPSPAWN_CHECK_ONLY_EXPER(key != NULL && json != NULL, NULL);
     APPSPAWN_CHECK(cJSON_IsObject(json), return NULL, "json is not object %{public}s %s", key, cJSON_Print(json));
     cJSON *obj = cJSON_GetObjectItemCaseSensitive(json, key);
     APPSPAWN_CHECK_ONLY_EXPER(obj != NULL, return NULL);

@@ -66,7 +66,7 @@ typedef enum {
 #    pragma clang diagnostic ignored "-Wextern-c-compat"
 #elif defined(__GNUC__)
 #    pragma GCC diagnostic push
-//#    pragma GCC diagnostic ignored "-Wextern-c-compat"
+#    pragma GCC diagnostic ignored "-Wextern-c-compat"
 #elif defined(_MSC_VER)
 #    pragma warning(push)
 #endif
