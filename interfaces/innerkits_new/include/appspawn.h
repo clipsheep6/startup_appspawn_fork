@@ -32,6 +32,8 @@ extern "C" {
  * 如果调用AppSpawnClientSendMsg后，消息句柄不需要处理
  * 否则需要调用 AppSpawnReqMsgFree 释放句柄
  *
+ * 所有字符串输入的接口，只能接受合法的字符串，输入null、""、和大于合法长度的字符串都返回错误
+ *
  */
 typedef void *AppSpawnReqMsgHandle;
 

@@ -97,18 +97,14 @@ typedef enum {
     APPSPAWN_NODE_EXIST,
 } AppSpawnErrorCode;
 
-typedef enum TagAppSpawnHookPrio {
-    HOOK_PRIO_STEP1 = 1000,
-    HOOK_PRIO_STEP2 = 2000,
-    HOOK_PRIO_SANDBOX = 5000,
-    HOOK_PRIO_STEP6 = 6000,
-    HOOK_PRIO_STEP7 = 7000,
-} AppSpawnHookPrio;
-
 typedef struct cJSON cJSON;
-typedef struct TagAppSpawnSandboxCfg AppSpawnSandboxCfg;
-typedef int (*ParseConfig)(const cJSON *root, AppSpawnSandboxCfg *context);
-int ParseSandboxConfig(const char *path, const char *fileName, ParseConfig parseConfig, AppSpawnSandboxCfg *context);
+typedef struct TagParseJsonContext ParseJsonContext;
+typedef int (*ParseConfig)(const cJSON *root, ParseJsonContext *context);
+int ParseJsonConfig(const char *path, const char *fileName, ParseConfig parseConfig, ParseJsonContext *context);
+cJSON *GetJsonObjFromFile(const char *jsonPath);
+
+typedef int (*SplitStringHandle)(const char *str, void *context);
+int32_t StringSplit(const char *str, const char *separator, void *context, SplitStringHandle handle);
 
 #ifdef __cplusplus
 }

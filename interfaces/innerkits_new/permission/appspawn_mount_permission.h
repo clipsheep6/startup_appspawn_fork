@@ -30,9 +30,9 @@ typedef struct TagSandboxSection {
     uint32_t type;
 } SandboxQueue;
 
-typedef struct TagAppSpawnSandboxCfg {
+typedef struct TagParseJsonContext {
     uint32_t type;
-} AppSpawnSandboxCfg;
+} ParseJsonContext;
 
 typedef struct {
     struct ListNode node;

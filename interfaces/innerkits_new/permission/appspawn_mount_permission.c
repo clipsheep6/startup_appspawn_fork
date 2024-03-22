@@ -39,7 +39,7 @@ static int ParsePermissionConfig(const cJSON *permissionConfigs)
     return 0;
 }
 
-static int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandboxCfg *context)
+static int ParseAppSandboxConfig(const cJSON *appSandboxConfig, ParseJsonContext *context)
 {
     cJSON *configs = cJSON_GetObjectItemCaseSensitive(appSandboxConfig, "permission");
     APPSPAWN_CHECK(configs != NULL && cJSON_IsArray(configs), return 0, "No permission in json");
@@ -56,7 +56,7 @@ static int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandboxC
 
 static int LoadPermissionConfig(void)
 {
-    int ret = ParseSandboxConfig("etc/sandbox", APP_SANDBOX_FILE_NAME, ParseAppSandboxConfig, NULL);
+    int ret = ParseJsonConfig("etc/sandbox", APP_SANDBOX_FILE_NAME, ParseAppSandboxConfig, NULL);
     if (ret == APPSPAWN_SANDBOX_NONE) {
         APPSPAWN_LOGW("No sandbox config");
         ret = 0;

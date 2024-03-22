@@ -133,6 +133,8 @@ static int ReadMessage(int socketFd, uint32_t sendMsgId, uint8_t *buf, int len, 
         "Read message from fd %{public}d rLen %{public}zd errno: %{public}d", socketFd, rLen, errno);
     if ((size_t)rLen >= sizeof(AppSpawnResponseMsg)) {
         AppSpawnResponseMsg *msg = (AppSpawnResponseMsg *)(buf);
+        APPSPAWN_CHECK_ONLY_LOG(sendMsgId == msg->msgHdr.msgId,
+            "Invalid msg recvd %{public}u %{public}u", sendMsgId, msg->msgHdr.msgId);
         return memcpy_s(result, sizeof(AppSpawnResult), &msg->result, sizeof(msg->result));
     }
     return APPSPAWN_TIMEOUT;
@@ -251,6 +253,10 @@ int AppSpawnClientDestroy(AppSpawnClientHandle handle)
     }
     pthread_mutex_unlock(&g_mutex);
     pthread_mutex_destroy(&reqMgr->mutex);
+    if (reqMgr->socketId >= 0) {
+        CloseClientSocket(reqMgr->socketId);
+        reqMgr->socketId = -1;
+    }
     free(reqMgr);
     return 0;
 }

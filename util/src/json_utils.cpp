@@ -78,7 +78,7 @@ cJSON *GetJsonObjFromFile(const char *jsonPath)
     return cJSON_Parse(buf.str().c_str());
 }
 
-int ParseSandboxConfig(const char *basePath, const char *fileName, ParseConfig parseConfig, AppSpawnSandboxCfg *context)
+int ParseJsonConfig(const char *basePath, const char *fileName, ParseConfig parseConfig, ParseJsonContext *context)
 {
     // load sandbox config
     CfgFiles *files = GetCfgFiles(basePath);
