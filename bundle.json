@@ -30,6 +30,7 @@
             "components": [
                 "ability_base",
                 "c_utils",
+                "cJSON",
                 "ipc",
                 "selinux_adapter",
                 "selinux",
