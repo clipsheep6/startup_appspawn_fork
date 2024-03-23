@@ -31,6 +31,7 @@
                 "ability_base",
                 "c_utils",
                 "cJSON",
+                "json",
                 "ipc",
                 "selinux_adapter",
                 "selinux",
