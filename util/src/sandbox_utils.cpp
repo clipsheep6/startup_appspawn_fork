@@ -35,6 +35,7 @@
 #include "appspawn_mount_permission.h"
 #include "parameter.h"
 #include "os_account_manager.h"
+#include "accesstoken_kit.h"
 
 #ifdef WITH_SELINUX
 #include "hap_restorecon.h"
@@ -475,9 +476,15 @@ static int32_t HandleSpecialAppMount(const ClientSocket::AppProperty *appPropert
         processName.find(g_dlpUiExtType) == std::string::npos) {
         if (fsType.empty()) {
             return -1;
-        } else {
-            return DoDlpAppMountStrategy(appProperty, srcPath, sandboxPath, fsType, mountFlags);
         }
+        
+        int result = OHOS::Security::AccessToken::AccessTokenKit::VerifyAccessToken(appProperty->accessTokenId,
+            "ohos.permission.ACCESS_DLP_FILE", false);
+        if (result != OHOS::Security::AccessToken::TypePermissionState::PERMISSION_GRANTED) {
+            APPSPAWN_LOGE("Check DLP permission failed.");
+            return -1;
+        }
+        return DoDlpAppMountStrategy(appProperty, srcPath, sandboxPath, fsType, mountFlags);
     }
 
     return -1;
