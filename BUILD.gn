@@ -21,7 +21,6 @@ config("appspawn_config") {
     "adapter",
     "interfaces/innerkits/include",
     "util/include",
-    "//third_party/json/include",
   ]
 
   if (build_selinux) {
