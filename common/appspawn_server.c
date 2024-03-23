@@ -21,6 +21,9 @@
 #include <unistd.h>
 #include <signal.h>
 #include <malloc.h>
+#include <fcntl.h>
+#include <stdio.h>
+
 #undef _GNU_SOURCE
 #define _GNU_SOURCE
 #include <sched.h>
@@ -215,6 +218,34 @@ static int CloneAppSpawn(void *arg)
     return 0;
 }
 
+static int ForkProcess(AppSandboxArg *sandbox)
+{
+    pid_t pid = fork();
+    if (pid == 0) {
+        ProcessExit(AppSpawnChild((void *)sandbox));
+    }
+    return pid;
+}
+
+int SetPidNamespace(pid_t pid, int nsType)
+{
+    char nsPath[256];
+    snprintf(nsPath, sizeof(nsPath), "/proc/%d/ns/pid", pid);
+    int nsFd = open(nsPath, O_RDONLY);
+    APPSPAWN_LOGE("nsPath:%{public}s", nsPath);
+    if (nsFd < 0) {
+        APPSPAWN_LOGE("open ns pid:%{public}d nsType:%{public}d failed, err:%{public}d %{public}s", pid, nsType, errno, strerror(errno));
+        return -1;
+    }
+    if (setns(nsFd, nsType) < 0) {
+        APPSPAWN_LOGE("set pid namespace failed");
+        close(nsFd);
+        return -1;
+    }
+    close(nsFd);
+    return 0;
+}
+
 int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
 {
     APPSPAWN_CHECK(sandbox != NULL && sandbox->content != NULL, return -1, "Invalid content for appspawn");
@@ -225,9 +256,12 @@ int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
     if (sandbox->content->isNweb) {
         pid = clone(CloneAppSpawn, NULL, sandbox->client->cloneFlags | SIGCHLD, (void *)sandbox);
     } else {
-        pid = fork();
-        if (pid == 0) {
-            ProcessExit(AppSpawnChild((void *)sandbox));
+        if (sandbox->content->sandboxNsFlags & CLONE_NEWPID) {
+            SetPidNamespace(sandbox->content->nsInitPid, CLONE_NEWPID); // enter ns_pid_init pid namespace
+            ForkProcess(sandbox);
+            SetPidNamespace(getpid(), 0); // go back to original pid namespace 
+        } else {
+            ForkProcess(sandbox);
         }
     }
     APPSPAWN_CHECK(pid >= 0, return -errno, "fork child process error: %{public}d", -errno);
