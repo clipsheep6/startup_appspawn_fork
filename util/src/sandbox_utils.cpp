@@ -362,10 +362,15 @@ bool SandboxUtils::GetSandboxDacOverrideEnable(nlohmann::json &config)
 
 std::string SandboxUtils::GetSbxPathByConfig(const ClientSocket::AppProperty *appProperty, nlohmann::json &config)
 {
+    std::string defaultSandboxRoot = g_sandBoxDir + to_string(appProperty->uid / UID_BASE) +
+        "/" + appProperty->bundleName;
+    const std::string accountId = appProperty->accountId;
+    if (appProperty->accountId[0] == '\0') {
+        defaultSandboxRoot += "/" + accountId;
+    }
+
     std::string sandboxRoot = "";
     const std::string originSandboxPath = "/mnt/sandbox/<PackageName>";
-    const std::string defaultSandboxRoot = g_sandBoxDir + to_string(appProperty->uid / UID_BASE) +
-        "/" + appProperty->bundleName;
     if (config.find(g_sandboxRootPrefix) != config.end()) {
         sandboxRoot = config[g_sandboxRootPrefix].get<std::string>();
         if (sandboxRoot == originSandboxPath) {
