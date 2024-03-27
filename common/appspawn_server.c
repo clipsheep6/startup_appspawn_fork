@@ -231,7 +231,7 @@ int SetPidNamespace(pid_t pid, int nsType)
 {
     char nsPath[256];
     snprintf(nsPath, sizeof(nsPath), "/proc/%d/ns/pid", pid);
-    int nsFd = open(nsPath, 0);
+    int nsFd = open(nsPath, O_WRONLY);
     APPSPAWN_LOGI("nsPath:%{public}s", nsPath);
     if (nsFd < 0) {
         APPSPAWN_LOGE("open ns pid:%{public}d nsType:%{public}d failed, err:%{public}d %{public}s", pid, nsType, errno, strerror(errno));
