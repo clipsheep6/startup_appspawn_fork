@@ -18,6 +18,7 @@
 #include "appspawn_msg.h"
 #include "appspawn_server.h"
 #include "appspawn_service.h"
+#include "appspawn_silk.h"
 #include "securec.h"
 #include "init_param.h"
 #include "syspara/parameter.h"
@@ -51,6 +52,7 @@ int main(int argc, char *const argv[])
     }
 
     CheckPreload(argv);
+    ParseSilkConfig();
     (void)signal(SIGPIPE, SIG_IGN);
     uint32_t argvSize = 0;
     int isRet;
