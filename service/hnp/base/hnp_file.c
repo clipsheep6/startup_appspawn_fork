@@ -17,6 +17,9 @@
 #include <stdlib.h>
 #include <limits.h>
 
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -116,6 +119,43 @@ int GetRealPath(char *srcPath, char *realPath)
         HNP_LOGE("strcpy unsuccess.");
         return HNP_ERRNO_BASE_COPY_FAILED;
     }
+    return 0;
+}
+
+int HnpDeleteFolder(const char *path)
+{
+    DIR *dir = opendir(path);
+    struct dirent *entry;
+    struct stat statbuf;
+    char filePath[MAX_FILE_PATH_LEN];
+    int ret;
+
+    while ((entry = readdir(dir)) != NULL) {
+        if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
+            continue;
+        }
+
+        ret = sprintf_s(filePath, MAX_FILE_PATH_LEN, "%s%s", path, entry->d_name);
+        if (ret < 0) {
+            HNP_LOGE("uninstall delete folder sprintf path unsuccess.");
+            closedir(dir);
+            return HNP_ERRNO_BASE_SPRINTF_FAILED;
+        }
+
+        if (lstat(filePath, &statbuf) < 0) {
+            continue;
+        }
+
+        if (S_ISDIR(statbuf.st_mode)) {
+            /* 如果是文件夹，递归删除 */
+            HnpDeleteFolder(filePath);
+        } else {
+            unlink(filePath);
+        }
+    }
+
+    closedir(dir);
+    rmdir(path);
     return 0;
 }
 
