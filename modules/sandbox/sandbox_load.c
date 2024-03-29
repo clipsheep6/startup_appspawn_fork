@@ -57,9 +57,10 @@ static const SandboxFlagInfo NAME_GROUP_TYPE_MAP[] = {
     {"app-variable", (unsigned long)SANDBOX_TAG_APP_VARIABLE}
 };
 
-static inline PathMountNode *CreatePathMountNode(uint32_t type)
+static inline PathMountNode *CreatePathMountNode(uint32_t type, uint32_t hasDemandInfo)
 {
-    return (PathMountNode *)CreateSandboxMountNode(sizeof(PathMountNode), type);
+    uint32_t len = hasDemandInfo ? sizeof(PathDemandInfo) : 0;
+    return (PathMountNode *)CreateSandboxMountNode(sizeof(PathMountNode) + len, type);
 }
 
 static inline SymbolLinkNode *CreateSymbolLinkNode(void)
@@ -185,6 +186,14 @@ static uint32_t GetFlagIndexFromJson(const cJSON *config)
     return 0;
 }
 
+static void FillPathDemandInfo(const cJSON *config, PathMountNode *sandboxNode)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(config != NULL, return);
+    sandboxNode->demandInfo->uid = GetIntValueFromJsonObj(config, "uid", -1);
+    sandboxNode->demandInfo->gid = GetIntValueFromJsonObj(config, "gid", -1);
+    sandboxNode->demandInfo->mode = GetIntValueFromJsonObj(config, "ugo", -1);
+}
+
 static PathMountNode *DecodeMountPathConfig(const cJSON *config, uint32_t type)
 {
     char *srcPath = GetStringFromJsonObj(config, "src-path");
@@ -193,8 +202,10 @@ static PathMountNode *DecodeMountPathConfig(const cJSON *config, uint32_t type)
         return NULL;
     }
 
-    PathMountNode *sandboxNode = CreatePathMountNode(type);
+    cJSON *demandInfo = NULL; // cJSON_GetObjectItemCaseSensitive(config, "create-on-demand");
+    PathMountNode *sandboxNode = CreatePathMountNode(type, demandInfo != NULL);
     APPSPAWN_CHECK_ONLY_EXPER(sandboxNode != NULL, return NULL);
+    sandboxNode->createDemand = demandInfo != NULL;
     sandboxNode->source = strdup(srcPath);
     sandboxNode->target = strdup(dstPath);
 
@@ -207,6 +218,7 @@ static PathMountNode *DecodeMountPathConfig(const cJSON *config, uint32_t type)
     if (value != NULL) {
         sandboxNode->appAplName = strdup(value);
     }
+    FillPathDemandInfo(demandInfo, sandboxNode);
 
     if (sandboxNode->source == NULL || sandboxNode->target == NULL) {
         APPSPAWN_LOGE("Failed to get sourc or target path");
@@ -428,8 +440,8 @@ static SandboxNameGroupNode *ParseNameGroup(AppSpawnSandboxCfg *sandbox, const c
             DeleteSandboxSection((SandboxSection *)node);
             return NULL;
         }
-        // "mount-mode": "not-exists"
-        node->mountMode = GetMountModeFromConfig(obj, "mount-mode", MOUNT_MODE_ALWAYS);
+        // "deps-mode": "not-exists"
+        node->depMode = GetMountModeFromConfig(obj, "deps-mode", MOUNT_MODE_ALWAYS);
     }
 
     ret = ParseBaseConfig(sandbox, &node->section, groupConfig);

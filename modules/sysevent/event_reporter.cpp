@@ -51,5 +51,5 @@ static int ReportProcessExitInfo(const AppSpawnMgr *content, const AppSpawnedPro
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load sys event module ...");
-    AddAppChangeHook(HOOK_APP_DIED, 0, ReportProcessExitInfo);
+    AddAppChangeHook(STAGE_SERVER_APP_DIED, 0, ReportProcessExitInfo);
 }

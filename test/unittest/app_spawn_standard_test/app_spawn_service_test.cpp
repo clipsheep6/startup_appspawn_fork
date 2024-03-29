@@ -458,7 +458,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_001, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
 
         // spawn
         ret = AppSpawnChild(content, &property->client);
@@ -499,7 +499,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_002, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         // spawn
         ret = AppSpawnChild(content, &property->client);
         property = nullptr;
@@ -541,7 +541,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_003, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         // spawn
         ret = AppSpawnChild(content, &property->client);
         property = nullptr;
@@ -582,7 +582,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_004, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         PreloadHookExecute(content);
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         // spawn
         ret = AppSpawnChild(content, &property->client);
         property = nullptr;
@@ -623,7 +623,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_005, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         PreloadHookExecute(content);
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         // spawn
         ret = AppSpawnChild(content, &property->client);
         property = nullptr;
@@ -668,7 +668,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_006, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         PreloadHookExecute(content);
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         // spawn
         ret = AppSpawnChild(content, &property->client);
         property = nullptr;

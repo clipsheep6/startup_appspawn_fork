@@ -210,7 +210,12 @@ int AppSpawnExecuteClearEnvHook(AppSpawnContent *content, AppSpawnClient *client
     return 0;
 }
 
-int AppSpawnExecuteCompleteHook(AppSpawnContent *content, AppSpawnClient *client)
+int AppSpawnExecutePreReplyHook(AppSpawnContent *content, AppSpawnClient *client)
+{
+    return 0;
+}
+
+int AppSpawnExecutePostReplyHook(AppSpawnContent *content, AppSpawnClient *client)
 {
     return 0;
 }

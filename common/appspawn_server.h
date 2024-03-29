@@ -61,7 +61,8 @@ typedef struct TagAppSpawnForkArg {
 AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcName, uint32_t longProcNameLen, int cold);
 int AppSpawnExecuteClearEnvHook(AppSpawnContent *content, AppSpawnClient *client);
 int AppSpawnExecuteSpawningHook(AppSpawnContent *content, AppSpawnClient *client);
-int AppSpawnExecuteCompleteHook(AppSpawnContent *content, AppSpawnClient *client);
+int AppSpawnExecutePreReplyHook(AppSpawnContent *content, AppSpawnClient *client);
+int AppSpawnExecutePostReplyHook(AppSpawnContent *content, AppSpawnClient *client);
 void AppSpawnEnvClear(AppSpawnContent *content, AppSpawnClient *client);
 int AppSpawnProcessMsg(AppSpawnContent *content, AppSpawnClient *client, pid_t *childPid);
 

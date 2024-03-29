@@ -201,5 +201,5 @@ static int AppSpawnPreload(AppSpawnMgr *content)
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load ace module ...");
-    AddPreloadHook(HOOK_PRIO_STEP1, AppSpawnPreload);
+    AddPreloadHook(HOOK_PRIO_HIGHEST, AppSpawnPreload);
 }

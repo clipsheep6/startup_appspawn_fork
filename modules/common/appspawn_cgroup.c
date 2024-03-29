@@ -154,6 +154,6 @@ static int ProcessAppAdd(const AppSpawnMgr *content, const AppSpawnedProcess *ap
 
 MODULE_CONSTRUCTOR(void)
 {
-    AddAppChangeHook(HOOK_APP_ADD, 0, ProcessAppAdd);
-    AddAppChangeHook(HOOK_APP_DIED, 0, ProcessAppDied);
+    AddAppChangeHook(STAGE_SERVER_APP_ADD, 0, ProcessAppAdd);
+    AddAppChangeHook(STAGE_SERVER_APP_DIED, 0, ProcessAppDied);
 }

@@ -182,7 +182,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_001, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
 
         // spawn
         ret = AppSpawnChild(content, &property->client);
@@ -226,7 +226,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_002, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
 
         // spawn
         ret = AppSpawnChild(content, &property->client);
@@ -272,7 +272,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_004, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         // spawn
         ret = AppSpawnChild(content, &property->client);
         property = nullptr;
@@ -317,7 +317,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_005, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         // spawn
         ret = AppSpawnChild(content, &property->client);
         property = nullptr;

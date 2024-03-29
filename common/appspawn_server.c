@@ -81,10 +81,15 @@ APPSPAWN_STATIC int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *clie
         NotifyResToParent(content, client, ret);
         return 0);
 
+    ret = AppSpawnExecutePreReplyHook(content, client);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0,
+        NotifyResToParent(content, client, ret);
+        return 0);
+
     // notify success to father process and start app process
     NotifyResToParent(content, client, 0);
 
-    (void)AppSpawnExecuteCompleteHook(content, client);
+    (void)AppSpawnExecutePostReplyHook(content, client);
 
     if (content->runChildProcessor != NULL) {
         ret = content->runChildProcessor(content, client);

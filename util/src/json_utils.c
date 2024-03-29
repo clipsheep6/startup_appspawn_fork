@@ -33,6 +33,7 @@ static char *ReadFile(const char *fileName)
             fileStat.st_size <= 0 || fileStat.st_size > MAX_JSON_FILE_LEN) {
             return NULL;
         }
+        APPSPAWN_LOGI("LoadAppSandboxConfig %{public}s size %{public}u", fileName, (uint32_t)fileStat.st_size);
         fd = fopen(fileName, "r");
         APPSPAWN_CHECK(fd != NULL, break, "Failed to open file  %{public}s", fileName);
 
@@ -80,8 +81,6 @@ int ParseSandboxConfig(const char *basePath, const char *fileName, ParseConfig p
         int len = snprintf_s(path, sizeof(path), sizeof(path) - 1, "%s%s", files->paths[i], fileName);
         APPSPAWN_CHECK(len > 0 && (size_t)len < sizeof(path), ret = APPSPAWN_SANDBOX_INVALID;
             continue, "Failed to format sandbox config file name %{public}s %{public}s", files->paths[i], fileName);
-
-        APPSPAWN_LOGI("LoadAppSandboxConfig %{public}s", path);
         cJSON *root = GetJsonObjFromFile(path);
         APPSPAWN_CHECK(root != NULL, ret = APPSPAWN_SANDBOX_INVALID;
             continue, "Failed to load app data sandbox config %{public}s", path);

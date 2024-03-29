@@ -55,18 +55,30 @@ typedef struct TagAppSpawnExtData {
 
 typedef enum TagAppSpawnHookStage {
     // run in init
-    HOOK_PRELOAD  = 10,
+    STAGE_SERVER_PRELOAD  = 10,
+    STAGE_SERVER_APP_ADD,
+    STAGE_SERVER_APP_DIED,
+
     // run before fork
-    HOOK_SPAWN_PREPARE = 20,
+    STAGE_PARENT_PRE_FORK = 20,
+    STAGE_PARENT_PRE_RELY = 21,
+    STAGE_PARENT_POST_RELY = 22,
+
     // run in child process
-    HOOK_SPAWN_CLEAR_ENV = 30, // clear env, set token HOOK_SPAWN_CLEAR_ENV
-    HOOK_SPAWN_SET_CHILD_PROPERTY,
-    HOOK_SPAWN_COMPLETED,
-    HOOK_SPAWN_POST = 40,
-    // for app change
-    HOOK_APP_ADD = 50,
-    HOOK_APP_DIED,
+    STAGE_CHILD_PRE_COLDBOOT = 30, // clear env, set token before cold boot
+    STAGE_CHILD_EXECUTE,
+    STAGE_CHILD_PRE_RELY,
+    STAGE_CHILD_POST_RELY,
+    STAGE_CHILD_PRE_RUN
 } AppSpawnHookStage;
+
+typedef enum TagAppSpawnHookPrio {
+    HOOK_PRIO_HIGHEST = 1000,
+    HOOK_PRIO_COMMON = 2000,
+    HOOK_PRIO_SANDBOX = 3000,
+    HOOK_PRIO_PROPERTY = 4000,
+    HOOK_PRIO_LOWEST = 5000,
+} AppSpawnHookPrio;
 
 typedef int (*PreloadHook)(AppSpawnMgr *content);
 typedef int (*AppSpawnHook)(AppSpawnMgr *content, AppSpawningCtx *property);

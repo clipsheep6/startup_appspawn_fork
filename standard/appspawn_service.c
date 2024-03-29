@@ -103,7 +103,7 @@ static void HandleDiedPid(pid_t pid, uid_t uid, int status)
     appInfo->exitStatus = status;
     APPSPAWN_CHECK_ONLY_LOG(appInfo->uid == uid, "Invalid uid %{public}u %{public}u", appInfo->uid, uid);
     DumpStatus(appInfo->name, pid, status);
-    AppChangeHookExecute(HOOK_APP_DIED, GetAppSpawnContent(), appInfo);
+    AppChangeHookExecute(STAGE_SERVER_APP_DIED, GetAppSpawnContent(), appInfo);
 
     // if current process of death is nwebspawn, restart appspawn
     if (strcmp(appInfo->name, NWEBSPAWN_SERVER_NAME) == 0) {
@@ -383,7 +383,7 @@ static void ProcessSpawnReqMsg(AppSpawnConnection *connection, AppSpawnMsgNode *
     message->connection = connection;
     // mount el2 dir
     // getWrapBundleNameValue
-    AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, GetAppSpawnContent(), &property->client);
+    AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, GetAppSpawnContent(), &property->client);
     if (IsDeveloperModeOn(property)) {
         DumpAppSpawnMsg(property->message);
     }
@@ -457,7 +457,7 @@ static void ProcessChildResponse(const WatcherHandle taskHandle, int fd, uint32_
         clock_gettime(CLOCK_MONOTONIC, &appInfo->spawnEnd);
         // 添加max信息
     }
-    AppChangeHookExecute(HOOK_APP_ADD, GetAppSpawnContent(), appInfo);
+    AppChangeHookExecute(STAGE_SERVER_APP_ADD, GetAppSpawnContent(), appInfo);
     SendResponse(property->message->connection, &property->message->msgHeader, result, property->pid);
     DeleteAppSpawningCtx(property);
 }
@@ -596,10 +596,11 @@ static void AppSpawnColdRun(AppSpawnContent *content, int argc, char *const argv
 
     int ret = AppSpawnExecuteSpawningHook(content, &property->client);
     if (ret == 0) {
+        ret = AppSpawnExecutePreReplyHook(content, &property->client);
         // success
-        NotifyResToParent(content, &property->client, 0);
+        NotifyResToParent(content, &property->client, ret);
 
-        (void)AppSpawnExecuteCompleteHook(content, &property->client);
+        (void)AppSpawnExecutePostReplyHook(content, &property->client);
 
         ret = APPSPAWN_SYSTEM_ERROR;
         if (content->runChildProcessor != NULL) {
@@ -718,7 +719,7 @@ AppSpawnContent *StartSpawnService(const AppSpawnStartArg *startArg, uint32_t ar
     APPSPAWN_CHECK(content->runChildProcessor != NULL, AppSpawnDestroyContent(content);
         return NULL, "No child processor %{public}s result: %{public}d", arg->serviceName, ret);
 
-    AddAppSpawnHook(HOOK_SPAWN_POST, HOOK_PRIO_STEP7, AppSpawnClearEnv);
+    AddAppSpawnHook(STAGE_CHILD_PRE_RUN, HOOK_PRIO_LOWEST, AppSpawnClearEnv);
     if (arg->mode == MODE_FOR_APP_SPAWN) {
         AddSpawnedProcess(pid, NWEBSPAWN_SERVER_NAME);
         SetParameter("bootevent.appspawn.started", "true");

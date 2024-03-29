@@ -49,6 +49,7 @@ extern "C" {
 #define APP_FLAGS_SECTION 0x80000000
 #define BASIC_MOUNT_FLAGS (MS_REC | MS_BIND)
 #define INVALID_UID ((uint32_t)-1)
+#define DEFAULT_MAX_UID_COUNT 5
 
 #ifdef APPSPAWN_64
 #define APPSPAWN_LIB_NAME "lib64"
@@ -64,6 +65,16 @@ extern "C" {
 #define MOUNT_PATH_OP_SYMLINK SANDBOX_TAG_INVALID
 #define MOUNT_PATH_OP_UNMOUNT    (SANDBOX_TAG_INVALID + 1)
 #define MOUNT_PATH_OP_ONLY_SANDBOX    (SANDBOX_TAG_INVALID + 2)
+#define MOUNT_PATH_OP_REPLACE_BY_SANDBOX    (SANDBOX_TAG_INVALID + 3)
+#define MOUNT_PATH_OP_REPLACE_BY_SRC    (SANDBOX_TAG_INVALID + 4)
+/*
+deps-path路径变量的含义：
+  1）首次挂载时，表示mount-paths-deps->sandbox-path  【STAGE_GLOBAL或者应用孵化时的挂载】
+  使用 MOUNT_PATH_OP_REPLACE_BY_SANDBOX 标记
+  2）二次挂载时，表示mount-paths-deps->src-path；如果mount-paths-deps->src-path为空，则使用mount-paths-deps->sandbox-path
+  使用 MOUNT_PATH_OP_ONLY_SANDBOX + MOUNT_PATH_OP_REPLACE_BY_SRC，只使用源目录，不添加root-dir
+  【RemountByName时，如el2解锁或nweb更新时】
+*/
 
 #define FILE_CROSS_APP_MODE "ohos.permission.FILE_CROSS_APP"
 
@@ -92,15 +103,30 @@ typedef struct TagSandboxQueue {
     uint32_t type;
 } SandboxQueue;
 
+/*
+"create-on-demand": {
+    "uid": "userId", // 默认使用消息的uid、gid
+    "gid":  "groupId",
+    "ugo": 750
+    }
+*/
+typedef struct {
+    uid_t uid;
+    gid_t gid;
+    uint32_t mode;
+} PathDemandInfo;
+
 typedef struct TagPathMountNode {
     SandboxMountNode sandboxNode;
     char *source;                  // source 目录，一般是全局的fs 目录
     char *target;                  // 沙盒化后的目录
     mode_t destMode;               // "dest-mode": "S_IRUSR | S_IWOTH | S_IRWXU "  默认值：0
     uint32_t mountSharedFlag : 1;  // "mount-shared-flag" : "true", 默认值：false
+    uint32_t createDemand : 1;
     uint32_t checkErrorFlag : 1;
     uint32_t category;
     char *appAplName;
+    PathDemandInfo demandInfo[0];
 } PathMountNode;
 
 typedef struct TagSymbolLinkNode {
@@ -137,7 +163,7 @@ typedef struct TagSandboxGroupNode {
     uint32_t caps;  // "caps": [ "shared" ],
     uint32_t destType;
     PathMountNode *depNode;
-    uint32_t mountMode;
+    uint32_t depMode;
 } SandboxNameGroupNode;
 
 typedef struct TagPermissionNode {
@@ -161,7 +187,9 @@ typedef struct TagAppSpawnSandboxCfg {
     uint32_t appFullMountEnable : 1;
     uint32_t pidNamespaceSupport : 1;
     uint32_t mounted : 1;
-    uint32_t systemUids[10];
+    uint32_t systemConstMounted : 1;
+    uint32_t maxUidCount;
+    uint32_t *systemUid;
     char *rootPath;
 } AppSpawnSandboxCfg;
 

@@ -116,6 +116,6 @@ static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load asan module ...");
-    AddAppSpawnHook(HOOK_SPAWN_CLEAR_ENV, HOOK_PRIO_STEP2, AppSpawnSpawnPrepare);
-    AddAppSpawnHook(HOOK_SPAWN_PREPARE, HOOK_PRIO_STEP2, AppSpawnPreSpawn);
+    AddAppSpawnHook(STAGE_CHILD_PRE_COLDBOOT, HOOK_PRIO_COMMON, AppSpawnSpawnPrepare);
+    AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_COMMON, AppSpawnPreSpawn);
 }

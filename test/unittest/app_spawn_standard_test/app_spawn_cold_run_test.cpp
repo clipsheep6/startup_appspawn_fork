@@ -219,8 +219,8 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_003, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
-        AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_CHILD_PRE_COLDBOOT, 0, content, &property->client);
         content->runAppSpawn(content, args->argc, args->argv);
         ret = 0;
     } while (0);
@@ -258,8 +258,8 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_004, TestSize.Level0)
         ASSERT_EQ(content->mode, MODE_FOR_NWEB_COLD_RUN);
 
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
-        AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_CHILD_PRE_COLDBOOT, 0, content, &property->client);
         content->runAppSpawn(content, args->argc, args->argv);
         ret = 0;
     } while (0);
@@ -303,8 +303,8 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_005, TestSize.Level0)
         ASSERT_EQ(content->mode, MODE_FOR_APP_COLD_RUN);
 
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
-        AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_CHILD_PRE_COLDBOOT, 0, content, &property->client);
         content->runAppSpawn(content, args->argc, args->argv);
         ret = 0;
     } while (0);
@@ -350,8 +350,8 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
         OH_ListAddTail(&GetAppSpawnMgr()->appSpawnQueue, &property->node);
         ProcessAppSpawnDumpMsg(nullptr);
         // spawn prepare process
-        AppSpawnHookExecute(HOOK_SPAWN_PREPARE, 0, content, &property->client);
-        AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
+        AppSpawnHookExecute(STAGE_CHILD_PRE_COLDBOOT, 0, content, &property->client);
         content->runAppSpawn(content, args->argc, args->argv);
         property = nullptr;
         ret = 0;

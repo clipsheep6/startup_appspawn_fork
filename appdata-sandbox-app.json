@@ -82,10 +82,27 @@
                 "src-path" : "/vendor/etc/hiai"
             }],
             "mount-files": [{
-                    "src-path" : "/system/<lib>/ld-musl-arm.so.1",
-                    "sandbox-path" : "/system/<lib>/ld-musl-arm.so.1"
+                "src-path" : "/system/<lib>/ld-musl-arm.so.1",
+                "sandbox-path" : "/system/<lib>/ld-musl-arm.so.1"
             }],
-            "mount-groups" : ["nweb"]
+            "symbol-links" : [{
+                "target-name" : "/system/bin",
+                "link-name" : "/bin",
+                "check-action-status": "false"
+            }, {
+                "target-name" : "/system/lib",
+                "link-name" : "/lib",
+                "check-action-status": "false"
+            }, {
+                "target-name" : "/system/etc",
+                "link-name" : "/etc",
+                "check-action-status": "false"
+            }, {
+                "target-name" : "/sys/kernel/debug",
+                "link-name" : "/d",
+                "check-action-status": "false"
+            }],
+            "mount-groups" : []
         },
         "app-variable": {
             "mount-paths": [{
@@ -124,6 +141,9 @@
             }, {
                 "src-path" : "/data/service/el1/public/cert_manager_service/certificates/user_open",
                 "sandbox-path" : "/data/certificates/user_cacerts"
+            }, {
+                "src-path" : "/data/app/el1/bundle/public/com.ohos.nweb",
+                "sandbox-path" : "/data/storage/el1/bundle/nweb"
             }],
             "mount-groups": ["el2"]
         }
@@ -230,15 +250,6 @@
                 }
             ]
         }, {
-            "name": "ohos.permission.ACCESS_DEV_FUSE",
-            "sandbox-switch": "ON",
-            "mount-paths": [{
-                    "src-path" : "/dev/fuse",
-                    "sandbox-path" : "/mnt/data/fuse",
-                    "category": "fuse"
-                }
-            ]
-        }, {
             "name": "ohos.permission.ACCESS_MEDIALIB_THUMB_DB",
             "gids": [3008],
             "mount-paths": [{
@@ -306,27 +317,15 @@
                 "sandbox-path" : "/mnt/data",
                 "category": "shared",
                 "check-action-status": "true"
+            }, {
+                "src-path" : "/dev/fuse",
+                "sandbox-path" : "/mnt/data/fuse",
+                "category": "dlp_fuse"
             }],
             "mount-groups": ["dlpmgr"]
         }]
     },
     "name-groups": [{
-        "name": "nweb",
-        "type": "system-const",
-        "mount-paths-deps": {
-            "sandbox-path": "/data/storage/el1/bundle/nweb",
-            "src-path": "/data/nweb",
-            "category": "shared",
-            "mount-mode": "always"
-        },
-        "mount-paths": [{
-            "sandbox-path": "<deps-src-path>/resource",
-            "src-path": "<param:persist.nweb.sandbox.src_path>/resource"
-        }, {
-            "sandbox-path": "<deps-src-path>/libs",
-            "src-path": "<param:persist.nweb.sandbox.src_path>/libs"
-        }]
-    }, {
         "name": "user-public",
         "type": "system-const",
         "mount-paths": [{
@@ -342,98 +341,85 @@
     }, {
         "name": "el2",
         "type": "app-variable",
+        "deps-mode": "not-exists",
         "mount-paths-deps": {
             "sandbox-path": "/data/storage/el2",
-            "src-path": "/mnt/sandbox/<currentUserId>/app-variable/el2/<PackageName>",
-            "category": "shared",
-            "mount-mode": "not-exists"
+            "src-path": "/data/app/el2/<currentUserId>/base",
+            "category": "shared"
         },
         "mount-paths": [{
-            "sandbox-path": "<deps-src-path>/base",
+            "sandbox-path": "<deps-path>/base",
             "src-path": "/data/app/el2/<currentUserId>/base/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/database",
+            "sandbox-path": "<deps-path>/database",
             "src-path": "/data/app/el2/<currentUserId>/database/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/log",
+            "sandbox-path": "<deps-path>/log",
             "src-path": "/data/app/el2/<currentUserId>/log/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/auth_groups",
+            "sandbox-path": "<deps-path>/auth_groups",
             "src-path": "/mnt/hmdfs/<currentUserId>/non_account/merge_view/data"
         }, {
-            "sandbox-path": "<deps-src-path>/distributedfiles",
+            "sandbox-path": "<deps-path>/distributedfiles",
             "src-path": "/mnt/hmdfs/<currentUserId>/account/merge_view/data/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/share",
+            "sandbox-path": "<deps-path>/share",
             "src-path": "/mnt/share/<currentUserId>/<PackageName_index>"
-        }]
-    }, {
-        "name": "dlpmgr",
-        "type": "app-variable",
-		"mount-paths-deps": {
-            "sandbox-path": "/mnt/data/<currentUserId>/fuse",
-            "src-path": "/dev/fuse",
-            "category": "dlp_fuse",
-            "mount-mode": "always"
-        },
-        "mount-paths": [{
-            "sandbox-path": "/mnt/data/fuse",
-            "src-path": "<deps-sandbox-path>"
         }]
     }, {
         "name": "el3",
         "type": "app-variable",
+        "deps-mode": "always",
         "mount-paths-deps": {
             "sandbox-path": "/data/storage/el3",
-            "src-path": "/mnt/sandbox/<currentUserId>/app-variable/el3/<PackageName>",
-            "category": "shared",
-            "mount-mode": "not-exists"
+            "src-path": "/data/app/el3/<currentUserId>/base",
+            "category": "shared"
         },
         "mount-paths": [{
-            "sandbox-path": "<deps-src-path>/base",
+            "sandbox-path": "<deps-path>/base",
             "src-path": "/data/app/el3/<currentUserId>/base/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/database",
+            "sandbox-path": "<deps-path>/database",
             "src-path": "/data/app/el3/<currentUserId>/database/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/log",
+            "sandbox-path": "<deps-path>/log",
             "src-path": "/data/app/el3/<currentUserId>/log/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/auth_groups",
+            "sandbox-path": "<deps-path>/auth_groups",
             "src-path": "/mnt/hmdfs/<currentUserId>/non_account/merge_view/data"
         }, {
-            "sandbox-path": "<deps-src-path>/distributedfiles",
+            "sandbox-path": "<deps-path>/distributedfiles",
             "src-path": "/mnt/hmdfs/<currentUserId>/account/merge_view/data/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/share",
+            "sandbox-path": "<deps-path>/share",
             "src-path": "/mnt/share/<currentUserId>/<PackageName_index>"
         }]
     }, {
         "name": "el4",
         "type": "app-variable",
+        "deps-mode": "always",
         "mount-paths-deps": {
             "sandbox-path": "/data/storage/el4",
-            "src-path": "/mnt/sandbox/<currentUserId>/app-variable/el4/<PackageName>",
-            "category": "shared",
-            "mount-mode": "not-exists"
+            "src-path": "/data/app/el4/<currentUserId>/base",
+            "category": "shared"
         },
         "mount-paths": [{
-            "sandbox-path": "<deps-src-path>/base",
+            "sandbox-path": "<deps-path>/base",
             "src-path": "/data/app/el4/<currentUserId>/base/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/database",
+            "sandbox-path": "<deps-path>/database",
             "src-path": "/data/app/el4/<currentUserId>/database/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/log",
+            "sandbox-path": "<deps-path>/log",
             "src-path": "/data/app/el4/<currentUserId>/log/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/auth_groups",
+            "sandbox-path": "<deps-path>/auth_groups",
             "src-path": "/mnt/hmdfs/<currentUserId>/non_account/merge_view/data"
         }, {
-            "sandbox-path": "<deps-src-path>/distributedfiles",
+            "sandbox-path": "<deps-path>/distributedfiles",
             "src-path": "/mnt/hmdfs/<currentUserId>/account/merge_view/data/<PackageName>"
         }, {
-            "sandbox-path": "<deps-src-path>/share",
+            "sandbox-path": "<deps-path>/share",
             "src-path": "/mnt/share/<currentUserId>/<PackageName_index>"
         }]
     }]

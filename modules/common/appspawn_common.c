@@ -457,12 +457,12 @@ static int EnablePidNs(AppSpawnMgr *content)
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load common module ...");
-    AddPreloadHook(HOOK_PRIO_STEP2, AppSpawnCommPreload);
-    AddPreloadHook(HOOK_PRIO_STEP6, EnablePidNs);
+    AddPreloadHook(HOOK_PRIO_COMMON, AppSpawnCommPreload);
+    AddPreloadHook(HOOK_PRIO_LOWEST, EnablePidNs);
 
-    AddAppSpawnHook(HOOK_SPAWN_PREPARE, HOOK_PRIO_STEP1, AppSpawnPreSpawn);
-    AddAppSpawnHook(HOOK_SPAWN_CLEAR_ENV, HOOK_PRIO_STEP1, AppSpawnSpawnPrepare);
-    AddAppSpawnHook(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_PRIO_STEP1, AppSpawnEnableCache);
-    AddAppSpawnHook(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_PRIO_STEP6, AppSpawnSetProperty);
-    AddAppSpawnHook(HOOK_SPAWN_COMPLETED, HOOK_PRIO_STEP1, AppSpawnSpawnComplete);
+    AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_HIGHEST, AppSpawnPreSpawn);
+    AddAppSpawnHook(STAGE_CHILD_PRE_COLDBOOT, HOOK_PRIO_HIGHEST, AppSpawnSpawnPrepare);
+    AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_HIGHEST, AppSpawnEnableCache);
+    AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_PROPERTY, AppSpawnSetProperty);
+    AddAppSpawnHook(STAGE_CHILD_POST_RELY, HOOK_PRIO_HIGHEST, AppSpawnSpawnComplete);
 }

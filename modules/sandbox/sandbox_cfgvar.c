@@ -97,7 +97,7 @@ static int ReplaceVariableByParameter(const char *varData, SandboxBuffer *sandbo
     return 0;
 }
 
-static int ReplaceVariableForDepsSandboxPath(const SandboxContext *context,
+static int ReplaceVariableForDepSandboxPath(const SandboxContext *context,
     const char *buffer, uint32_t bufferLen, uint32_t *realLen, const VarExtraData *extraData)
 {
     APPSPAWN_CHECK(extraData != NULL, return -1, "Invalid extra data ");
@@ -108,12 +108,30 @@ static int ReplaceVariableForDepsSandboxPath(const SandboxContext *context,
     return 0;
 }
 
-static int ReplaceVariableForDepsSrcPath(const SandboxContext *context,
+static int ReplaceVariableForDepSrcPath(const SandboxContext *context,
     const char *buffer, uint32_t bufferLen, uint32_t *realLen, const VarExtraData *extraData)
 {
     APPSPAWN_CHECK(extraData != NULL, return -1, "Invalid extra data ");
     uint32_t len = strlen(extraData->data.depNode->source);
     int ret = memcpy_s((char *)buffer, bufferLen, extraData->data.depNode->source, len);
+    APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy real data");
+    *realLen = len;
+    return 0;
+}
+
+static int ReplaceVariableForDepPath(const SandboxContext *context,
+    const char *buffer, uint32_t bufferLen, uint32_t *realLen, const VarExtraData *extraData)
+{
+    APPSPAWN_CHECK(extraData != NULL, return -1, "Invalid extra data ");
+    char *path = extraData->data.depNode->source;
+    if (CHECK_FLAGS_BY_INDEX(extraData->operation, MOUNT_PATH_OP_REPLACE_BY_SANDBOX)) {
+        path = extraData->data.depNode->target;
+    } else if (CHECK_FLAGS_BY_INDEX(extraData->operation, MOUNT_PATH_OP_REPLACE_BY_SRC) && path == NULL) {
+        path = extraData->data.depNode->target;
+    }
+    APPSPAWN_CHECK(path != NULL, return -1, "Invalid path %{public}x ", extraData->operation);
+    uint32_t len = strlen(path);
+    int ret = memcpy_s((char *)buffer, bufferLen, path, len);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy real data");
     *realLen = len;
     return 0;
@@ -258,8 +276,9 @@ void AddDefaultVariable(void)
     AddVariableReplaceHandler(PARAMETER_PACKAGE_NAME, VarPackageNameReplace);
     AddVariableReplaceHandler(PARAMETER_USER_ID, VarCurrentUseIdReplace);
     AddVariableReplaceHandler(PARAMETER_PACKAGE_INDEX, VarPackageNameIndexReplace);
-    AddVariableReplaceHandler("<deps-sandbox-path>", ReplaceVariableForDepsSandboxPath);
-    AddVariableReplaceHandler("<deps-src-path>", ReplaceVariableForDepsSrcPath);
+    AddVariableReplaceHandler("<deps-sandbox-path>", ReplaceVariableForDepSandboxPath);
+    AddVariableReplaceHandler("<deps-src-path>", ReplaceVariableForDepSrcPath);
+    AddVariableReplaceHandler("<deps-path>", ReplaceVariableForDepPath);
 }
 
 void ClearVariable(void)

@@ -310,7 +310,8 @@ void DeleteAppSpawnSandbox(AppSpawnSandboxCfg *sandbox)
     SandboxQueueClear(&sandbox->nameGroupsQueue);
     free(sandbox->depGroupNodes);
     sandbox->depGroupNodes = NULL;
-
+    free(sandbox->systemUid);
+    sandbox->systemUid = NULL;
     free(sandbox);
     sandbox = NULL;
 }
@@ -348,6 +349,22 @@ static void ClearAppSpawnSandbox(struct TagAppSpawnExtData *data)
     // clear no use sand box config
 }
 
+static int RecreateSystemUidArray(AppSpawnSandboxCfg *sandbox, uint32_t newCount)
+{
+    if (sandbox->systemUid == NULL) {
+        sandbox->systemUid = (uint32_t *)malloc(sizeof(uint32_t) * newCount);
+    } else {
+        sandbox->systemUid = (uint32_t *)realloc(sandbox->systemUid,
+            sizeof(uint32_t) * (newCount + sandbox->maxUidCount));
+    }
+    APPSPAWN_CHECK(sandbox->systemUid != NULL, return APPSPAWN_SYSTEM_ERROR, "Failed to create systemUid");
+    for (uint32_t i = 0; i < newCount; i++) {
+        sandbox->systemUid[i + sandbox->maxUidCount] = INVALID_UID;
+    }
+    sandbox->maxUidCount += newCount;
+    return 0;
+}
+
 AppSpawnSandboxCfg *CreateAppSpawnSandbox(void)
 {
     // create sandbox
@@ -376,10 +393,9 @@ AppSpawnSandboxCfg *CreateAppSpawnSandbox(void)
     sandbox->maxPermissionIndex = -1;
     sandbox->depNodeCount = 0;
     sandbox->depGroupNodes = NULL;
-
-    for (uint32_t i = 0; i < ARRAY_LENGTH(sandbox->systemUids); i++) {
-        sandbox->systemUids[i] = INVALID_UID;
-    }
+    sandbox->systemUid = NULL;
+    sandbox->maxUidCount = 0;
+    RecreateSystemUidArray(sandbox, DEFAULT_MAX_UID_COUNT);
 
     AddDefaultVariable();
     AddDefaultExpandAppSandboxConfigHandle();
@@ -480,8 +496,8 @@ static int AppendPermissionGid(const AppSpawnSandboxCfg *sandbox, AppSpawningCtx
 static bool IsSystemConstMounted(const AppSpawnSandboxCfg *sandbox, AppSpawnMsgDacInfo *info)
 {
     uid_t uid = info->uid / UID_BASE;
-    for (uint32_t i = 0; i < ARRAY_LENGTH(sandbox->systemUids); i++) {
-        if (sandbox->systemUids[i] == uid) {
+    for (uint32_t i = 0; i < sandbox->maxUidCount; i++) {
+        if (sandbox->systemUid[i] == uid) {
             return true;
         }
     }
@@ -491,9 +507,20 @@ static bool IsSystemConstMounted(const AppSpawnSandboxCfg *sandbox, AppSpawnMsgD
 static int SetSystemConstMounted(AppSpawnSandboxCfg *sandbox, AppSpawnMsgDacInfo *info)
 {
     uid_t uid = info->uid / UID_BASE;
-    for (uint32_t i = 0; i < ARRAY_LENGTH(sandbox->systemUids); i++) {
-        if (sandbox->systemUids[i] == INVALID_UID) {
-            sandbox->systemUids[i] = uid;
+    uint32_t i = 0;
+    for (; i < sandbox->maxUidCount; i++) {
+        if (sandbox->systemUid[i] == INVALID_UID) {
+            sandbox->systemUid[i] = uid;
+            break;
+        }
+    }
+    if (i > sandbox->maxUidCount) {
+        RecreateSystemUidArray(sandbox, DEFAULT_MAX_UID_COUNT);
+    }
+
+    for (; i < sandbox->maxUidCount; i++) {
+        if (sandbox->systemUid[i] == INVALID_UID) {
+            sandbox->systemUid[i] = uid;
             break;
         }
     }
@@ -534,8 +561,8 @@ MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load sandbox module ...");
     AddPreloadHook(HOOK_PRIO_SANDBOX, LoadSandbox);
-    AddAppSpawnHook(HOOK_SPAWN_PREPARE, HOOK_PRIO_SANDBOX, PrepareSandbox);
-    AddAppSpawnHook(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_PRIO_SANDBOX, SandboxConfigSet);
+    AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_SANDBOX, PrepareSandbox);
+    AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_SANDBOX, SandboxConfigSet);
 }
 
 MODULE_DESTRUCTOR(void)

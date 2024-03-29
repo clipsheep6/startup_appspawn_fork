@@ -130,5 +130,5 @@ static int NWebSpawnPreload(AppSpawnMgr *content)
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGI("Load nweb module ...");
-    AddPreloadHook(HOOK_PRIO_STEP1, NWebSpawnPreload);
+    AddPreloadHook(HOOK_PRIO_HIGHEST, NWebSpawnPreload);
 }

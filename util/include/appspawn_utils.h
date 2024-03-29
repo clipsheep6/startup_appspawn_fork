@@ -67,7 +67,6 @@ extern "C" {
 #define APPSPAWN_USEC_TO_NSEC 1000
 #define APPSPAWN_SEC_TO_MSEC 1000
 
-#define SET_FLAGS_BY_INDEX(flags, index) (flags) |= (1 << (index))
 #define CHECK_FLAGS_BY_INDEX(flags, index) ((((flags) >> (index)) & 0x1) == 0x1)
 #ifndef ARRAY_LENGTH
 #define ARRAY_LENGTH(array) (sizeof((array)) / sizeof((array)[0]))
@@ -97,14 +96,6 @@ typedef enum {
     APPSPAWN_FORK_FAIL,
     APPSPAWN_NODE_EXIST,
 } AppSpawnErrorCode;
-
-typedef enum TagAppSpawnHookPrio {
-    HOOK_PRIO_STEP1 = 1000,
-    HOOK_PRIO_STEP2 = 2000,
-    HOOK_PRIO_SANDBOX = 5000,
-    HOOK_PRIO_STEP6 = 6000,
-    HOOK_PRIO_STEP7 = 7000,
-} AppSpawnHookPrio;
 
 uint64_t DiffTime(const struct timespec *startTime, const struct timespec *endTime);
 uint8_t *Base64Decode(const char *data, uint32_t dataLen, uint32_t *outLen);

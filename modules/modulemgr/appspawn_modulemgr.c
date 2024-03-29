@@ -135,8 +135,8 @@ int PreloadHookExecute(AppSpawnContent *content)
     options.flags = TRAVERSE_STOP_WHEN_ERROR;
     options.preHook = PreHookExec;
     options.postHook = PostHookExec;
-    int ret = HookMgrExecute(GetAppSpawnHookMgr(), HOOK_PRELOAD, (void *)(&arg), &options);
-    APPSPAWN_LOGI("Execute hook [%{public}d] result %{public}d", HOOK_PRELOAD, ret);
+    int ret = HookMgrExecute(GetAppSpawnHookMgr(), STAGE_SERVER_PRELOAD, (void *)(&arg), &options);
+    APPSPAWN_LOGI("Execute hook [%{public}d] result %{public}d", STAGE_SERVER_PRELOAD, ret);
     return ret == ERR_NO_HOOK_STAGE ? 0 : ret;
 }
 
@@ -144,7 +144,7 @@ int AddPreloadHook(int prio, PreloadHook hook)
 {
     APPSPAWN_CHECK(hook != NULL, return APPSPAWN_ARG_INVALID, "Invalid hook");
     HOOK_INFO info;
-    info.stage = HOOK_PRELOAD;
+    info.stage = STAGE_SERVER_PRELOAD;
     info.prio = prio;
     info.hook = PreloadHookRun;
     info.hookCookie = (void *)hook;
@@ -191,22 +191,27 @@ int AppSpawnHookExecute(AppSpawnHookStage stage, uint32_t flags, AppSpawnContent
 
 int AppSpawnExecuteClearEnvHook(AppSpawnContent *content, AppSpawnClient *client)
 {
-    return AppSpawnHookExecute(HOOK_SPAWN_CLEAR_ENV, HOOK_STOP_WHEN_ERROR, content, client);
+    return AppSpawnHookExecute(STAGE_CHILD_PRE_COLDBOOT, HOOK_STOP_WHEN_ERROR, content, client);
 }
 
 int AppSpawnExecuteSpawningHook(AppSpawnContent *content, AppSpawnClient *client)
 {
-    return AppSpawnHookExecute(HOOK_SPAWN_SET_CHILD_PROPERTY, HOOK_STOP_WHEN_ERROR, content, client);
+    return AppSpawnHookExecute(STAGE_CHILD_EXECUTE, HOOK_STOP_WHEN_ERROR, content, client);
 }
 
-int AppSpawnExecuteCompleteHook(AppSpawnContent *content, AppSpawnClient *client)
+int AppSpawnExecutePostReplyHook(AppSpawnContent *content, AppSpawnClient *client)
 {
-    return AppSpawnHookExecute(HOOK_SPAWN_COMPLETED, HOOK_STOP_WHEN_ERROR, content, client);
+    return AppSpawnHookExecute(STAGE_CHILD_POST_RELY, HOOK_STOP_WHEN_ERROR, content, client);
+}
+
+int AppSpawnExecutePreReplyHook(AppSpawnContent *content, AppSpawnClient *client)
+{
+    return AppSpawnHookExecute(STAGE_CHILD_PRE_RELY, HOOK_STOP_WHEN_ERROR, content, client);
 }
 
 void AppSpawnEnvClear(AppSpawnContent *content, AppSpawnClient *client)
 {
-    (void)AppSpawnHookExecute(HOOK_SPAWN_POST, 0, content, client);
+    (void)AppSpawnHookExecute(STAGE_CHILD_PRE_RUN, 0, content, client);
 }
 
 int AddAppSpawnHook(AppSpawnHookStage stage, int prio, AppSpawnHook hook)
