@@ -575,6 +575,41 @@ HWTEST(AppSpawnStandardTest, App_Spawn_Standard_004_1, TestSize.Level0)
 }
 
 /**
+* @tc.name: App_Spawn_Standard_004_2
+* @tc.desc: App cold start.
+* @tc.type: FUNC
+* @tc.require:issueI9CQHB
+* @tc.author:
+*/
+HWTEST(AppSpawnStandardTest, App_Spawn_Standard_004_2, TestSize.Level0)
+{
+    APPSPAWN_LOGI("App_Spawn_Standard_004_2 start");
+    string longProcName = "App_Spawn_Standard_004_2";
+    int64_t longProcNameLen = longProcName.length();
+    int cold = 1;
+    AppSpawnContent *ctx =
+        AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, (char*)longProcName.c_str(), longProcNameLen, cold);
+    EXPECT_TRUE(ctx);
+    EXPECT_EQ(RunChildProcessorNweb, ctx->runChildProcessor);
+    
+    ctx->setEnvInfo = SetEnvInfo;
+    ctx->runChildProcessor(ctx, nullptr);
+
+    char tmp0[] = "/system/bin/appspawn";
+    char tmp1[] = NWEBSPAWN_COLDSTART_KEY;
+    char tmp2[] = "1";
+    {
+        char tmp3[] = "1:1:1:1:1:1:1:1:1:2:1000:1000:ohos.samples:ohos.samples.ecg:"
+            "default:671201800:system_core:default:owerid:0:671201800";
+        char tmp4[] = "200";
+        char tmp5[] = "|AppEnv|{\"test.name1\": \"test.value1\", \"test.name2\": \"test.value2\"}|AppEnv|";
+        char * const argv[] = {tmp0, tmp1, tmp2, tmp3, tmp4, tmp5};
+        AppSpawnColdRun(ctx, 6, argv);
+    }
+    APPSPAWN_LOGI("App_Spawn_Standard_004_2 end");
+}
+
+/**
 * @tc.name: App_Spawn_Standard_005
 * @tc.desc: Verify start App.
 * @tc.type: FUNC
