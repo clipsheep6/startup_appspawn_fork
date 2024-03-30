@@ -610,6 +610,38 @@ int GetAppSpawnClientFromArg(int argc, char *const argv[], AppSpawnClientExt *cl
     return ret;
 }
 
+static pid_t GetPidByName(const char *name) {  
+    FILE *fp;  
+    char buffer[128];  
+    pid_t pid = -1;  
+  
+    char cmdBuf[128];
+    snprintf(cmdBuf, sizeof(cmdBuf), "pidof -s %s", name);
+    fp = popen(cmdBuf, "r");  
+    if (fp == NULL) {  
+        perror("popen");  
+        return -1;  
+    }  
+  
+    if (fgets(buffer, sizeof(buffer), fp) != NULL) {   
+        buffer[strcspn(buffer, "\n")] = 0;
+        pid = atoi(buffer);  
+    }  
+    pclose(fp);  
+  
+    return pid;  
+}
+
+static int NsInitFunc()
+{
+    setuid(PID_NS_INIT_UID);
+    setgid(PID_NS_INIT_GID);
+    setcon("u:r:pid_ns_init:s0");
+    char* argv[] = {"/system/bin/pid_ns_init", NULL};
+    execve("/system/bin/pid_ns_init", argv, NULL);
+    return 0;
+}
+
 static int EnablePidNs(AppSpawnContent *content)
 {
     AppSpawnContentExt *appSpawnContent = (AppSpawnContentExt *)content;
@@ -621,17 +653,19 @@ static int EnablePidNs(AppSpawnContent *content)
         return 0;
     }
 
-    int ret = unshare(CLONE_NEWPID);
-    APPSPAWN_CHECK(ret == 0, return -1, "unshare CLONE_NWEPID failed, errno=%{public}d", errno);
-
-    pid_t pid = fork();
-    if (pid == 0) {
-        setuid(PID_NS_INIT_UID);
-        setgid(PID_NS_INIT_GID);
-        setcon("u:r:pid_ns_init:s0");
-        char* argv[] = {"/system/bin/pid_ns_init", NULL};
-        execve("/system/bin/pid_ns_init", argv, NULL);
+    pid_t pid = GetPidByName("pid_ns_init");
+    if (pid == -1) {
+        APPSPAWN_LOGI("Start Create pid_ns_init");
+        pid = clone(NsInitFunc, NULL, CLONE_NEWPID, NULL);
+        if (pid < 0) {
+            APPSPAWN_LOGE("clone pid ns init failed");
+            return -1;
+        }
+    } else {
+        APPSPAWN_LOGI("pid_ns_init exists, no need to create");
     }
+
+    content->nsInitPid = pid;
 
     APPSPAWN_LOGI("Enable pid namespace success.");
     return 0;
