@@ -29,7 +29,6 @@ ohos_static_library("appspawn_socket_client") {
     include_dirs = [
       "include",
       "//base/startup/appspawn/common",
-      "//third_party/json/include",
     ]
     defines = []
     if (is_asan) {
@@ -42,6 +41,7 @@ ohos_static_library("appspawn_socket_client") {
       "config_policy:configpolicy_util",
       "hilog:libhilog",
       "init:libbegetutil",
+      "json:nlohmann_json_static",
     ]
   }
 
