@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef APPSPAWN_CLIENT_MOUNT_PERMISSION_H
-#define APPSPAWN_CLIENT_MOUNT_PERMISSION_H
+#ifndef APPSPAWN_SANDBOX_PERMISSION_H
+#define APPSPAWN_SANDBOX_PERMISSION_H
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,27 +25,19 @@
 extern "C" {
 #endif
 
-typedef struct TagSandboxQueue {
-    struct ListNode front;
-    uint32_t type;
-} SandboxQueue;
+#define APP_SANDBOX_FILE_NAME "/appdata-sandbox-app.json"
+#define WEB_SANDBOX_FILE_NAME "/appdata-sandbox-nweb.json"
 
-typedef struct TagAppSpawnSandboxCfg {
-    SandboxQueue permissionQueue;
-    int32_t maxPermissionIndex;
-} AppSpawnSandboxCfg;
+typedef struct TagSandboxQueue SandboxQueue;
+typedef struct TagPermissionNode SandboxPermissionNode;
 
-typedef struct {
-    struct ListNode node;
-} SandboxMountNode;
-
-typedef struct TagPermissionNode {
-    SandboxMountNode sandboxNode;
-    uint32_t permissionIndex;
-    char name[0];
-} SandboxPermissionNode;
+int32_t AddSandboxPermissionNode(const char *name, SandboxQueue *queue);
+int32_t GetPermissionIndexInQueue(SandboxQueue *queue, const char *permission);
+const SandboxPermissionNode *GetPermissionNodeInQueue(SandboxQueue *queue, const char *permission);
+const SandboxPermissionNode *GetPermissionNodeInQueueByIndex(SandboxQueue *queue, int32_t index);
+int32_t PermissionRenumber(SandboxQueue *queue);
 
 #ifdef __cplusplus
 }
 #endif
-#endif  // APPSPAWN_CLIENT_MOUNT_PERMISSION_H
+#endif  // APPSPAWN_SANDBOX_PERMISSION_H
