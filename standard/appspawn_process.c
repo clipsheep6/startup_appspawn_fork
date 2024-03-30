@@ -32,7 +32,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <sched.h>
+#include <dlfcn.h>
 
+#include "appspawn_silk.h"
 #include "securec.h"
 #include "selinux/selinux.h"
 #include "parameter.h"
@@ -96,6 +98,33 @@ static void SetGwpAsanEnabled(struct AppSpawnContent_ *content, AppSpawnClient *
         APPSPAWN_LOGI("SetGwpAsanEnabled with falg: %{public}d", flag);
         may_init_gwp_asan(flag & APP_GWP_ENABLED_FORCE);
     }
+}
+
+static void EnableSilkByPackageName(const char *packageName)
+{
+    const char *silkSoPath = "/vendor/lib64/chipsetsdk/libsilk.so.0.1";
+    void *handle = NULL;
+
+    if (IsSilkEnabled(packageName)) {
+        if (access(silkSoPath, F_OK) == 0) {
+            handle = dlopen(silkSoPath, RTLD_NOW);
+            if (!handle) {
+                APPSPAWN_LOGE("silk dlopen %s failed %s\n", silkSoPath, dlerror());
+                return;
+            }
+            /* libsilk will bootstrap by constructor */
+            APPSPAWN_LOGI("dlopen libsilk success\n");
+        } else {
+            APPSPAWN_LOGE("%{public}s is not exist\n", silkSoPath);
+        }
+    }
+}
+
+static void EnableSilk(struct AppSpawnContent_ *content, AppSpawnClient *client)
+{
+    AppSpawnClientExt *appPropertyExt = (AppSpawnClientExt *)client;
+    AppParameter *appProperty = &appPropertyExt->property;
+    EnableSilkByPackageName(appProperty->processName);
 }
 
 static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *client,
@@ -643,6 +672,7 @@ void SetContentFunction(AppSpawnContent *content)
     content->clearEnvironment = ClearEnvironment;
     content->initDebugParams = InitDebugParams;
     content->setProcessName = SetProcessName;
+    content->enableSilk = EnableSilk;
     content->setKeepCapabilities = SetKeepCapabilities;
     content->setUidGid = SetUidGid;
     content->setXpmConfig = SetXpmConfig;
