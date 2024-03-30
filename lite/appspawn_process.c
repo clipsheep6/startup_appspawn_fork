@@ -181,6 +181,7 @@ void SetContentFunction(AppSpawnContent *content)
 {
     APPSPAWN_LOGI("SetContentFunction");
     content->setProcessName = SetProcessName;
+    content->enableSilk = NULL;
     content->setKeepCapabilities = SetKeepCapabilities;
     content->setUidGid = SetUidGid;
     content->setCapabilities = SetCapabilities;

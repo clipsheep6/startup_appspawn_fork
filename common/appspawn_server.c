@@ -78,10 +78,9 @@ void exit(int code)
 }
 #endif
 
-int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
+static int DoStartAppFirst(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     int32_t ret = 0;
-    APPSPAWN_LOGV("DoStartApp id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     if (content->handleInternetPermission != NULL) {
         content->handleInternetPermission(client);
     }
@@ -96,6 +95,22 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
         ret = content->setAppSandbox(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to set app sandbox");
+    }
+
+    if (content->enableSilk) {
+        content->enableSilk(content, client);
+    }
+
+    return ret;
+}
+
+int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
+{
+    int32_t ret = 0;
+    APPSPAWN_LOGV("DoStartApp id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
+    ret = DoStartAppFirst(content, client);
+    if (ret != 0) {
+        return ret;
     }
 
     (void)umask(DEFAULT_UMASK);
