@@ -57,6 +57,7 @@ ohos_moduletest("AppSpawnModuleTest") {
   external_deps = [
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",
+    "ffrt:libffrt",
     "hilog:libhilog",
     "init:libbegetutil",
   ]
