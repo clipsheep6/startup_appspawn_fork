@@ -39,6 +39,11 @@
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
+                    "src-path" : "/system/lib",
+                    "sandbox-path" : "/system/lib",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }, {
                     "src-path" : "/system/lib/platformsdk",
                     "sandbox-path" : "/system/lib/platformsdk",
                     "sandbox-flags" : [ "bind", "rec" ],
@@ -261,23 +266,13 @@
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
-                    "src-path" : "/data/app/el1/bundle/public/ohos.global.systemres",
-                    "sandbox-path" : "/data/storage/el1/bundle/ohos.global.systemres",
-                    "sandbox-flags" : [ "bind", "rec" ],
-                    "check-action-status": "false"
-                }, {
                     "src-path" : "/system/app/ohos.global.systemres",
-                    "sandbox-path" : "/data/storage/el1/bundle/systemResources",
+                    "sandbox-path" : "/data/global/systemResources",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
                     "src-path" : "/system/app/SystemResources",
-                    "sandbox-path" : "/data/storage/el1/bundle/systemResources",
-                    "sandbox-flags" : [ "bind", "rec" ],
-                    "check-action-status": "false"
-                }, {
-                    "src-path" : "/data/app/el1/bundle/public/ohos.global.systemres.overlay",
-                    "sandbox-path" : "/data/storage/el1/bundle/ohos.global.systemres.overlay",
+                    "sandbox-path" : "/data/global/systemResources",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
@@ -547,6 +542,11 @@
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
                 }, {
+                    "src-path" : "/system/lib",
+                    "sandbox-path" : "/system/lib",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
+                }, {
                     "src-path" : "/system/lib/platformsdk",
                     "sandbox-path" : "/system/lib/platformsdk",
                     "sandbox-flags" : [ "bind", "rec" ],
@@ -650,13 +650,6 @@
                     "sandbox-flags": [ "bind", "rec" ]
                 },
                 {
-                    "src-path" : "/mnt/hmdfs/<currentUserId>/cloud/data/<PackageName>",
-                    "sandbox-path" : "/data/storage/el2/cloud",
-                    "sandbox-flags" : [ "bind", "rec" ],
-                    "check-action-status": "false"
-
-                },
-                {
                     "src-path": "/storage/media/<currentUserId>/local/files/Docs",
                     "sandbox-path": "/storage/Users/<currentUserId>",
                     "sandbox-flags": [ "bind", "rec" ]
@@ -665,6 +658,16 @@
                     "src-path": "/storage/media/<currentUserId>/local/files/.Recent",
                     "sandbox-path": "/storage/Users/<currentUserId>/.Recent",
                     "sandbox-flags": [ "bind", "rec" ]
+                }
+            ]
+        }],
+        "ohos.permission.CLOUDFILE_SYNC":[{
+            "sandbox-switch": "ON",
+            "mount-paths": [{
+                    "src-path" : "/mnt/hmdfs/<currentUserId>/cloud/data/<PackageName>",
+                    "sandbox-path" : "/data/storage/el2/cloud",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
                 }
             ]
         }],
@@ -726,6 +729,16 @@
                     "src-path": "/data/service/el1/public/themes/<currentUserId>/b/system",
                     "sandbox-path": "/data/themes/b/system",
                     "sandbox-flags": [ "bind", "rec" ]
+                },
+                {
+                    "src-path": "/data/service/el1/public/themes/<currentUserId>/fa",
+                    "sandbox-path": "/data/themes/f",
+                    "sandbox-flags": [ "bind", "rec" ]
+                },
+                {
+                    "src-path": "/data/service/el1/public/themes/<currentUserId>/share",
+                    "sandbox-path": "/data/themes/s",
+                    "sandbox-flags": [ "bind", "rec" ]
                 }
             ]
         }],
@@ -760,28 +773,6 @@
                     "src-path": "/log/chr",
                     "sandbox-path": "/log/chr",
                     "sandbox-flags": [ "bind", "rec" ]
-                }
-            ]
-        }],
-        "ohos.permission.ACCESS_DATA":[{
-            "sandbox-switch": "ON",
-            "mount-paths": [{
-                    "src-path" : "/mnt/data/<currentUserId>",
-                    "sandbox-path" : "/mnt/data",
-                    "sandbox-flags" : [ "bind", "rec" ],
-                    "mount-shared-flag" : "true",
-                    "check-action-status": "true"
-                }
-            ]
-        }],
-        "ohos.permission.ACCESS_DEV_FUSE":[{
-            "sandbox-switch": "ON",
-            "mount-paths": [{
-                    "src-path" : "/dev/fuse",
-                    "sandbox-path" : "/mnt/data/fuse",
-                    "sandbox-flags" : [ "MS_NOSUID", "MS_NODEV", "MS_NOEXEC", "MS_NOATIME", "MS_LAZYTIME" ],
-                    "fs-type": "fuse",
-                    "check-action-status": "false"
                 }
             ]
         }],

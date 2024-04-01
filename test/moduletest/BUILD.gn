@@ -108,4 +108,5 @@ group("moduletest") {
     ":AppSpawnModuleTest",
     ":AppSpawnTest",
   ]
+  deps += [ "hnp_sample:hnpsample" ]
 }

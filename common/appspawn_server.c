@@ -57,9 +57,7 @@ static void ProcessExit(int code)
 #ifdef OHOS_LITE
     _exit(0x7f); // 0x7f user exit
 #else
-#ifndef APPSPAWN_TEST
     quick_exit(0);
-#endif
 #endif
 }
 
@@ -86,6 +84,12 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
     APPSPAWN_LOGV("DoStartApp id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
     if (content->handleInternetPermission != NULL) {
         content->handleInternetPermission(client);
+    }
+
+    if (content->setEnvInfo) {
+        ret = content->setEnvInfo(content, client);
+        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
+            return ret, "Failed to setEnvInfo");
     }
 
     if (content->setAppSandbox) {
@@ -129,12 +133,6 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
         ret = content->setCapabilities(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to setCapabilities");
-    }
-
-    if (content->setEnvInfo) {
-        ret = content->setEnvInfo(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to setEnvInfo");
     }
 
     if (content->waitForDebugger) {
