@@ -33,8 +33,8 @@ extern "C" {
 
 typedef struct TagAppSpawnMgr AppSpawnMgr;
 typedef struct TagAppSpawningCtx AppSpawningCtx;
-typedef struct TagAppSpawnContent AppSpawnContent;
-typedef struct TagAppSpawnClient AppSpawnClient;
+typedef struct AppSpawnContent_ AppSpawnContent;
+typedef struct AppSpawnClient_ AppSpawnClient;
 typedef struct TagAppSpawnedProcess AppSpawnedProcess;
 
 typedef enum {
