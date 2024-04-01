@@ -54,6 +54,52 @@ static inline bool CheckSpawningPermissionFlagSet(const SandboxContext *context,
     return CheckAppSpawnMsgFlag(context->message, TLV_PERMISSION, index);
 }
 
+static void CheckDirRecursive(const char *path)
+{
+    char buffer[PATH_MAX] = {0};
+    const char slash = '/';
+    const char *p = path;
+    char *curPos = strchr(path, slash);
+    while (curPos != NULL) {
+        int len = curPos - p;
+        p = curPos + 1;
+        if (len == 0) {
+            curPos = strchr(p, slash);
+            continue;
+        }
+        int ret = memcpy_s(buffer, PATH_MAX, path, p - path - 1);
+        APPSPAWN_CHECK(ret == 0, return, "Failed to copy path");
+        ret = access(buffer, F_OK);
+        APPSPAWN_CHECK(ret == 0, return, "Dir not exit %{public}s errno: %{public}d", buffer, errno);
+        curPos = strchr(p, slash);
+    }
+    int ret = access(path, F_OK);
+    APPSPAWN_CHECK(ret == 0, return, "Dir not exit %{public}s errno: %{public}d", buffer, errno);
+    return;
+}
+
+int SandboxMountPath(const MountArg *arg)
+{
+    APPSPAWN_CHECK(arg != NULL && arg->originPath != NULL && arg->destinationPath != NULL,
+        return APPSPAWN_ARG_INVALID, "Invalid arg ");
+    int ret = mount(arg->originPath, arg->destinationPath, arg->fsType, arg->mountFlags, arg->options);
+    if (ret != 0) {
+        if (arg->originPath != NULL && strstr(arg->originPath, "/data/app/el2/") != NULL) {
+            CheckDirRecursive(arg->originPath);
+        }
+        APPSPAWN_LOGW("errno is: %{public}d, bind mount %{public}s => %{public}s",
+            errno, arg->originPath, arg->destinationPath);
+        return errno;
+    }
+    ret = mount(NULL, arg->destinationPath, NULL, arg->mountSharedFlag, NULL);
+    if (ret != 0) {
+        APPSPAWN_LOGW("errno is: %{public}d, bind mount %{public}s => %{public}s",
+            errno, arg->originPath, arg->destinationPath);
+        return errno;
+    }
+    return 0;
+}
+
 static int BuildPackagePath(SandboxContext *sandboxContext, const AppSpawnSandboxCfg *sandbox)
 {
     const char *packagePath = GetSandboxRealVar(sandboxContext, BUFFER_FOR_SOURCE, sandbox->rootPath, NULL, NULL);
@@ -331,7 +377,7 @@ static int DoSandboxPathNodeMount(const SandboxContext *context,
     CreateDemandSrc(context, sandboxNode, &args);
 
     if (CHECK_FLAGS_BY_INDEX(operation, MOUNT_PATH_OP_UNMOUNT)) {  // unmount this deps
-        APPSPAWN_LOGV("DoSandboxPathNodeMount umount2 %{public}s", args.destinationPath);
+        APPSPAWN_LOGV("umount2 %{public}s", args.destinationPath);
         umount2(args.destinationPath, MNT_DETACH);
     }
     int ret = 0;
@@ -448,8 +494,8 @@ static bool CheckAndCreateDepPath(const SandboxContext *context, const SandboxNa
     if (srcPath == NULL) {
         return false;
     }
-    APPSPAWN_LOGV("Mount depended to check src: %{public}s", srcPath);
     if (access(srcPath, F_OK) == 0) {
+        APPSPAWN_LOGV("Src path %{public}s exist, do not mount", srcPath);
         return true;
     }
     // 不存在，则创建并挂载
@@ -650,7 +696,7 @@ static int SandboxRootFolderCreate(const SandboxContext *context, const AppSpawn
     return ret;
 }
 
-int DumpCurrentDir(SandboxContext *context, const char *dirPath)
+void DumpCurrentDir(SandboxContext *context, const char *dirPath)
 {
     struct stat st = {};
     if (stat(dirPath, &st) == 0 && S_ISREG(st.st_mode)) {
@@ -658,11 +704,11 @@ int DumpCurrentDir(SandboxContext *context, const char *dirPath)
         if (access(dirPath, F_OK) != 0) {
             APPSPAWN_LOGI("file %{public}s not exist", dirPath);
         }
-        return 0;
+        return;
     }
 
     DIR *pDir = opendir(dirPath);
-    APPSPAWN_CHECK(pDir != NULL, return -1, "Read dir :%{public}s failed.%{public}d", dirPath, errno);
+    APPSPAWN_CHECK(pDir != NULL, return, "Read dir :%{public}s failed.%{public}d", dirPath, errno);
 
     struct dirent *dp;
     while ((dp = readdir(pDir)) != NULL) {
@@ -679,7 +725,7 @@ int DumpCurrentDir(SandboxContext *context, const char *dirPath)
         }
     }
     closedir(pDir);
-    return 0;
+    return;
 }
 
 int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx *property, int nwebspawn)
@@ -719,13 +765,6 @@ int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx 
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
         APPSPAWN_LOGV("Change root dir success %{public}s ", context->sandboxPackagePath);
     } while (0);
-
-    if (getcwd(context->buffer[0].buffer, context->buffer[0].bufferLen) != NULL) {
-        APPSPAWN_LOGE("current_path %{public}s\n", context->buffer[0].buffer);
-    }
-    APPSPAWN_LOGV("current_path %{public}s \n", context->buffer[0].buffer);
-
-    DumpCurrentDir(context, "/system/lib");
     DeleteSandboxContext(context);
     return ret;
 }
@@ -802,6 +841,7 @@ int StagedMountPreUnShare(const SandboxContext *context, const AppSpawnSandboxCf
 
         uint32_t operation = 0;
         SetMountPathOperation(&operation, MOUNT_PATH_OP_UNMOUNT);
+        groupNode->depMounted = 1;
         ret = DoSandboxPathNodeMount(context, &groupNode->section, groupNode->depNode, operation);
         if (ret != 0) {
             APPSPAWN_LOGE("Mount deps root fail %{public}s", groupNode->section.name);
@@ -869,21 +909,6 @@ int StagedMountPostUnshare(const SandboxContext *context, const AppSpawnSandboxC
     return ret;
 }
 
-int UnmountSandboxConfigs(const AppSpawnSandboxCfg *sandbox)
-{
-    APPSPAWN_CHECK(sandbox != NULL, return -1, "Invalid sandbox or context");
-    for (uint32_t i = 0; i < sandbox->depNodeCount; i++) {
-        SandboxNameGroupNode *groupNode = sandbox->depGroupNodes[i];
-        if (groupNode == NULL || groupNode->depNode == NULL) {
-            continue;
-        }
-        APPSPAWN_LOGV("Unmount sandbox config sandbox path %{public}s ", groupNode->depNode->target);
-        // unmount this deps
-        umount2(groupNode->depNode->target, MNT_DETACH);
-    }
-    return 0;
-}
-
 static void UnmountPath(uint32_t uid, const SandboxMountNode *sandboxNode)
 {
     char path[PATH_MAX] = {};
@@ -891,19 +916,21 @@ static void UnmountPath(uint32_t uid, const SandboxMountNode *sandboxNode)
         PathMountNode *pathNode = (PathMountNode *)sandboxNode;
         int len = sprintf_s(path, sizeof(path), "/mnt/sandbox/%d/app-root%s", uid, pathNode->target);
         APPSPAWN_CHECK(len > 0, return, "Failed to format");
+        APPSPAWN_LOGI("Unmount sandbox config sandbox path %{public}s ", path);
+        int ret = umount2(pathNode->target, MNT_DETACH);
+        APPSPAWN_CHECK_ONLY_LOG(ret == 0, "Failed to umount2 %{public}s errno: %{public}d", path, errno);
     }
 }
 
-int UnmountSystemConstConfig(const AppSpawnSandboxCfg *sandbox)
+static int UnmountSystemConstConfig(const AppSpawnSandboxCfg *sandbox)
 {
-    APPSPAWN_CHECK(sandbox != NULL, return -1, "Invalid sandbox or context");
     SandboxSection *section = GetSandboxSection(&sandbox->requiredQueue, "system-const");
     if (section == NULL) {
         return 0;
     }
 
     for (uint32_t i = 0; i < sandbox->maxUidCount; i++) {
-        if (sandbox->systemUid[i] != INVALID_UID) {
+        if (sandbox->systemUid[i] == INVALID_UID) {
             continue;
         }
         ListNode *node = section->front.next;
@@ -913,6 +940,27 @@ int UnmountSystemConstConfig(const AppSpawnSandboxCfg *sandbox)
             // get next
             node = node->next;
         }
+    }
+    return 0;
+}
+
+int UnmountSandboxConfigs(const AppSpawnSandboxCfg *sandbox)
+{
+    APPSPAWN_CHECK(sandbox != NULL, return -1, "Invalid sandbox or context");
+    int isServer = IsSpawnServer(GetAppSpawnMgr());
+    APPSPAWN_LOGI("Unmount sandbox %{public}d ", isServer);
+    if (isServer) { // 服务侧退出时，unmount system-const的配置
+        return UnmountSystemConstConfig(sandbox);
+    }
+    APPSPAWN_LOGI("Unmount sandbox mount-paths-deps %{public}u ", sandbox->depNodeCount);
+    for (uint32_t i = 0; i < sandbox->depNodeCount; i++) {
+        SandboxNameGroupNode *groupNode = sandbox->depGroupNodes[i];
+        if (groupNode == NULL || groupNode->depNode == NULL) {
+            continue;
+        }
+        // unmount this deps
+        uid_t uid = getuid() / UID_BASE;
+        UnmountPath(uid, &groupNode->depNode->sandboxNode);
     }
     return 0;
 }

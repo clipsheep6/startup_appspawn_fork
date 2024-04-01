@@ -103,7 +103,7 @@ static void HandleDiedPid(pid_t pid, uid_t uid, int status)
     appInfo->exitStatus = status;
     APPSPAWN_CHECK_ONLY_LOG(appInfo->uid == uid, "Invalid uid %{public}u %{public}u", appInfo->uid, uid);
     DumpStatus(appInfo->name, pid, status);
-    AppChangeHookExecute(STAGE_SERVER_APP_DIED, GetAppSpawnContent(), appInfo);
+    ProcessMgrHookExecute(STAGE_SERVER_APP_DIED, GetAppSpawnContent(), appInfo);
 
     // if current process of death is nwebspawn, restart appspawn
     if (strcmp(appInfo->name, NWEBSPAWN_SERVER_NAME) == 0) {
@@ -153,6 +153,9 @@ static void AppSpawningCtxOnClose(const AppSpawnMgr *mgr, AppSpawningCtx *ctx, v
 
 static void OnClose(const TaskHandle taskHandle)
 {
+    if (!IsSpawnServer(GetAppSpawnMgr())) {
+        return;
+    }
     AppSpawnConnection *connection = (AppSpawnConnection *)LE_GetUserData(taskHandle);
     APPSPAWN_CHECK(connection != NULL, return, "Invalid connection");
     APPSPAWN_LOGI("OnClose connectionId: %{public}u socket %{public}d",
@@ -271,7 +274,7 @@ static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer,
     connection->receiverCtx.incompleteMsg = NULL;
     int ret = 0;
     do {
-        APPSPAWN_LOGI("OnReceiveRequest connectionId: %{public}d start: 0x%{public}x buffLen %{public}d",
+        APPSPAWN_LOGI("OnReceiveRequest connectionId: %{public}u start: 0x%{public}x buffLen %{public}d",
             connection->connectionId, *(uint32_t *)(buffer + currLen), buffLen - currLen);
 
         ret = GetAppSpawnMsgFromBuffer(buffer + currLen, buffLen - currLen,
@@ -454,10 +457,12 @@ static void ProcessChildResponse(const WatcherHandle taskHandle, int fd, uint32_
     if (appInfo) {
         AppSpawnMsgDacInfo *dacInfo = GetAppProperty(property, TLV_DAC_INFO);
         appInfo->uid = dacInfo != NULL ? dacInfo->uid : 0;
+        appInfo->spawnStart.tv_sec = property->spawnStart.tv_sec;
+        appInfo->spawnStart.tv_nsec = property->spawnStart.tv_nsec;
         clock_gettime(CLOCK_MONOTONIC, &appInfo->spawnEnd);
         // 添加max信息
     }
-    AppChangeHookExecute(STAGE_SERVER_APP_ADD, GetAppSpawnContent(), appInfo);
+    ProcessMgrHookExecute(STAGE_SERVER_APP_ADD, GetAppSpawnContent(), appInfo);
     SendResponse(property->message->connection, &property->message->msgHeader, result, property->pid);
     DeleteAppSpawningCtx(property);
 }
@@ -645,10 +650,10 @@ static int AppSpawnClearEnv(AppSpawnMgr *content, AppSpawningCtx *property)
 static int AppSpawnChildExit(struct TagAppSpawnContent *content, int32_t result)
 {
     APPSPAWN_CHECK(content != NULL, return 0, "Invalid appspawn content");
-    AppSpawnMgr *mgr = (AppSpawnMgr *)content;
-    APPSPAWN_LOGV("Process child %{public}d %{public}s exit, result: %{public}d",
-        getpid(), (IsNWebSpawnMode(mgr)) ? "appspawn" : "nwebspawn", result);
+    APPSPAWN_LOGI("Process child %{public}d exit result: %{public}d", getpid(), result);
 
+    AppSpawnDestroyContent(content);
+    APPSPAWN_LOGI("Process child %{public}d exit end", getpid());
     return 0;
 }
 

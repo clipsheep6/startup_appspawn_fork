@@ -50,7 +50,7 @@ int AppSpawnLoadAutoRunModules(int type);
 void AppSpawnModuleMgrUnInstall(int type);
 void DeleteAppSpawnHookMgr(void);
 int PreloadHookExecute(AppSpawnContent *content);
-int AppChangeHookExecute(AppSpawnHookStage stage, const AppSpawnContent *content, const AppSpawnedProcess *appInfo);
+int ProcessMgrHookExecute(AppSpawnHookStage stage, const AppSpawnContent *content, const AppSpawnedProcessInfo *appInfo);
 int AppSpawnHookExecute(AppSpawnHookStage stage, uint32_t flags, AppSpawnContent *content, AppSpawnClient *client);
 #ifdef __cplusplus
 }

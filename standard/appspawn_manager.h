@@ -162,6 +162,11 @@ void *GetAppSpawnMsgExtInfo(const AppSpawnMsgNode *message, const char *name, ui
 int CheckAppSpawnMsgFlag(const AppSpawnMsgNode *message, uint32_t type, uint32_t index);
 int SetAppSpawnMsgFlag(const AppSpawnMsgNode *message, uint32_t type, uint32_t index);
 
+APPSPAWN_INLINE int IsSpawnServer(const AppSpawnMgr *content)
+{
+    return (content != NULL) && (content->servicePid == getpid());
+}
+
 APPSPAWN_INLINE int IsNWebSpawnMode(const AppSpawnMgr *content)
 {
     return (content != NULL) &&

@@ -165,5 +165,6 @@ int32_t SetEnvInfo(const AppSpawnMgr *content, const AppSpawningCtx *property)
         APPSPAWN_CHECK(ret == 0, break, "setenv failed, errno: %{public}d", errno);
     }
     cJSON_Delete(root);
+    APPSPAWN_LOGV("SetEnvInfo success");
     return ret;
 }

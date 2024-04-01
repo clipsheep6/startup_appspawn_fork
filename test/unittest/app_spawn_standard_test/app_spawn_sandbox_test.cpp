@@ -95,7 +95,45 @@ static const std::string g_commonConfig = "{ \
             \"symbol-links\" : [], \
             \"mount-groups\": [\"nweb\"] \
         } \
-    } \
+    }, \
+    \"name-groups\": [ \
+        { \
+            \"name\": \"user-public\", \
+            \"type\": \"system-const\", \
+            \"mount-paths\" : [{ \
+                \"src-path\" : \"/data/app/el2/<currentUserId>/base/<PackageName>\", \
+                \"sandbox-path\" : \"/data/storage/el2/base\", \
+                \"dest-mode\": \"S_IRUSR | S_IWOTH | S_IRWXU \", \
+                \"category\": \"shared\" \
+            }] \
+        }, { \
+            \"name\": \"el5\", \
+            \"type\": \"app-variable\", \
+            \"deps-mode\": \"not-exists\", \
+            \"mount-paths-deps\": { \
+                \"sandbox-path\": \"/data/storage/el5\", \
+                \"src-path\": \"/data/app/el5/<currentUserId>/base\", \
+                \"category\": \"shared\" \
+            }, \
+            \"mount-paths\" : [{ \
+                \"src-path\" : \"/data/app/el5/<currentUserId>/base/<PackageName>\", \
+                \"sandbox-path\" : \"<deps-path>/base\" \
+            }] \
+        }, { \
+            \"name\": \"el6\", \
+            \"type\": \"app-variable\", \
+            \"deps-mode\": \"not-exists\", \
+            \"mount-paths-deps\": { \
+                \"sandbox-path\": \"/data/storage/el6\", \
+                \"src-path\": \"/data/app/el6/<currentUserId>/base\", \
+                \"category\": \"shared\" \
+            }, \
+            \"mount-paths\" : [{ \
+                \"src-path\" : \"/data/app/el6/<currentUserId>/base/<PackageName>\", \
+                \"sandbox-path\" : \"<deps-path>/base\" \
+            }] \
+        } \
+    ] \
 }";
 
 static const std::string g_packageNameConfig = "{ \
@@ -132,8 +170,7 @@ static const std::string g_packageNameConfig = "{ \
             \"mount-paths\" : [{ \
                     \"src-path\" : \"/mnt/data/<currentUserId>\", \
                     \"sandbox-path\" : \"/mnt/data\", \
-                    \"sandbox-flags\" : [\"bind\", \"rec\" ], \
-                    \"mount-shared-flag\" : \"true\", \
+                    \"category\": \"shared\", \
                     \"check-action-status\": \"true\" \
                 }, { \
                     \"src-path\" : \"/dev/fuse\", \
@@ -160,15 +197,11 @@ static const std::string g_permissionConfig = "{ \
                 \"mount-paths\" : [{ \
                     \"src-path\" : \"/config\", \
                     \"sandbox-path\" : \"/data/app/el1/<currentUserId>/database/<PackageName_index>\", \
-                    \"sandbox-flags\" : [ \"bind\", \"rec\" ], \
                     \"check-action-status\": \"false\", \
                     \"dest-mode\": \"S_IRUSR | S_IWOTH | S_IRWXU \", \
                     \"sandbox-flags-customized\": [ \"MS_NODEV\", \"MS_RDONLY\" ], \
-                    \"dac-override-sensitive\": \"true\", \
-                    \"mount-shared-flag\" : \"true\", \
-                    \"app-apl-name\" : \"system\", \
-                    \"fs-type\": \"sharefs\", \
-                    \"options\": \"support_overwrite=1\" \
+                    \"category\": \"shared\", \
+                    \"app-apl-name\" : \"system\" \
                 }], \
                 \"symbol-links\" : [{ \
                         \"target-name\" : \"/system/etc\", \
@@ -186,7 +219,6 @@ static const std::string g_permissionConfig = "{ \
                 \"mount-paths\" : [{ \
                     \"src-path\" : \"/config\", \
                     \"sandbox-path\" : \"/data/app/el1/<currentUserId>/database/<PackageName_index>\", \
-                    \"sandbox-flags\" : [ \"bind\", \"rec\" ], \
                     \"check-action-status\": \"false\" \
                 }], \
                 \"symbol-links\" : [] \
@@ -204,17 +236,12 @@ static const std::string g_spawnFlagsConfig = "{ \
         \"spawn-flag\": [{ \
             \"name\": \"START_FLAGS_BACKUP\", \
             \"mount-paths\": [{ \
-                        \"src-path\" : \"/data/app/el1/bundle/public/\", \
-                        \"sandbox-path\" : \"/data/bundles/\", \
-                \"sandbox-flags\" : [ \"bind\", \"rec\" ], \
+                \"src-path\" : \"/data/app/el1/bundle/public/\", \
+                \"sandbox-path\" : \"/data/bundles/\", \
                 \"check-action-status\": \"true\", \
                 \"dest-mode\": \"S_IRUSR | S_IWOTH | S_IRWXU \", \
-                \"sandbox-flags-customized\": [ \"MS_NODEV\", \"MS_RDONLY\" ], \
-                \"dac-override-sensitive\": \"true\", \
-                \"mount-shared-flag\" : \"true\", \
-                \"app-apl-name\" : \"system\", \
-                \"fs-type\": \"sharefs\", \
-                \"options\": \"support_overwrite=1\" \
+                \"category\": \"shared\", \
+                \"app-apl-name\" : \"system\" \
             }, { \
                 \"sandbox-path\": \"/data/storage/el1/backup\", \
                 \"src-path\": \"/data/service/el1/<currentUserId>/backup/bundles/<PackageName>\" \
@@ -225,60 +252,11 @@ static const std::string g_spawnFlagsConfig = "{ \
             \"mount-paths\": [{ \
                 \"src-path\" : \"/data/app/el1/bundle/public/\", \
                 \"sandbox-path\" : \"/data/bundles/\", \
-                \"sandbox-flags\" : [ \"bind\", \"rec\" ], \
                 \"check-action-status\": \"true\" \
             }], \
             \"mount-groups\": [] \
         }] \
     }\
-}";
-
-static const std::string g_nameGroupsConfig = "{ \
-    \"global\": { \
-        \"sandbox-root\": \"/mnt/sandbox/<currentUserId>/app-root\", \
-        \"sandbox-ns-flags\": [ \"pid\", \"net\" ], \
-        \"top-sandbox-switch\": \"ON\" \
-    }, \
-    \"name-groups\": [ \
-        { \
-            \"name\": \"user-public\", \
-            \"type\": \"system-const\", \
-            \"mount-paths\" : [{ \
-                \"src-path\" : \"/data/app/el2/<currentUserId>/base/<PackageName>\", \
-                \"sandbox-path\" : \"/data/storage/el2/base\", \
-                \"sandbox-flags\" : [ \"bind\", \"rec\" ], \
-                \"check-action-status\": \"false\", \
-                \"dest-mode\": \"S_IRUSR | S_IWOTH | S_IRWXU \", \
-                \"sandbox-flags-customized\": [ \"MS_NODEV\", \"MS_RDONLY\" ], \
-                \"dac-override-sensitive\": \"true\", \
-                \"mount-shared-flag\" : \"true\", \
-                \"app-apl-name\" : \"system\", \
-                \"fs-type\": \"sharefs\", \
-                \"options\": \"support_overwrite=1\" \
-            }] \
-        }, { \
-            \"name\": \"user-public\", \
-            \"type\": \"app-variable\", \
-            \"updatable-root\": { \
-                \"sandbox-path\": \"/data/app/el2\", \
-                \"src-path\": \"/mnt/sandbox/<currentuserId>/app-variable/el2/<PackageName>\", \
-                \"mount-mode\": \"not-exists\" \
-            }, \
-            \"mount-paths\" : [{ \
-                \"src-path\" : \"/data/app/el2/<currentUserId>/base/<PackageName>\", \
-                \"sandbox-path\" : \"/data/storage/el2/base\", \
-                \"sandbox-flags\" : [ \"bind\", \"rec\" ], \
-                \"check-action-status\": \"false\", \
-                \"dest-mode\": \"S_IRUSR | S_IWOTH | S_IRWXU \", \
-                \"sandbox-flags-customized\": [ \"MS_NODEV\", \"MS_RDONLY\" ], \
-                \"dac-override-sensitive\": \"true\", \
-                \"mount-shared-flag\" : \"true\", \
-                \"app-apl-name\" : \"system\", \
-                \"fs-type\": \"sharefs\", \
-                \"options\": \"support_overwrite=1\" \
-            }] \
-        } \
-    }] \
 }";
 
 static inline SandboxMountNode *GetFirstSandboxMountPathNode(const SandboxSection *section)
@@ -548,6 +526,23 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Variable_005, TestSize.Level0)
 }
 
 HWTEST(AppSpawnSandboxTest, App_Spawn_Variable_006, TestSize.Level0)
+{
+    AppSpawningCtx *spawningCtx = TestCreateAppSpawningCtx();
+    SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
+    ASSERT_EQ(context != nullptr, 1);
+
+    const char *real = "/system/test.variable.001/test002/system/test.variable.001/test001";
+    const char *value = GetSandboxRealVar(context, 0,
+        "system/<param:test.variable.001>/test001", "/system/<param:test.variable.001>/test002/", nullptr);
+    APPSPAWN_LOGV("value %{public}s", value);
+    ASSERT_EQ(value != nullptr, 1);
+    ASSERT_EQ(strcmp(value, real) == 0, 1);
+    DeleteSandboxContext(context);
+    DeleteAppSpawningCtx(spawningCtx);
+}
+
+// 测试deps场景下，二次变量替换
+HWTEST(AppSpawnSandboxTest, App_Spawn_Variable_007, TestSize.Level0)
 {
     AppSpawningCtx *spawningCtx = TestCreateAppSpawningCtx();
     SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
@@ -981,7 +976,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_05, TestSize.Level0)
 }
 
 /**
- * @brief app-variable部分执行
+ * @brief 检查shared 模版
  *
  */
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_10, TestSize.Level0)
@@ -1014,7 +1009,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_10, TestSize.Level0)
         MountArg args = {};
         args.originPath = "/config";
         args.destinationPath = "/mnt/sandbox/100/app-root/config";
-        args.fsType = "sharefs";
         args.mountFlags = MS_BIND | MS_REC;
         stub->flags = STUB_NEED_CHECK;
         stub->arg = reinterpret_cast<void *>(&args);
@@ -1309,9 +1303,64 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_15, TestSize.Level0)
 
 /**
  * @brief system-config部分执行，测试每一种模版结果是否正确
+ *  测试 shared
  *
  */
 HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_16, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = nullptr;
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
+    StubNode *stub = GetStubNode(STUB_MOUNT);
+    ASSERT_NE(stub != nullptr, 0);
+    int ret = -1;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+
+        AddDefaultVariable();
+        sandbox = CreateAppSpawnSandbox();
+        APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
+        sandbox->appFullMountEnable = 1;
+        ret = TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        // set check point
+        MountArg args = {};
+        args.originPath = "/lib";
+        args.destinationPath = "/mnt/sandbox/100/app-root/lib";
+        args.fsType = nullptr;
+        args.mountFlags = MS_BIND | MS_REC;
+        args.mountSharedFlag = MS_SHARED;
+        stub->flags = STUB_NEED_CHECK;
+        stub->arg = reinterpret_cast<void *>(&args);
+
+        ret = StagedMountSystemConst(sandbox, property, 0);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        ASSERT_EQ(stub->result, 0);
+    } while (0);
+    if (sandbox) {
+        DeleteAppSpawnSandbox(sandbox);
+    }
+    stub->flags &= ~STUB_NEED_CHECK;
+    DeleteAppSpawningCtx(property);
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief system-config部分执行，测试每一种模版结果是否正确
+ *  测试 rdonly
+ *
+ */
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_17, TestSize.Level0)
 {
     AppSpawnSandboxCfg *sandbox = nullptr;
     AppSpawnClientHandle clientHandle = nullptr;
@@ -1343,6 +1392,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_16, TestSize.Level0)
         args.destinationPath = "/mnt/sandbox/100/app-root/lib1";
         args.fsType = nullptr;
         args.mountFlags = MS_NODEV | MS_RDONLY;
+        args.mountSharedFlag = MS_SLAVE;
         stub->flags = STUB_NEED_CHECK;
         stub->arg = reinterpret_cast<void *>(&args);
 
@@ -1358,4 +1408,217 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_16, TestSize.Level0)
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
 }
-}  // namespace OHOS
+
+/**
+ * @brief system-config部分执行，测试每一种模版结果是否正确
+ *  测试 epfs
+ *
+ */
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_18, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = nullptr;
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
+    StubNode *stub = GetStubNode(STUB_MOUNT);
+    ASSERT_NE(stub != nullptr, 0);
+    int ret = -1;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+
+        AddDefaultVariable();
+        sandbox = CreateAppSpawnSandbox();
+        APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
+        sandbox->appFullMountEnable = 1;
+        ret = TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        // set check point
+        MountArg args = {};
+        args.originPath = "none";
+        args.destinationPath = "/mnt/sandbox/100/app-root/storage/cloud/epfs";
+        args.fsType = "epfs";
+        args.mountFlags = MS_NODEV;
+        args.mountSharedFlag = MS_SLAVE;
+        stub->flags = STUB_NEED_CHECK;
+        stub->arg = reinterpret_cast<void *>(&args);
+
+        ret = StagedMountSystemConst(sandbox, property, 0);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        ASSERT_EQ(stub->result, 0);
+    } while (0);
+    if (sandbox) {
+        DeleteAppSpawnSandbox(sandbox);
+    }
+    stub->flags &= ~STUB_NEED_CHECK;
+    DeleteAppSpawningCtx(property);
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief system-config部分执行，测试每一种模版结果是否正确
+ *  测试 fuse
+ *
+ */
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_19, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = nullptr;
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
+    StubNode *stub = GetStubNode(STUB_MOUNT);
+    ASSERT_NE(stub != nullptr, 0);
+    int ret = -1;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+
+        AddDefaultVariable();
+        sandbox = CreateAppSpawnSandbox();
+        APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
+        sandbox->appFullMountEnable = 1;
+        ret = TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        // set check point
+        MountArg args = {};
+        args.originPath = "/dev/fuse";
+        args.destinationPath = "/mnt/sandbox/100/app-root/mnt/data/fuse";
+        args.fsType = "fuse";
+        args.mountFlags = MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_NOATIME | MS_LAZYTIME;
+        args.mountSharedFlag = MS_SLAVE;
+        stub->flags = STUB_NEED_CHECK;
+        stub->arg = reinterpret_cast<void *>(&args);
+
+        ret = StagedMountSystemConst(sandbox, property, 0);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        ASSERT_EQ(stub->result, 0);
+    } while (0);
+    if (sandbox) {
+        DeleteAppSpawnSandbox(sandbox);
+    }
+    stub->flags &= ~STUB_NEED_CHECK;
+    DeleteAppSpawningCtx(property);
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief 测试unshare前的执行，not-exist时，节点不存在，执行dep的挂载
+ *
+ */
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_20, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = nullptr;
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
+    StubNode *stub = GetStubNode(STUB_MOUNT);
+    ASSERT_NE(stub != nullptr, 0);
+    int ret = -1;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+
+        AddDefaultVariable();
+        sandbox = CreateAppSpawnSandbox();
+        APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
+        sandbox->appFullMountEnable = 1;
+        ret = TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        // set check point
+        MountArg args = {};
+        args.originPath = "/data/app/el5/100/base";
+        args.destinationPath = "/mnt/sandbox/100/app-root/data/storage/el5";
+        args.mountFlags = MS_BIND | MS_REC;
+        args.mountSharedFlag = MS_SHARED;
+        stub->flags = STUB_NEED_CHECK;
+        stub->arg = reinterpret_cast<void *>(&args);
+        stub->result = -1;
+
+        ret = MountSandboxConfigs(sandbox, property, 0);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        ASSERT_EQ(stub->result, 0);
+    } while (0);
+    if (sandbox) {
+        DeleteAppSpawnSandbox(sandbox);
+    }
+    stub->flags &= ~STUB_NEED_CHECK;
+    DeleteAppSpawningCtx(property);
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief 测试unshare前的执行，not-exist时，节点存在，不执行dep的挂载
+ *
+ */
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_21, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = nullptr;
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
+    StubNode *stub = GetStubNode(STUB_MOUNT);
+    ASSERT_NE(stub != nullptr, 0);
+    int ret = -1;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+
+        AddDefaultVariable();
+        sandbox = CreateAppSpawnSandbox();
+        APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
+        sandbox->appFullMountEnable = 1;
+        ret = TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        // set check point
+        MountArg args = {};
+        args.originPath = "/data/app/el6/100/base";
+        args.destinationPath = "/mnt/sandbox/100/app-root/data/storage/el6";
+        args.mountFlags = 0;
+        args.mountSharedFlag = 0;
+        stub->flags = STUB_NEED_CHECK;
+        stub->arg = reinterpret_cast<void *>(&args);
+
+        ret = MountSandboxConfigs(sandbox, property, 0);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        ASSERT_EQ(stub->result, 0);
+    } while (0);
+    if (sandbox) {
+        DeleteAppSpawnSandbox(sandbox);
+    }
+    stub->flags &= ~STUB_NEED_CHECK;
+    DeleteAppSpawningCtx(property);
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+}

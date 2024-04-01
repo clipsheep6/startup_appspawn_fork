@@ -165,7 +165,7 @@ static int ReplaceVariable(const SandboxContext *context,
     uint32_t valueLen = 0;
     AppSandboxVarNode *node = GetAppSandboxVarNode(varName);
     if (node != NULL) {
-        int ret = node->replaceVar(context, sandboxBuffer->buffer + sandboxBuffer->current,
+        ret = node->replaceVar(context, sandboxBuffer->buffer + sandboxBuffer->current,
             sandboxBuffer->bufferLen - sandboxBuffer->current - 1, &valueLen, extraData);
         APPSPAWN_CHECK(ret == 0 && valueLen < (sandboxBuffer->bufferLen - sandboxBuffer->current),
             return -1, "Failed to fill real data");

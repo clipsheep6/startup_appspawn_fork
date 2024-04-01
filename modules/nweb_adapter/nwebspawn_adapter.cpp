@@ -116,9 +116,9 @@ static int RunChildProcessor(AppSpawnContent *content, AppSpawnClient *client)
     return 0;
 }
 
-static int NWebSpawnPreload(AppSpawnMgr *content)
+static int PreLoadNwebSpawn(AppSpawnMgr *content)
 {
-    APPSPAWN_LOGI("NWebSpawnPreload %{public}d", IsNWebSpawnMode(content));
+    APPSPAWN_LOGI("PreLoadNwebSpawn %{public}d", IsNWebSpawnMode(content));
     if (!IsNWebSpawnMode(content)) {
         return 0;
     }
@@ -130,5 +130,5 @@ static int NWebSpawnPreload(AppSpawnMgr *content)
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGI("Load nweb module ...");
-    AddPreloadHook(HOOK_PRIO_HIGHEST, NWebSpawnPreload);
+    AddPreloadHook(HOOK_PRIO_HIGHEST, PreLoadNwebSpawn);
 }

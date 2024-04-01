@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef SANDBOX_UTILS_H
-#define SANDBOX_UTILS_H
+#ifndef JSON_UTILS_H
+#define JSON_UTILS_H
 
 #include <stdbool.h>
 
@@ -26,9 +26,9 @@ extern "C" {
 #endif  // __cplusplus
 
 #define MAX_JSON_FILE_LEN 102400
-typedef struct TagAppSpawnSandboxCfg AppSpawnSandboxCfg;
-typedef int (*ParseConfig)(const cJSON *root, AppSpawnSandboxCfg *context);
-int ParseSandboxConfig(const char *path, const char *fileName, ParseConfig parseConfig, AppSpawnSandboxCfg *context);
+typedef struct TagParseJsonContext ParseJsonContext;
+typedef int (*ParseConfig)(const cJSON *root, ParseJsonContext *context);
+int ParseJsonConfig(const char *path, const char *fileName, ParseConfig parseConfig, ParseJsonContext *context);
 cJSON *GetJsonObjFromFile(const char *jsonPath);
 
 __attribute__((always_inline)) inline char *GetStringFromJsonObj(const cJSON *json, const char *key)
@@ -62,4 +62,4 @@ __attribute__((always_inline)) inline uint32_t GetIntValueFromJsonObj(const cJSO
 #ifdef __cplusplus
 }
 #endif  // __cplusplus
-#endif  // SANDBOX_UTILS_H
+#endif  // JSON_UTILS_H

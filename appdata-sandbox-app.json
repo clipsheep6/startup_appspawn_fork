@@ -118,6 +118,10 @@
                 "src-path" : "/system/app/SystemResources",
                 "sandbox-path" : "/data/global/systemResources"
             }, {
+                "src-path" : "/data/app/el1/bundle/public/<PackageName>",
+                "sandbox-path" : "/data/storage/el1/bundle",
+                "check-action-status": "true"
+            }, {
                 "src-path" : "/data/misc",
                 "sandbox-path" : "/data/storage/el1/bundle/misc"
             }, {
@@ -154,12 +158,6 @@
             "sandbox-switch": "ON",
             "gids": ["file_manager", "user_data_rw"],
             "mount-paths": [{
-                "sandbox-path": "/storage/Share",
-                "src-path": "/data/service/el1/public/storage_daemon/share/public"
-            },{
-                "sandbox-path": "/storage/External",
-                "src-path": "//mnt/data/external"
-            }, {
                 "sandbox-path": "/storage/Users/<currentUserId>",
                 "src-path": "/storage/media/<currentUserId>/local/files/Docs"
             }, {
@@ -167,6 +165,20 @@
                 "src-path": "/storage/media/<currentUserId>/local/files/.Recent"
             }],
             "mount-groups": [ "user-public" ]
+        }, {
+            "name": "ohos.permission.CLOUDFILE_SYNC",
+            "mount-paths": [{
+                "src-path" : "/mnt/hmdfs/<currentUserId>/cloud/data/<PackageName>",
+                "sandbox-path" : "/data/storage/el2/cloud"
+            }]
+        }, {
+            "name": "ohos.permission.READ_IMAGEVIDEO",
+            "sandbox-switch": "ON",
+            "gids": ["user_data_rw"],
+            "mount-paths": [{
+                "sandbox-path": "/storage/Share/.thumbs/Photo",
+                "src-path": "/data/service/el2/<currentUserId>/hmdfs/account/files/.thumbs/Photo"
+            }]
         }, {
             "name": "ohos.permission.FILE_CROSS_APP",
             "gids": ["file_manager"],
@@ -181,29 +193,8 @@
                 "sandbox-path": "/storage/Users/<currentUserId>/appdata/el2",
                 "src-path": "/storage/Users/<currentUserId>/appdata/el2",
                 "category": "dac_override"
-            }, {
-                "sandbox-path": "/storage/Share",
-                "src-path": "/data/service/el1/public/storage_daemon/share/public"
-            }, {
-                "sandbox-path": "/storage/External",
-                "src-path": "/mnt/data/external"
             }],
             "mount-groups": [ "user-public" ]
-        }, {
-            "name": "ohos.permission.READ_IMAGEVIDEO",
-            "sandbox-switch": "ON",
-            "gids": ["user_data_rw"],
-            "mount-paths": [{
-                "sandbox-path": "/storage/Share/.thumbs/Photo",
-                "src-path": "/data/service/el2/<currentUserId>/hmdfs/account/files/.thumbs/Photo"
-            }]
-        }, {
-            "name": "ohos.permission.ACCESS_BUNDLE_DIR",
-            "gids": ["wifi"],
-            "mount-paths": [{
-                "sandbox-path": "/data/bundles/",
-                "src-path": "/data/app/el1/bundle/public"
-            }]
         }, {
             "name": "ohos.permission.ACTIVATE_THEME_PACKAGE",
             "mount-paths": [{
@@ -226,6 +217,13 @@
                 "src-path": "/data/service/el1/public/wallpaper/<currentUserId>"
             }]
         }, {
+            "name": "ohos.permission.ACCESS_BUNDLE_DIR",
+            "gids": ["wifi"],
+            "mount-paths": [{
+                "sandbox-path": "/data/bundles/",
+                "src-path": "/data/app/el1/bundle/public"
+            }]
+        }, {
             "name": "ohos.permission.ACCESS_PROTOCOL_DFX_DATA",
             "mount-paths": [{
                 "sandbox-path": "/data/log/protocol",
@@ -234,21 +232,6 @@
                 "sandbox-path": "/log/chr",
                 "src-path": "/log/chr"
             }]
-        }, {
-            "name": "ohos.permission.CLOUDFILE_SYNC",
-            "mount-paths": [{
-                "src-path" : "/mnt/hmdfs/<currentUserId>/cloud/data/<PackageName>",
-                "sandbox-path" : "/data/storage/el2/cloud"
-            }]
-        }, {
-            "name": "ohos.permission.ACCESS_DATA",
-            "mount-paths": [{
-                    "src-path" : "/mnt/data/<currentUserId>",
-                    "sandbox-path" : "/mnt/data",
-                    "category": "shared",
-                    "check-action-status": "false"
-                }
-            ]
         }, {
             "name": "ohos.permission.ACCESS_MEDIALIB_THUMB_DB",
             "gids": [3008],
@@ -309,9 +292,21 @@
             }, {
                 "src-path" : "/mnt/data/<currentUserId>",
                 "sandbox-path" : "/mnt/data/<currentUserId>"
+            }, {
+                "name" : "com.ohos.amsdialog",
+                "sandbox-switch": "ON",
+                "mount-paths" : [{
+                        "src-path" : "/data/app/el1/bundle/public/",
+                        "sandbox-path" : "/data/bundles/",
+                        "check-action-status": "true"
+                    }
+                ],
+                "symbol-links" : []
             }]
         }, {
             "name": "com.ohos.dlpmanager",
+            "sandbox-switch": "ON",
+            "sandbox-shared" : "true",
             "mount-paths" :[{
                 "src-path" : "/mnt/data/<currentUserId>",
                 "sandbox-path" : "/mnt/data",
@@ -323,6 +318,16 @@
                 "category": "dlp_fuse"
             }],
             "mount-groups": ["dlpmgr"]
+        }, {
+            "name" : "com.ohos.permissionmanager",
+            "sandbox-switch": "ON",
+            "mount-paths" : [{
+                    "src-path" : "/data/app/el1/bundle/public/",
+                    "sandbox-path" : "/data/bundles/",
+                    "check-action-status": "true"
+                }
+            ],
+            "symbol-links" : []
         }]
     },
     "name-groups": [{
@@ -330,7 +335,7 @@
         "type": "system-const",
         "mount-paths": [{
             "sandbox-path": "/storage/Share",
-            "src-path": "/data/service/el1/public/storage_deamon/share/public"
+            "src-path": "/data/service/el1/public/storage_daemon/share/public"
         }, {
             "sandbox-path": "/storage/External",
             "src-path": "/mnt/data/external"
@@ -369,7 +374,7 @@
     }, {
         "name": "el3",
         "type": "app-variable",
-        "deps-mode": "always",
+        "deps-mode": "not-exists",
         "mount-paths-deps": {
             "sandbox-path": "/data/storage/el3",
             "src-path": "/data/app/el3/<currentUserId>/base",
@@ -397,7 +402,7 @@
     }, {
         "name": "el4",
         "type": "app-variable",
-        "deps-mode": "always",
+        "deps-mode": "not-exists",
         "mount-paths-deps": {
             "sandbox-path": "/data/storage/el4",
             "src-path": "/data/app/el4/<currentUserId>/base",

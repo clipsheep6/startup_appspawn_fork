@@ -13,20 +13,22 @@
  * limitations under the License.
  */
 
+#include <cstdio>
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <cstdio>
+#include "appspawn.h"
+#include "appspawn_msg.h"
 
-#include "gtest/gtest.h"
-#include "app_spawn_client.h"
+#include "appspawn_utils.h"
 #include "hilog/log.h"
 #include "securec.h"
 
+#include "appspawn_test_cmder.h"
+#include <gtest/gtest.h>
+
+using namespace testing;
 using namespace testing::ext;
-using namespace OHOS;
-using namespace OHOS::AppExecFwk;
-using namespace OHOS::HiviewDFX;
 
 namespace OHOS {
 namespace AppSpawn {
@@ -36,24 +38,24 @@ namespace AppSpawn {
 #define LOG_TAG "AppSpawnMST"
 
 namespace {
-const bool CHECK_OK = true;
-const bool CHECK_ERROR = false;
-const int32_t DEFAULT_PID = 0;
-const int32_t FILE_PATH_SIZE = 50;
-const int32_t CMD_SIZE = 50;
-const int32_t BUFFER_SIZE = 512;
-const int32_t BASE_TYPE = 10;
-const int32_t CONNECT_RETRY_DELAY = 50 * 1000;
-const int32_t CONNECT_RETRY_MAX_TIMES = 5;
-const int32_t UID_POSITION_MOVE = 5;
-const int32_t GID_POSITION_MOVE = 5;
-const int32_t GROUPS_POSITION_MOVE = 8;
-const char *DELIMITER_SPACE = " ";
-const char *DELIMITER_NEWLINE = "\n";
+    const bool CHECK_OK = true;
+    const bool CHECK_ERROR = false;
+    const int32_t DEFAULT_PID = 0;
+    const int32_t FILE_PATH_SIZE = 50;
+    const int32_t CMD_SIZE = 50;
+    const int32_t BUFFER_SIZE = 512;
+    const int32_t BASE_TYPE = 10;
+    const int32_t CONNECT_RETRY_DELAY = 50 * 1000;
+    const int32_t CONNECT_RETRY_MAX_TIMES = 5;
+    const int32_t UID_POSITION_MOVE = 5;
+    const int32_t GID_POSITION_MOVE = 5;
+    const int32_t GROUPS_POSITION_MOVE = 8;
+    const char *DELIMITER_SPACE = " ";
+    const char *DELIMITER_NEWLINE = "\n";
 
-char buffer[BUFFER_SIZE] = {"\0"};
-int32_t newPid = 0;
-int32_t retryCount = 0;
+    char buffer[BUFFER_SIZE] = {"\0"};
+    int32_t newPid = 0;
+    int32_t retryCount = 0;
 }  // namespace
 
 bool checkFileIsExists(const char *filepath)
@@ -101,7 +103,7 @@ bool readFileInfo(char *buffer, const int32_t &pid, const char *fileName)
     return CHECK_OK;
 }
 
-bool checkUid(const int32_t &pid, const AppSpawnStartMsg &params)
+bool checkUid(const int32_t &pid, const int newUid)
 {
     if (readFileInfo(buffer, pid, "status")) {
         // Move to Uid position
@@ -114,15 +116,15 @@ bool checkUid(const int32_t &pid, const AppSpawnStartMsg &params)
             uidPtr = uidPtr + UID_POSITION_MOVE;
         }
         int32_t uid = (int32_t)strtol(uidPtr, NULL, BASE_TYPE);
-        HILOG_INFO(LOG_CORE, "new proc(%{public}d) uid = %{public}d, setUid=%{public}d.", pid, uid, params.uid);
-        if (uid == params.uid) {
+        HILOG_INFO(LOG_CORE, "new proc(%{public}d) uid = %{public}d, setUid=%{public}d.", pid, uid, newUid);
+        if (uid == newUid) {
             return CHECK_OK;
         }
     }
     return CHECK_ERROR;
 }
 
-bool checkGid(const int32_t &pid, const AppSpawnStartMsg &params)
+bool checkGid(const int32_t &pid, const int newGid)
 {
     if (readFileInfo(buffer, pid, "status")) {
         // Move to Gid position
@@ -139,8 +141,8 @@ bool checkGid(const int32_t &pid, const AppSpawnStartMsg &params)
             return CHECK_ERROR;
         }
         int32_t gid = (int32_t)strtol(gidPtr, NULL, BASE_TYPE);
-        HILOG_INFO(LOG_CORE, "new proc(%{public}d) gid = %{public}d, setGid=%{public}d.", pid, gid, params.gid);
-        if (gid == params.gid) {
+        HILOG_INFO(LOG_CORE, "new proc(%{public}d) gid = %{public}d, setGid=%{public}d.", pid, gid, newGid);
+        if (gid == newGid) {
             return CHECK_OK;
         }
     }
@@ -180,31 +182,32 @@ std::size_t getGids(const int32_t &pid, std::vector<int32_t> &gids)
     return gids.size();
 }
 
-bool checkGids(const int32_t &pid, const AppSpawnStartMsg &params)
+bool checkGids(const int32_t &pid, const std::vector<int32_t> newGids)
 {
     // Get Gids
     std::vector<int32_t> gids;
     std::size_t gCount = getGids(pid, gids);
-    if ((gCount == params.gids.size()) && (gids == params.gids)) {
+    if ((gCount == newGids.size()) && (gids == newGids)) {
         return CHECK_OK;
     }
 
     return CHECK_ERROR;
 }
 
-bool checkGidsCount(const int32_t &pid, const AppSpawnStartMsg &params)
+bool checkGidsCount(const int32_t &pid, const std::vector<int32_t> newGids)
 {
     // Get GidsCount
     std::vector<int32_t> gids;
     std::size_t gCount = getGids(pid, gids);
-    if (gCount == params.gids.size()) {
+
+    if (gCount == newGids.size()) {
         return CHECK_OK;
     }
 
     return CHECK_ERROR;
 }
 
-bool checkProcName(const int32_t &pid, const AppSpawnStartMsg &params)
+bool checkProcName(const int32_t &pid, const std::string &newProcessName)
 {
     FILE *fp = nullptr;
     char cmd[CMD_SIZE];
@@ -212,7 +215,7 @@ bool checkProcName(const int32_t &pid, const AppSpawnStartMsg &params)
         HILOG_ERROR(LOG_CORE, "cmd sprintf_s fail .");
         return CHECK_ERROR;
     }
-    if(strlen(cmd) > CMD_SIZE) {
+    if (strlen(cmd) > CMD_SIZE) {
         HILOG_ERROR(LOG_CORE, " cmd length is too long  .");
         return CHECK_ERROR;
     }
@@ -229,14 +232,13 @@ bool checkProcName(const int32_t &pid, const AppSpawnStartMsg &params)
                 break;
             }
         }
-        GTEST_LOG_(INFO) << "strcmp"
-                         << " :" << strcmp(params.procName.c_str(), procName) << ".";
+        GTEST_LOG_(INFO) << "strcmp" << " :" << strcmp(newProcessName.c_str(), procName) << ".";
 
-        if (params.procName.compare(0, params.procName.size(), procName, params.procName.size()) == 0) {
+        if (newProcessName.compare(0, newProcessName.size(), procName, newProcessName.size()) == 0) {
             pclose(fp);
             return CHECK_OK;
         }
-        HILOG_ERROR(LOG_CORE, " procName=%{public}s, params.procName=%{public}s.", procName, params.procName.c_str());
+        HILOG_ERROR(LOG_CORE, " procName=%{public}s, newProcessName=%{public}s.", procName, newProcessName.c_str());
     } else {
         HILOG_ERROR(LOG_CORE, "Getting procName failed.");
     }
@@ -333,25 +335,23 @@ void AppSpawnModuleTest::TearDownTestCase()
 
 void AppSpawnModuleTest::SetUp()
 {
-    newPid = 0;
     auto ret = memset_s(buffer, sizeof(buffer), 0x00, BUFFER_SIZE);
     if (ret != EOK) {
         HILOG_ERROR(LOG_CORE, "memset_s is failed.");
     }
 }
 
-void AppSpawnModuleTest::TearDown()
-{}
+void AppSpawnModuleTest::TearDown() {}
 
 /*
- * Feature: AppSpawn
- * Function: Listen
- * SubFunction: Message listener
- * FunctionPoints: Process start message monitoring
- * EnvConditions: AppSpawn main process has started.
- *                 The socket server has been established.
- * CaseDescription: 1. Query the process of appspawn through the ps command
- */
+* Feature: AppSpawn
+* Function: Listen
+* SubFunction: Message listener
+* FunctionPoints: Process start message monitoring
+* EnvConditions: AppSpawn main process has started.
+*                 The socket server has been established.
+* CaseDescription: 1. Query the process of appspawn through the ps command
+*/
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_listen_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_listen_001 start");
@@ -373,15 +373,53 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_listen_001, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_listen_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_listen_002 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
 
-    appSpawnClient->SetSocket(appSpawnSocket);
-
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 0, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_listen_002 end");
 }
 
@@ -398,21 +436,52 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_listen_002, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_fork_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_fork_001 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-fork_001", "soPath", 0, "system_core", "moduleTestProcessName-fork_001"};
-
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 0, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_fork_001 end");
 }
 
@@ -429,22 +498,54 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_fork_001, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_fork_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_fork_002 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-fork_002", "soPath", 0, "system_core", "moduleTestProcessName-fork_002"};
 
-    GTEST_LOG_(INFO) << "AppSpawn_HF_fork_002 start " << params.procName.size();
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 1, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_fork_002 end");
 }
 
@@ -461,23 +562,57 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_fork_002, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_001 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-setUid_001", "soPath", 0, "system_core", "moduleTestProcessName-setUid_001"};
 
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 0, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
+    EXPECT_EQ(CHECK_OK, checkUid(result.pid, 20010043));
 
-    EXPECT_EQ(CHECK_OK, checkUid(newPid, params));
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_001 end");
 }
 
@@ -489,34 +624,67 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_001, TestSize.Level0)
  * EnvConditions: AppSpawn main process has started.
  *                The socket server has been established.
  * CaseDescription: 1. Establish a socket client and connect with the Appspawn server
- *                  2. Send the message and the message format is correct, the message type is APP_TYPE_DEFAULT
+ *                  2. Send the message and the message format is correct, the message type is APP_TYPE_NATIVE
  */
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_002 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-setUid_002", "soPath", 0, "system_core", "moduleTestProcessName-setUid_002"};
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 1, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
+    EXPECT_EQ(CHECK_OK, checkGid(result.pid, 20010043));
 
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
-
-    EXPECT_EQ(CHECK_OK, checkGid(newPid, params));
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_002 end");
 }
 
 /*
  * Feature: AppSpawn
- * Function: SetUid
+ * Function: checkGid
  * SubFunction: Set child process permissions
  * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
  * EnvConditions: AppSpawn main process has started.
@@ -524,32 +692,131 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_002, TestSize.Level0)
  * CaseDescription: 1. Establish a socket client and connect with the Appspawn server
  *                  2. Send the message and the message format is correct, the message type is APP_TYPE_DEFAULT
  */
-HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_003, TestSize.Level0)
+HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGid_001, TestSize.Level0)
 {
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_003 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-setUid_003", "soPath", 0, "system_core", "moduleTestProcessName-setUid_003"};
-
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
-
-    EXPECT_EQ(CHECK_OK, checkGids(newPid, params));
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_003 end");
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGid_001 start");
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 1, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [ 20010043, 20010044 ],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
+    EXPECT_EQ(CHECK_OK, checkGid(result.pid, 20010043));
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGid_001 end");
 }
 
 /*
  * Feature: AppSpawn
- * Function: SetUid
+ * Function: checkGid
+ * SubFunction: Set child process permissions
+ * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
+ * EnvConditions: AppSpawn main process has started.
+ *                The socket server has been established.
+ * CaseDescription: 1. Establish a socket client and connect with the Appspawn server
+ *                  2. Send the message and the message format is correct, the message type is APP_TYPE_NATIVE
+ */
+HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGid_002, TestSize.Level0)
+{
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGid_002 start");
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 0, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [ 20010043 ],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
+    EXPECT_EQ(CHECK_OK, checkGid(result.pid, 20010043));
+
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGid_002 end");
+}
+
+/*
+ * Feature: AppSpawn
+ * Function: checkGids
  * SubFunction: Set child process permissions
  * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
  * EnvConditions: AppSpawn main process has started.
@@ -557,32 +824,67 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_003, TestSize.Level0)
  * CaseDescription: 1. Establish a socket client and connect with the Appspawn server
  *                  2. Send the message and the message format is correct, the message type is APP_TYPE_DEFAULT
  */
-HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_004, TestSize.Level0)
+HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGids_001, TestSize.Level0)
 {
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_004 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-setUid_004", "soPath", 0, "system_core", "moduleTestProcessName-setUid_004"};
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGids_001 start");
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 0, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [ 20010043 ],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
 
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
+    std::vector<int32_t> gids = {20010043};
+    EXPECT_EQ(CHECK_OK, checkGids(result.pid, gids));
 
-    EXPECT_EQ(CHECK_OK, checkGidsCount(newPid, params));
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_004 end");
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_001 end");
 }
 
 /*
  * Feature: AppSpawn
- * Function: SetUid
+ * Function: checkGids
  * SubFunction: Set child process permissions
  * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
  * EnvConditions: AppSpawn main process has started.
@@ -590,32 +892,135 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_004, TestSize.Level0)
  * CaseDescription: 1. Establish a socket client and connect with the Appspawn server
  *                  2. Send the message and the message format is correct, the message type is APP_TYPE_NATIVE
  */
-HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_005, TestSize.Level0)
+HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGids_002, TestSize.Level0)
 {
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_005 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-setUid_005", "soPath", 0, "system_core", "moduleTestProcessName-setUid_005"};
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGids_002 start");
+   static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 1, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [ 20010043 ],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
 
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
+    std::vector<int32_t> gids = { 20010043 };
+    EXPECT_EQ(CHECK_OK, checkGids(result.pid, gids));
 
-    EXPECT_EQ(CHECK_OK, checkUid(newPid, params));
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_005 end");
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGids_002 end");
 }
 
 /*
  * Feature: AppSpawn
- * Function: SetUid
+ * Function: checkGidsCount
+ * SubFunction: Set child process permissions
+ * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
+ * EnvConditions: AppSpawn main process has started.
+ *                The socket server has been established.
+ * CaseDescription: 1. Establish a socket client and connect with the Appspawn server
+ *                  2. Send the message and the message format is correct, the message type is APP_TYPE_DEFAULT
+ */
+HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGidsCount_001, TestSize.Level0)
+{
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGidsCount_001 start");
+   static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 0, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [ 20010043 ],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
+
+    std::vector<int32_t> gids = {20010043 };
+    EXPECT_EQ(CHECK_OK, checkGidsCount(result.pid, gids));
+
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGidsCount_001 end");
+}
+
+/*
+ * Feature: AppSpawn
+ * Function: checkGidsCount
  * SubFunction: Set child process permissions
  * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
  * EnvConditions: AppSpawn main process has started.
@@ -623,93 +1028,61 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_005, TestSize.Level0)
  * CaseDescription: 1. Establish a socket client and connect with the Appspawn server
  *                  2. Send the message and the message format is correct, the message type is APP_TYPE_NATIVE
  */
-HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_006, TestSize.Level0)
+HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGidsCount_002, TestSize.Level0)
 {
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_006 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-setUid_006", "soPath", 0, "system_core", "moduleTestProcessName-setUid_006"};
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGidsCount_002 start");
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 1, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [ 20010043 ],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
+    std::vector<int32_t> gids = {20010043};
+    EXPECT_EQ(CHECK_OK, checkGidsCount(result.pid, gids));
 
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
-
-    EXPECT_EQ(CHECK_OK, checkGid(newPid, params));
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_006 end");
-}
-
-/*
- * Feature: AppSpawn
- * Function: SetUid
- * SubFunction: Set child process permissions
- * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
- * EnvConditions: AppSpawn main process has started.
- *                The socket server has been established.
- * CaseDescription: 1. Establish a socket client and connect with the Appspawn server
- *                  2. Send the message and the message format is correct, the message type is APP_TYPE_NATIVE
- */
-HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_007, TestSize.Level0)
-{
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_007 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-setUid_007", "soPath", 0, "system_core", "moduleTestProcessName-setUid_007"};
-
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
-
-    EXPECT_EQ(CHECK_OK, checkGids(newPid, params));
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_007 end");
-}
-
-/*
- * Feature: AppSpawn
- * Function: SetUid
- * SubFunction: Set child process permissions
- * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
- * EnvConditions: AppSpawn main process has started.
- *                The socket server has been established.
- * CaseDescription: 1. Establish a socket client and connect with the Appspawn server
- *                  2. Send the message and the message format is correct, the message type is APP_TYPE_NATIVE
- */
-HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_008, TestSize.Level0)
-{
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_008 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-setUid_008", "soPath", 0, "system_core", "moduleTestProcessName-setUid_008"};
-
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
-
-    EXPECT_EQ(CHECK_OK, checkGidsCount(newPid, params));
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
-    HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_008 end");
+    HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGidsCount_002 end");
 }
 
 /*
@@ -725,24 +1098,57 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_008, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setProcName_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setProcName_001 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-setProcName_001", "soPath", 0, "system_core", "moduleTestProcessName-setProcName_001"};
-
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
-
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 0, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
     // Check new app proc name
-    EXPECT_EQ(CHECK_OK, checkProcName(newPid, params));
+    EXPECT_EQ(CHECK_OK, checkProcName(result.pid, "com.example.myapplication"));
 
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setProcName_001 end");
 }
 
@@ -759,24 +1165,56 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setProcName_001, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setProcName_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setProcName_002 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-setProcName_002", "soPath", 0, "system_core", "moduleTestProcessName-setProcName_002"};
-
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
-
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 1, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [ 20010043, 20010044 ],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
     // Check new app proc name
-    EXPECT_EQ(CHECK_OK, checkProcName(newPid, params));
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
+    EXPECT_EQ(CHECK_OK, checkProcName(result.pid, "com.example.myapplication"));
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setProcName_002 end");
 }
 
@@ -791,27 +1229,61 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setProcName_002, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_recycleProc_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_recycleProc_001 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-recycleProc_001", "soPath", 0, "system_core", "moduleTestProcessName-recycleProc_001"};
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 1, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [ 20010043, 20010044 ],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
 
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
-
-    EXPECT_EQ(ERR_OK, kill(newPid, SIGKILL));
-    newPid = DEFAULT_PID;
+    EXPECT_EQ(0, kill(result.pid, SIGKILL));
+    result.pid = DEFAULT_PID;
 
     // Check Process Is Destroyed
-    EXPECT_EQ(CHECK_OK, checkProcessIsDestroyed(newPid));
+    EXPECT_EQ(CHECK_OK, checkProcessIsDestroyed(result.pid));
 
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_recycleProc_001 end");
 }
 
@@ -826,27 +1298,59 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_recycleProc_001, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_recycleProc_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_recycleProc_002 start");
-    std::unique_ptr<AppSpawnClient> appSpawnClient = std::make_unique<AppSpawnClient>();
-    std::shared_ptr<AppExecFwk::AppSpawnSocket> appSpawnSocket = std::make_shared<AppExecFwk::AppSpawnSocket>();
-    appSpawnClient->SetSocket(appSpawnSocket);
-    EXPECT_EQ(ERR_OK, appSpawnClient->OpenConnection());
-    AppSpawnStartMsg params = {10003, 10004, {10003, 10004},
-        "processName-recycleProc_002", "soPath", 0, "system_core", "moduleTestProcessName-recycleProc_002"};
+    static const std::string defaultAppInfo = "{ \
+        \"msg-type\": 0, \
+        \"msg-flags\": [1, 2 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+                \"ohos.permission.READ_IMAGEVIDEO\",\
+                \"ohos.permission.FILE_CROSS_APP\",\
+                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
+    AppSpawnReqMsgHandle reqHandle;
+    AppSpawnResult result;
+    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
+    EXPECT_EQ(0, ret);
+    EXPECT_EQ(0, result.result);
+    EXPECT_NE(0, result.pid);
+    GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
 
-    appSpawnClient->StartProcess(params, newPid);
-    // 0 < newPid, new process fork success
-    GTEST_LOG_(INFO) << "newPid :" << newPid << ".";
-    EXPECT_LT(DEFAULT_PID, newPid);
-
-    EXPECT_EQ(ERR_OK, kill(newPid, SIGKILL));
-    newPid = DEFAULT_PID;
-
+    EXPECT_EQ(0, kill(result.pid, SIGKILL));
+    result.pid = DEFAULT_PID;
     // Check Process Is Destroyed
-    EXPECT_EQ(CHECK_OK, checkProcessIsDestroyed(newPid));
-
-    EXPECT_EQ(ERR_OK, appSpawnSocket->OpenAppSpawnConnection());
-    appSpawnClient->CloseConnection();
-    EXPECT_EQ(SpawnConnectionState::STATE_NOT_CONNECT, appSpawnClient->QueryConnectionState());
+    EXPECT_EQ(CHECK_OK, checkProcessIsDestroyed(result.pid));
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_recycleProc_002 end");
 }
 }  // namespace AppSpawn

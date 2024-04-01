@@ -29,7 +29,7 @@ constexpr char KEY_UID[] = "UID";
 constexpr char KEY_STATUS[] = "STATUS";
 constexpr int32_t MAX_NAME_LENGTH = 1024;
 
-void ReportProcessExitInfo(const char* processName, int pid, int uid, int status)
+void ProcessMgrRemoveApp(const char* processName, int pid, int uid, int status)
 {
     std::string pname = "Unknown";
     if ((processName != NULL) && (strlen(processName) <= MAX_NAME_LENGTH)) {
@@ -42,14 +42,14 @@ void ReportProcessExitInfo(const char* processName, int pid, int uid, int status
 }  // namespace system
 }  // namespace OHOS
 
-static int ReportProcessExitInfo(const AppSpawnMgr *content, const AppSpawnedProcess *appInfo)
+static int ProcessMgrRemoveApp(const AppSpawnMgr *content, const AppSpawnedProcessInfo *appInfo)
 {
-    OHOS::system::ReportProcessExitInfo(appInfo->name, appInfo->pid, appInfo->uid, appInfo->exitStatus);
+    OHOS::system::ProcessMgrRemoveApp(appInfo->name, appInfo->pid, appInfo->uid, appInfo->exitStatus);
     return 0;
 }
 
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load sys event module ...");
-    AddAppChangeHook(STAGE_SERVER_APP_DIED, 0, ReportProcessExitInfo);
+    AddProcessMgrHook(STAGE_SERVER_APP_DIED, 0, ProcessMgrRemoveApp);
 }

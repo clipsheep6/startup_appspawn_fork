@@ -257,6 +257,8 @@ int AppSpawnTestCommander::BuildMsgFromJson(const cJSON *appInfoConfig, AppSpawn
 
     AppDacInfo dacInfo = {};
     ret = GetDacInfoFromJson(appInfoConfig, dacInfo);
+    APPSPAWN_LOGE("*************, %d", dacInfo.gidCount);
+    APPSPAWN_LOGE("*************, %d", dacInfo.uid);
     ret = AppSpawnReqMsgSetAppDacInfo(reqHandle, &dacInfo);
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to add dac %{public}s", processName_.c_str());
 
@@ -311,9 +313,14 @@ int AppSpawnTestCommander::CreateOtherMsg(AppSpawnReqMsgHandle &reqHandle, pid_t
     return 0;
 }
 
-int AppSpawnTestCommander::CreateMsg(AppSpawnReqMsgHandle &reqHandle)
+int AppSpawnTestCommander::CreateMsg(AppSpawnReqMsgHandle &reqHandle, const char *defaultConfig)
 {
     int ret = APPSPAWN_SYSTEM_ERROR;
+    if (clientHandle_ == NULL) {
+        const char *name = appSpawn_ ? APPSPAWN_SERVER_NAME : NWEBSPAWN_SERVER_NAME;
+        ret = AppSpawnClientInit(name, &clientHandle_);
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to create client %{public}s", name);
+    }
     reqHandle = INVALID_REQ_HANDLE;
     if (appInfoConfig_) {
         cJSON_Delete(appInfoConfig_);
@@ -326,7 +333,7 @@ int AppSpawnTestCommander::CreateMsg(AppSpawnReqMsgHandle &reqHandle)
         }
     }
     if (appInfoConfig_ == nullptr) {
-        appInfoConfig_ = cJSON_Parse(g_defaultAppInfo.c_str());
+        appInfoConfig_ = cJSON_Parse(defaultConfig);
     }
     if (appInfoConfig_ == nullptr) {
         printf("Invalid app info \n");
@@ -373,7 +380,7 @@ int AppSpawnTestCommander::SendMsg()
     } else if (msgType_ == MSG_GET_RENDER_TERMINATION_STATUS) {
         ret = CreateOtherMsg(reqHandle, terminatePid_);
     } else {
-        ret = CreateMsg(reqHandle);
+        ret = CreateMsg(reqHandle, g_defaultAppInfo.c_str());
     }
     AppSpawnResult result = {ret, 0};
     if (ret == 0) {
@@ -526,9 +533,12 @@ void AppSpawnTestCommander::DumpThread(ThreadTaskHandle handle, const ThreadCont
 
 int AppSpawnTestCommander::Run()
 {
+    int ret = 0;
     const char *name = appSpawn_ ? APPSPAWN_SERVER_NAME : NWEBSPAWN_SERVER_NAME;
-    int ret = AppSpawnClientInit(name, &clientHandle_);
-    APPSPAWN_CHECK(ret == 0, return -1, "Failed to create client %{public}s", name);
+    if (clientHandle_ == NULL) {
+        ret = AppSpawnClientInit(name, &clientHandle_);
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to create client %{public}s", name);
+    }
 
     InitPtyInterface();
 
@@ -584,17 +594,3 @@ int AppSpawnTestCommander::InitPtyInterface()
 }
 }  // namespace AppSpawnModuleTest
 }  // namespace OHOS
-
-int main(int argc, char *const argv[])
-{
-    if (argc <= 0) {
-        return 0;
-    }
-
-    OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
-    int ret = commander.ProcessArgs(argc, argv);
-    if (ret == 0) {
-        commander.Run();
-    }
-    return 0;
-}

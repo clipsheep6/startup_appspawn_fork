@@ -30,7 +30,7 @@ static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int32_t g_maxPermissionIndex = -1;
 static SandboxQueue g_permissionQueue = {0};
 
-static int ParseAppSandboxConfig(const cJSON *root, AppSpawnSandboxCfg *context)
+static int ParseAppSandboxConfig(const cJSON *root, ParseJsonContext *context)
 {
     // conditional
     cJSON *json = cJSON_GetObjectItemCaseSensitive(root, "conditional");
@@ -62,7 +62,7 @@ static int ParseAppSandboxConfig(const cJSON *root, AppSpawnSandboxCfg *context)
 
 static int LoadPermissionConfig(void)
 {
-    int ret = ParseSandboxConfig("etc/sandbox", APP_SANDBOX_FILE_NAME, ParseAppSandboxConfig, NULL);
+    int ret = ParseJsonConfig("etc/sandbox", APP_SANDBOX_FILE_NAME, ParseAppSandboxConfig, NULL);
     if (ret == APPSPAWN_SANDBOX_NONE) {
         APPSPAWN_LOGW("No sandbox config");
         ret = 0;

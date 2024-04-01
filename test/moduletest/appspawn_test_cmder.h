@@ -41,6 +41,7 @@ public:
         exit_ = 0;
         appSpawn_ = 1;
         dumpFlags = 0;
+        msgType_ = 0;
     }
     ~AppSpawnTestCommander()
     {
@@ -57,15 +58,15 @@ public:
     int ProcessArgs(int argc, char *const argv[]);
     int Run();
 
+    int CreateOtherMsg(AppSpawnReqMsgHandle &reqHandle, pid_t pid);
+    int CreateMsg(AppSpawnReqMsgHandle &reqHandle, const char *defaultConfig);
+    int StartSendMsg();
+    int SendMsg();
+    AppSpawnClientHandle GetClientHandle() { return clientHandle_; }
 private:
     std::vector<std::string> split(const std::string &str, const std::string &pattern);
     int InitPtyInterface();
     int ProcessInputCmd(std::string &cmd);
-    int CreateOtherMsg(AppSpawnReqMsgHandle &reqHandle, pid_t pid);
-    int CreateMsg(AppSpawnReqMsgHandle &reqHandle);
-    int StartSendMsg();
-    int SendMsg();
-
     int AddExtTlv(const cJSON *appInfoConfig, AppSpawnReqMsgHandle reqHandle);
     int BuildMsgFromJson(const cJSON *appInfoConfig, AppSpawnReqMsgHandle reqHandle);
     int AddBundleInfoFromJson(const cJSON *appInfoConfig, AppSpawnReqMsgHandle reqHandle);

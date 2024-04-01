@@ -15,7 +15,10 @@ import("//base/startup/appspawn/appspawn.gni")
 import("//build/test.gni")
 
 ohos_executable("AppSpawnTest") {
-  sources = [ "${appspawn_path}/test/moduletest/appspawn_test_cmder.cpp" ]
+  sources = [
+    "${appspawn_path}/test/moduletest/appspawn_test_cmder.cpp",
+    "${appspawn_path}/test/moduletest/appspawn_test_main.cpp",
+  ]
 
   include_dirs = [
     "${appspawn_path}",
@@ -33,9 +36,8 @@ ohos_executable("AppSpawnTest") {
     "${appspawn_path}/test/mock",
     "${appspawn_path}/test/unittest",
     "${appspawn_path}/util/include",
+    "//third_party/cJSON",
   ]
-
-  configs = [ "${appspawn_path}:appspawn_config" ]
 
   deps = [
     "${appspawn_innerkits_path}/client:appspawn_client",
@@ -61,6 +63,7 @@ ohos_moduletest("AppSpawnModuleTest") {
   sources = [
     "${appspawn_path}/test/moduletest/appspawn_client_test.cpp",
     "${appspawn_path}/test/moduletest/appspawn_module_test.cpp",
+    "${appspawn_path}/test/moduletest/appspawn_test_cmder.cpp",
   ]
 
   include_dirs = [
@@ -71,6 +74,7 @@ ohos_moduletest("AppSpawnModuleTest") {
     "${appspawn_path}/modules/ace_adapter",
     "${appspawn_path}/modules/common",
     "${appspawn_path}/modules/sandbox",
+    "${appspawn_path}/test/moduletest/threadpool",
     "${appspawn_innerkits_path}/include",
     "${appspawn_innerkits_path}/client",
     "${appspawn_innerkits_path}/permission",
@@ -78,17 +82,12 @@ ohos_moduletest("AppSpawnModuleTest") {
     "${appspawn_path}/test/mock",
     "${appspawn_path}/test/unittest",
     "${appspawn_path}/util/include",
-    "//commonlibrary/c_utils/base/include",
-  ]
-
-  configs = [
-    "${appspawn_path}:appspawn_config",
-    "${ability_runtime_path}/services/appmgr:appmgr_config",
+    "//third_party/cJSON",
   ]
 
   deps = [
-    "${ability_runtime_path}/services/appmgr:libappms",
     "${appspawn_innerkits_path}/client:appspawn_client",
+    "//third_party/cJSON:cjson",
     "//third_party/googletest:gtest_main",
   ]
 

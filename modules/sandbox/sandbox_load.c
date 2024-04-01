@@ -441,7 +441,7 @@ static SandboxNameGroupNode *ParseNameGroup(AppSpawnSandboxCfg *sandbox, const c
             return NULL;
         }
         // "deps-mode": "not-exists"
-        node->depMode = GetMountModeFromConfig(obj, "deps-mode", MOUNT_MODE_ALWAYS);
+        node->depMode = GetMountModeFromConfig(groupConfig, "deps-mode", MOUNT_MODE_ALWAYS);
     }
 
     ret = ParseBaseConfig(sandbox, &node->section, groupConfig);
@@ -522,9 +522,15 @@ static int ParseGlobalSandboxConfig(AppSpawnSandboxCfg *sandbox, const cJSON *ro
     return 0;
 }
 
-APPSPAWN_STATIC int ParseAppSandboxConfig(const cJSON *root, AppSpawnSandboxCfg *sandbox)
+typedef struct TagParseJsonContext {
+    AppSpawnSandboxCfg *sandboxCfg;
+}ParseJsonContext;
+
+APPSPAWN_STATIC int ParseAppSandboxConfig(const cJSON *root, ParseJsonContext *context)
 {
-    APPSPAWN_CHECK(root != NULL && sandbox, return APPSPAWN_SYSTEM_ERROR, "Invalid json");
+    APPSPAWN_CHECK(root != NULL && context != NULL && context->sandboxCfg != NULL,
+        return APPSPAWN_SYSTEM_ERROR, "Invalid json");
+    AppSpawnSandboxCfg *sandbox = context->sandboxCfg;
     int ret = ParseGlobalSandboxConfig(sandbox, root);  // "global":
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return APPSPAWN_SANDBOX_INVALID);
     ret = ParseNameGroupsConfig(sandbox, root);  // name-groups
@@ -574,7 +580,10 @@ int LoadAppSandboxConfig(AppSpawnSandboxCfg *sandbox, int nwebSpawn)
 {
     APPSPAWN_CHECK_ONLY_EXPER(sandbox != NULL, return APPSPAWN_ARG_INVALID);
     const char *sandboxName = nwebSpawn ? WEB_SANDBOX_FILE_NAME : APP_SANDBOX_FILE_NAME;
-    int ret = ParseSandboxConfig("etc/sandbox", sandboxName, ParseAppSandboxConfig, sandbox);
+
+    ParseJsonContext context = {};
+    context.sandboxCfg = sandbox;
+    int ret = ParseJsonConfig("etc/sandbox", sandboxName, ParseAppSandboxConfig, &context);
     if (ret == APPSPAWN_SANDBOX_NONE) {
         APPSPAWN_LOGW("No sandbox config");
         ret = 0;

@@ -58,7 +58,6 @@ ohos_unittest("AppSpawn_client_ut") {
     "${appspawn_path}/standard/nwebspawn_launcher.c",
     "${appspawn_path}/util/src/appspawn_base64.c",
     "${appspawn_path}/util/src/appspawn_utils.c",
-    "${appspawn_path}/util/src/json_utils.c",
   ]
 
   sources += [

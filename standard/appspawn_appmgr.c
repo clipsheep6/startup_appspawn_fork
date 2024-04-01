@@ -356,9 +356,9 @@ static int DumpAppQueue(ListNode *node, void *data)
 {
     AppSpawnedProcess *appInfo = ListEntry(node, AppSpawnedProcess, node);
     int64_t diff = DiffTime(&appInfo->spawnStart, &appInfo->spawnEnd);
-    APPSPAPWN_DUMP("APP in %{public}s info uid: %{public}u pid: %{public}x", (char *)data, appInfo->uid, appInfo->pid);
-    APPSPAPWN_DUMP("APP in %{public}s info name: %{public}s exitStatus: %{public}d spawn time: %{public}" PRId64 " ns ",
-        (char *)data, appInfo->name, appInfo->exitStatus, diff);
+    APPSPAPWN_DUMP("App info uid: %{public}u pid: %{public}x", appInfo->uid, appInfo->pid);
+    APPSPAPWN_DUMP("App info name: %{public}s exitStatus: 0x%{public}x spawn time: %{public}" PRId64 " us ",
+        appInfo->name, appInfo->exitStatus, diff);
     return 0;
 }
 

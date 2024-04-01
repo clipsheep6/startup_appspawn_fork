@@ -80,7 +80,7 @@ static int CheckSupportColdStart(const char *bundleName)
 }
 #endif
 
-static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
+static int AsanSpawnGetSpawningFlag(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Prepare spawn app %{public}s", GetProcessName(property));
 #ifdef ASAN_DETECTOR
@@ -99,7 +99,7 @@ static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
     return 0;
 }
 
-static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
+static int AsanSpawnInitSpawningEnv(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     if (GetAppSpawnMsgType(property) == MSG_SPAWN_NATIVE_PROCESS) {
         return 0;
@@ -116,6 +116,6 @@ static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load asan module ...");
-    AddAppSpawnHook(STAGE_CHILD_PRE_COLDBOOT, HOOK_PRIO_COMMON, AppSpawnSpawnPrepare);
-    AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_COMMON, AppSpawnPreSpawn);
+    AddAppSpawnHook(STAGE_CHILD_PRE_COLDBOOT, HOOK_PRIO_COMMON, AsanSpawnInitSpawningEnv);
+    AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_COMMON, AsanSpawnGetSpawningFlag);
 }

@@ -160,10 +160,10 @@ typedef struct {
 
 typedef struct TagSandboxGroupNode {
     SandboxSection section;
-    uint32_t caps;  // "caps": [ "shared" ],
     uint32_t destType;
     PathMountNode *depNode;
     uint32_t depMode;
+    uint32_t depMounted : 1; // 是否执行了挂载
 } SandboxNameGroupNode;
 
 typedef struct TagPermissionNode {
@@ -231,6 +231,7 @@ AppSpawnSandboxCfg *GetAppSpawnSandbox(const AppSpawnMgr *content);
 void DeleteAppSpawnSandbox(AppSpawnSandboxCfg *sandbox);
 int LoadAppSandboxConfig(AppSpawnSandboxCfg *sandbox, int nwebSpawn);
 void DumpAppSpawnSandboxCfg(AppSpawnSandboxCfg *sandbox);
+void DumpCurrentDir(SandboxContext *context, const char *dirPath);
 
 /**
  * @brief SandboxSection op
@@ -352,6 +353,17 @@ const SandboxFlagInfo *GetSandboxFlagInfo(const char *key, const SandboxFlagInfo
 int GetPathMode(const char *name);
 
 void DumpMountPathMountNode(const PathMountNode *pathNode);
+
+typedef struct {
+    const char *originPath;
+    const char *destinationPath;
+    const char *fsType;
+    unsigned long mountFlags;
+    const char *options;
+    mode_t mountSharedFlag;
+} MountArg;
+
+int SandboxMountPath(const MountArg *arg);
 
 #ifdef __cplusplus
 }

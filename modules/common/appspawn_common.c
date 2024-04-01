@@ -324,7 +324,7 @@ static int32_t WaitForDebugger(const AppSpawningCtx *property)
     return 0;
 }
 
-static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
+static int SpawnInitSpawningEnv(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Spawning: clear env");
     int ret = SetProcessName(content, property);
@@ -339,7 +339,7 @@ static int AppSpawnSpawnPrepare(AppSpawnMgr *content, AppSpawningCtx *property)
     return 0;
 }
 
-static int AppSpawnEnableCache(AppSpawnMgr *content, AppSpawningCtx *property)
+static int SpawnEnableCache(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Spawning: enable cache for app process");
     // enable cache for app process
@@ -350,10 +350,13 @@ static int AppSpawnEnableCache(AppSpawnMgr *content, AppSpawningCtx *property)
 
     int ret = SetInternetPermission(property);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
+
+    ret = SetEnvInfo(content, property);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
     return ret;
 }
 
-static int AppSpawnSetProperty(AppSpawnMgr *content, AppSpawningCtx *property)
+static int SpawnSetProperties(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Spawning: set child property");
     (void)umask(DEFAULT_UMASK);
@@ -379,9 +382,6 @@ static int AppSpawnSetProperty(AppSpawnMgr *content, AppSpawningCtx *property)
     ret = SetSelinuxCon(content, property) == -1;
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
 
-    ret = SetEnvInfo(content, property);
-    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
-
     ret = WaitForDebugger(property);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
 
@@ -391,7 +391,7 @@ static int AppSpawnSetProperty(AppSpawnMgr *content, AppSpawningCtx *property)
     return 0;
 }
 
-static int AppSpawnCommPreload(AppSpawnMgr *content)
+static int PreLoadSetSeccompFilter(AppSpawnMgr *content)
 {
     // set uid gid filetr
     int ret = SetUidGidFilter(content);
@@ -399,7 +399,7 @@ static int AppSpawnCommPreload(AppSpawnMgr *content)
     return ret;
 }
 
-static int AppSpawnSpawnComplete(AppSpawnMgr *content, AppSpawningCtx *property)
+static int SpawnComplete(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     InitDebugParams(content, property);
     return 0;
@@ -414,7 +414,7 @@ static int CheckEnabled(const char *param, const char *value)
     return enabled;
 }
 
-static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
+static int SpawnGetSpawningFlag(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Spawning: prepare app %{public}s", GetProcessName(property));
     if (CheckAppMsgFlagsSet(property, APP_FLAGS_COLD_BOOT)) {
@@ -426,7 +426,7 @@ static int AppSpawnPreSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
     return 0;
 }
 
-static int EnablePidNs(AppSpawnMgr *content)
+static int PreLoadEnablePidNs(AppSpawnMgr *content)
 {
     APPSPAWN_LOGI("Enable pid namespace %{public}d %{public}d sandboxNsFlags: %{public}x",
         IsNWebSpawnMode(content), IsColdRunMode(content), content->content.sandboxNsFlags);
@@ -457,12 +457,12 @@ static int EnablePidNs(AppSpawnMgr *content)
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load common module ...");
-    AddPreloadHook(HOOK_PRIO_COMMON, AppSpawnCommPreload);
-    AddPreloadHook(HOOK_PRIO_LOWEST, EnablePidNs);
+    AddPreloadHook(HOOK_PRIO_COMMON, PreLoadSetSeccompFilter);
+    AddPreloadHook(HOOK_PRIO_LOWEST, PreLoadEnablePidNs);
 
-    AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_HIGHEST, AppSpawnPreSpawn);
-    AddAppSpawnHook(STAGE_CHILD_PRE_COLDBOOT, HOOK_PRIO_HIGHEST, AppSpawnSpawnPrepare);
-    AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_HIGHEST, AppSpawnEnableCache);
-    AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_PROPERTY, AppSpawnSetProperty);
-    AddAppSpawnHook(STAGE_CHILD_POST_RELY, HOOK_PRIO_HIGHEST, AppSpawnSpawnComplete);
+    AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_HIGHEST, SpawnGetSpawningFlag);
+    AddAppSpawnHook(STAGE_CHILD_PRE_COLDBOOT, HOOK_PRIO_HIGHEST, SpawnInitSpawningEnv);
+    AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_HIGHEST, SpawnEnableCache);
+    AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_PROPERTY, SpawnSetProperties);
+    AddAppSpawnHook(STAGE_CHILD_POST_RELY, HOOK_PRIO_HIGHEST, SpawnComplete);
 }

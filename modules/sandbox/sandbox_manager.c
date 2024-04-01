@@ -192,8 +192,6 @@ static void DumpSandboxQueue(const ListNode *front,
 
 static void DumpSandboxSection(const SandboxSection *section)
 {
-    APPSPAPWN_DUMP("    ========================================= ");
-    APPSPAPWN_DUMP("    Section %{public}s", section->name);
     APPSPAPWN_DUMP("    sandboxSwitch %{public}s", section->sandboxSwitch ? "true" : "false");
     APPSPAPWN_DUMP("    sandboxShared %{public}s", section->sandboxShared ? "true" : "false");
     APPSPAPWN_DUMP("    gidCount: %{public}u", section->gidCount);
@@ -316,11 +314,37 @@ void DeleteAppSpawnSandbox(AppSpawnSandboxCfg *sandbox)
     sandbox = NULL;
 }
 
-static void DumpSandboxSectionNode(const SandboxMountNode *node, uint32_t index)
+static void DumpSandboxPermission(const SandboxMountNode *node, uint32_t index)
 {
     SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)node;
+    APPSPAPWN_DUMP("    ========================================= ");
+    APPSPAPWN_DUMP("    Section %{public}s", permissionNode->section.name);
+    APPSPAPWN_DUMP("    Section permission index %{public}d", permissionNode->permissionIndex);
     DumpSandboxSection(&permissionNode->section);
 }
+
+static void DumpSandboxSectionNode(const SandboxMountNode *node, uint32_t index)
+{
+    SandboxSection *section = (SandboxSection *)node;
+    APPSPAPWN_DUMP("    ========================================= ");
+    APPSPAPWN_DUMP("    Section %{public}s", section->name);
+    DumpSandboxSection(section);
+}
+
+static void DumpSandboxNameGroupNode(const SandboxMountNode *node, uint32_t index)
+{
+    SandboxNameGroupNode *nameGroupNode = (SandboxNameGroupNode *)node;
+    APPSPAPWN_DUMP("    ========================================= ");
+    APPSPAPWN_DUMP("    Section %{public}s", nameGroupNode->section.name);
+    APPSPAPWN_DUMP("    Section dep mode %{public}s",
+        nameGroupNode->depMode == MOUNT_MODE_ALWAYS ? "always" : "not-exists");
+    if (nameGroupNode->depNode != NULL) {
+        APPSPAPWN_DUMP("    mount-paths-deps: ");
+        DumpMountPathMountNode(nameGroupNode->depNode);
+    }
+    DumpSandboxSection(&nameGroupNode->section);
+}
+
 
 static void DumpSandbox(struct TagAppSpawnExtData *data)
 {
@@ -337,9 +361,7 @@ static inline void InitSandboxQueue(SandboxQueue *queue, uint32_t type)
 static void FreeAppSpawnSandbox(struct TagAppSpawnExtData *data)
 {
     AppSpawnSandboxCfg *sandbox = ListEntry(data, AppSpawnSandboxCfg, extData);
-    if (sandbox->mounted) {
-        UnmountSandboxConfigs(sandbox);
-    }
+    UnmountSandboxConfigs(sandbox);
     // delete all var
     DeleteAppSpawnSandbox(sandbox);
 }
@@ -395,7 +417,11 @@ AppSpawnSandboxCfg *CreateAppSpawnSandbox(void)
     sandbox->depGroupNodes = NULL;
     sandbox->systemUid = NULL;
     sandbox->maxUidCount = 0;
-    RecreateSystemUidArray(sandbox, DEFAULT_MAX_UID_COUNT);
+    int ret = RecreateSystemUidArray(sandbox, DEFAULT_MAX_UID_COUNT);
+    if (ret != 0) {
+        DeleteAppSpawnSandbox(sandbox);
+        return NULL;
+    }
 
     AddDefaultVariable();
     AddDefaultExpandAppSandboxConfigHandle();
@@ -405,20 +431,20 @@ AppSpawnSandboxCfg *CreateAppSpawnSandbox(void)
 void DumpAppSpawnSandboxCfg(AppSpawnSandboxCfg *sandbox)
 {
     APPSPAWN_CHECK_ONLY_EXPER(sandbox != NULL, return);
+    APPSPAPWN_DUMP("Sandbox root path: %{public}s", sandbox->rootPath);
     APPSPAPWN_DUMP("Sandbox sandboxNsFlags: %{public}x ", sandbox->sandboxNsFlags);
     APPSPAPWN_DUMP("Sandbox topSandboxSwitch: %{public}s", sandbox->topSandboxSwitch ? "true" : "false");
     APPSPAPWN_DUMP("Sandbox appFullMountEnable: %{public}s", sandbox->appFullMountEnable ? "true" : "false");
     APPSPAPWN_DUMP("Sandbox pidNamespaceSupport: %{public}s", sandbox->pidNamespaceSupport ? "true" : "false");
     APPSPAPWN_DUMP("Sandbox common info: ");
-
     DumpSandboxQueue(&sandbox->requiredQueue.front, DumpSandboxSectionNode);
     DumpSandboxQueue(&sandbox->packageNameQueue.front, DumpSandboxSectionNode);
-    DumpSandboxQueue(&sandbox->permissionQueue.front, DumpSandboxSectionNode);
+    DumpSandboxQueue(&sandbox->permissionQueue.front, DumpSandboxPermission);
     DumpSandboxQueue(&sandbox->spawnFlagsQueue.front, DumpSandboxSectionNode);
-    DumpSandboxQueue(&sandbox->nameGroupsQueue.front, DumpSandboxSectionNode);
+    DumpSandboxQueue(&sandbox->nameGroupsQueue.front, DumpSandboxNameGroupNode);
 }
 
-static int LoadSandbox(AppSpawnMgr *content)
+static int PreLoadSandboxCfg(AppSpawnMgr *content)
 {
     AppSpawnSandboxCfg *sandbox = GetAppSpawnSandbox(content);
     APPSPAWN_CHECK(sandbox == NULL, return 0, "Sandbox has been load");
@@ -438,7 +464,7 @@ static int LoadSandbox(AppSpawnMgr *content)
     return 0;
 }
 
-int SandboxConfigSet(AppSpawnMgr *content, AppSpawningCtx *property)
+int SpawnBuildSandboxEnv(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     AppSpawnSandboxCfg *appSandbox = GetAppSpawnSandbox(content);
     APPSPAWN_CHECK(appSandbox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));
@@ -506,18 +532,25 @@ static bool IsSystemConstMounted(const AppSpawnSandboxCfg *sandbox, AppSpawnMsgD
 
 static int SetSystemConstMounted(AppSpawnSandboxCfg *sandbox, AppSpawnMsgDacInfo *info)
 {
+    APPSPAWN_LOGW("SetSystemConstMounted [uid: %{public}u] ", info->uid / UID_BASE);
     uid_t uid = info->uid / UID_BASE;
     uint32_t i = 0;
     for (; i < sandbox->maxUidCount; i++) {
+        if (sandbox->systemUid[i] == uid) {
+            return 0;
+        }
         if (sandbox->systemUid[i] == INVALID_UID) {
             sandbox->systemUid[i] = uid;
-            break;
+            return 0;
         }
     }
-    if (i > sandbox->maxUidCount) {
-        RecreateSystemUidArray(sandbox, DEFAULT_MAX_UID_COUNT);
-    }
 
+    int ret = RecreateSystemUidArray(sandbox, DEFAULT_MAX_UID_COUNT);
+    if (ret != 0) {
+        APPSPAWN_LOGE("Failed to realloc mem for uid array");
+        sandbox->maxUidCount = 0;
+        return 0;
+    }
     for (; i < sandbox->maxUidCount; i++) {
         if (sandbox->systemUid[i] == INVALID_UID) {
             sandbox->systemUid[i] = uid;
@@ -527,7 +560,7 @@ static int SetSystemConstMounted(AppSpawnSandboxCfg *sandbox, AppSpawnMsgDacInfo
     return 0;
 }
 
-int PrepareSandbox(AppSpawnMgr *content, AppSpawningCtx *property)
+int SpawnPrepareSandboxCfg(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return -1);
     APPSPAWN_CHECK_ONLY_EXPER(property != NULL, return -1);
@@ -560,9 +593,9 @@ int PrepareSandbox(AppSpawnMgr *content, AppSpawningCtx *property)
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load sandbox module ...");
-    AddPreloadHook(HOOK_PRIO_SANDBOX, LoadSandbox);
-    AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_SANDBOX, PrepareSandbox);
-    AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_SANDBOX, SandboxConfigSet);
+    AddPreloadHook(HOOK_PRIO_SANDBOX, PreLoadSandboxCfg);
+    AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_SANDBOX, SpawnPrepareSandboxCfg);
+    AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_SANDBOX, SpawnBuildSandboxEnv);
 }
 
 MODULE_DESTRUCTOR(void)

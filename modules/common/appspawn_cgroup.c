@@ -31,7 +31,7 @@
 #include "appspawn_utils.h"
 #include "securec.h"
 
-APPSPAWN_STATIC int GetCgroupPath(const AppSpawnedProcess *appInfo, char *buffer, uint32_t buffLen)
+APPSPAWN_STATIC int GetCgroupPath(const AppSpawnedProcessInfo *appInfo, char *buffer, uint32_t buffLen)
 {
     const int userId = appInfo->uid / UID_BASE;
 #ifdef APPSPAWN_TEST
@@ -73,7 +73,7 @@ static int WritePidMax(const char *path, uint32_t max)
         "Failed to open file errno: %{public}d path: %{public}s", errno, path);
     int ret = 0;
     do {
-        ret = snprintf_s(value, sizeof(value), sizeof(value) - 1, "%d\n", max);
+        ret = snprintf_s(value, sizeof(value), sizeof(value) - 1, "%u\n", max);
         APPSPAWN_CHECK(ret > 0, break, "Failed to snprintf_s errno: %{public}d", errno);
         ret = write(fd, value, strlen(value));
         APPSPAWN_CHECK(ret > 0, break,
@@ -84,7 +84,7 @@ static int WritePidMax(const char *path, uint32_t max)
     return ret;
 }
 
-static void KillProcessesByCGroup(const char *path, AppSpawnMgr *content, const AppSpawnedProcess *appInfo)
+static void KillProcessesByCGroup(const char *path, AppSpawnMgr *content, const AppSpawnedProcessInfo *appInfo)
 {
     FILE *file = fopen(path, "r");
     APPSPAWN_CHECK(file != NULL, return, "Open file fail %{public}s errno: %{public}d", path, errno);
@@ -94,7 +94,7 @@ static void KillProcessesByCGroup(const char *path, AppSpawnMgr *content, const 
         if (pid == appInfo->pid) {
             continue;
         }
-        AppSpawnedProcess *tmp = GetSpawnedProcess(pid);
+        AppSpawnedProcessInfo *tmp = GetSpawnedProcess(pid);
         if (tmp != NULL) {
             APPSPAWN_LOGI("Got app %{public}s in same group for pid %{public}d.", tmp->name, pid);
             continue;
@@ -107,7 +107,7 @@ static void KillProcessesByCGroup(const char *path, AppSpawnMgr *content, const 
     (void)fclose(file);
 }
 
-static int ProcessAppDied(const AppSpawnMgr *content, const AppSpawnedProcess *appInfo)
+static int ProcessMgrRemoveApp(const AppSpawnMgr *content, const AppSpawnedProcessInfo *appInfo)
 {
     APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return -1);
     APPSPAWN_CHECK_ONLY_EXPER(appInfo != NULL, return -1);
@@ -115,7 +115,7 @@ static int ProcessAppDied(const AppSpawnMgr *content, const AppSpawnedProcess *a
         return 0;
     }
     char path[PATH_MAX] = {};
-    APPSPAWN_LOGV("ProcessAppDied %{public}d %{public}d to cgroup ", appInfo->pid, appInfo->uid);
+    APPSPAWN_LOGV("ProcessMgrRemoveApp %{public}d %{public}d to cgroup ", appInfo->pid, appInfo->uid);
     int ret = GetCgroupPath(appInfo, path, sizeof(path));
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to get real path errno: %d", errno);
     ret = strcat_s(path, sizeof(path), "cgroup.procs");
@@ -124,7 +124,7 @@ static int ProcessAppDied(const AppSpawnMgr *content, const AppSpawnedProcess *a
     return ret;
 }
 
-static int ProcessAppAdd(const AppSpawnMgr *content, const AppSpawnedProcess *appInfo)
+static int ProcessMgrAddApp(const AppSpawnMgr *content, const AppSpawnedProcessInfo *appInfo)
 {
     APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return -1);
     APPSPAWN_CHECK_ONLY_EXPER(appInfo != NULL, return -1);
@@ -132,7 +132,7 @@ static int ProcessAppAdd(const AppSpawnMgr *content, const AppSpawnedProcess *ap
         return 0;
     }
     char path[PATH_MAX] = {};
-    APPSPAWN_LOGV("ProcessAppAdd %{public}d %{public}d to cgroup ", appInfo->pid, appInfo->uid);
+    APPSPAWN_LOGV("ProcessMgrAddApp %{public}d %{public}d to cgroup ", appInfo->pid, appInfo->uid);
     int ret = GetCgroupPath(appInfo, path, sizeof(path));
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to get real path errno: %d", errno);
     (void)CreateSandboxDir(path, 0755);  // 0755 default mode
@@ -154,6 +154,6 @@ static int ProcessAppAdd(const AppSpawnMgr *content, const AppSpawnedProcess *ap
 
 MODULE_CONSTRUCTOR(void)
 {
-    AddAppChangeHook(STAGE_SERVER_APP_ADD, 0, ProcessAppAdd);
-    AddAppChangeHook(STAGE_SERVER_APP_DIED, 0, ProcessAppDied);
+    AddProcessMgrHook(STAGE_SERVER_APP_ADD, 0, ProcessMgrAddApp);
+    AddProcessMgrHook(STAGE_SERVER_APP_DIED, 0, ProcessMgrRemoveApp);
 }

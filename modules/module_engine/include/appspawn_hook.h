@@ -35,7 +35,7 @@ typedef struct TagAppSpawnMgr AppSpawnMgr;
 typedef struct TagAppSpawningCtx AppSpawningCtx;
 typedef struct TagAppSpawnContent AppSpawnContent;
 typedef struct TagAppSpawnClient AppSpawnClient;
-typedef struct TagAppSpawnedProcess AppSpawnedProcess;
+typedef struct TagAppSpawnedProcess AppSpawnedProcessInfo;
 
 typedef enum {
     EXT_DATA_SANDBOX
@@ -80,12 +80,60 @@ typedef enum TagAppSpawnHookPrio {
     HOOK_PRIO_LOWEST = 5000,
 } AppSpawnHookPrio;
 
+/**
+ * @brief 预加载处理函数
+ *
+ * @param content appspawn appspawn管理数据
+ * @return int
+ */
 typedef int (*PreloadHook)(AppSpawnMgr *content);
+
+/**
+ * @brief 应用孵化各阶段注册函数
+ *
+ * @param content appspawn appspawn管理数据
+ * @param property 业务孵化数据
+ * @return int
+ */
 typedef int (*AppSpawnHook)(AppSpawnMgr *content, AppSpawningCtx *property);
-typedef int (*ProcessChangeHook)(const AppSpawnMgr *content, const AppSpawnedProcess *appInfo);
+
+/**
+ * @brief 业务进程变化注册函数
+ *
+ * @param content appspawn appspawn管理数据
+ * @param appInfo 业务进程信息
+ * @return int
+ */
+typedef int (*ProcessChangeHook)(const AppSpawnMgr *content, const AppSpawnedProcessInfo *appInfo);
+
+/**
+ * @brief 添加预加载处理函数
+ *
+ * @param prio 优先级
+ * @param hook 预加载处理函数
+ * @return int
+ */
 int AddPreloadHook(int prio, PreloadHook hook);
+
+/**
+ * @brief 按阶段添加应用孵化处理函数
+ *
+ * @param stage 阶段信息
+ * @param prio 优先级
+ * @param hook 应用孵化阶段处理函数
+ * @return int
+ */
 int AddAppSpawnHook(AppSpawnHookStage stage, int prio, AppSpawnHook hook);
-int AddAppChangeHook(AppSpawnHookStage stage, int prio, ProcessChangeHook hook);
+
+/**
+ * @brief 添加业务进程处理函数
+ *
+ * @param stage 阶段信息
+ * @param prio 优先级
+ * @param hook 业务进程变化处理函数
+ * @return int
+ */
+int AddProcessMgrHook(AppSpawnHookStage stage, int prio, ProcessChangeHook hook);
 
 typedef int (*ChildLoop)(AppSpawnContent *content, AppSpawnClient *client);
 /**
@@ -109,17 +157,6 @@ __attribute__((always_inline)) inline int CreateSandboxDir(const char *path, mod
 {
     return MakeDirRec(path, mode, 1);
 }
-
-typedef struct {
-    const char *originPath;
-    const char *destinationPath;
-    const char *fsType;
-    unsigned long mountFlags;
-    const char *options;
-    mode_t mountSharedFlag;
-} MountArg;
-
-int SandboxMountPath(const MountArg *arg);
 
 // 扩展变量
 typedef struct TagSandboxContext SandboxContext;

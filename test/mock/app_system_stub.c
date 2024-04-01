@@ -175,6 +175,7 @@ int MountStub(const char *originPath, const char *destinationPath,
     printf("args->fsType %s == %s \n", args->fsType, fsType);
     printf("args->options %s == %s \n", args->options, options);
     printf("mountFlags %lx args->mountFlags %lx \n", mountFlags, args->mountFlags);
+    printf("mountSharedFlag %x args->mountSharedFlag %x \n", mountSharedFlag, args->mountSharedFlag);
 
     if (originPath != NULL && (strcmp(originPath, args->originPath) == 0)) {
         int result = (destinationPath != NULL && (strcmp(destinationPath, args->destinationPath) == 0) &&

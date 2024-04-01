@@ -117,7 +117,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_002, TestSize.Level0)
         content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
         // spawn prepare process
-        AppChangeHookExecute(STAGE_SERVER_APP_ADD, content, appInfo);
+        ProcessMgrHookExecute(STAGE_SERVER_APP_ADD, content, appInfo);
 
         // add success
         ret = GetTestCGroupFilePath(appInfo, "cgroup.procs", path, false);
@@ -167,7 +167,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_003, TestSize.Level0)
 
         content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        AppChangeHookExecute(STAGE_SERVER_APP_DIED, content, appInfo);
+        ProcessMgrHookExecute(STAGE_SERVER_APP_DIED, content, appInfo);
         ret = 0;
     } while (0);
     if (appInfo) {
@@ -194,7 +194,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_004, TestSize.Level0)
 
         content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        AppChangeHookExecute(STAGE_SERVER_APP_ADD, content, appInfo);
+        ProcessMgrHookExecute(STAGE_SERVER_APP_ADD, content, appInfo);
         // add success
         ret = GetCgroupPath(appInfo, path, sizeof(path));
         APPSPAWN_CHECK(ret == 0, break, "Failed to get real path errno: %{public}d", errno);
@@ -229,7 +229,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_005, TestSize.Level0)
 
         content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        AppChangeHookExecute(STAGE_SERVER_APP_DIED, content, appInfo);
+        ProcessMgrHookExecute(STAGE_SERVER_APP_DIED, content, appInfo);
         ret = 0;
     } while (0);
     if (appInfo) {
@@ -260,7 +260,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_006, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
         content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        AppChangeHookExecute(STAGE_SERVER_APP_ADD, content, appInfo);
+        ProcessMgrHookExecute(STAGE_SERVER_APP_ADD, content, appInfo);
 
         // add success
         ret = GetTestCGroupFilePath(appInfo, "cgroup.procs", path, false);
@@ -274,9 +274,9 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_006, TestSize.Level0)
         APPSPAWN_CHECK(appInfo2 != nullptr, break, "Failed to create appInfo");
         OH_ListAddTail(&GetAppSpawnMgr()->appQueue, &appInfo2->node);
         appInfo2->pid = 102;
-        AppChangeHookExecute(STAGE_SERVER_APP_ADD, content, appInfo2);
+        ProcessMgrHookExecute(STAGE_SERVER_APP_ADD, content, appInfo2);
         // died
-        AppChangeHookExecute(STAGE_SERVER_APP_DIED, content, appInfo);
+        ProcessMgrHookExecute(STAGE_SERVER_APP_DIED, content, appInfo);
         OH_ListRemove(&appInfo2->node);
         free(appInfo2);
     } while (0);
@@ -308,7 +308,7 @@ HWTEST(AppSpawnCGroupTest, App_Spawn_CGroup_007, TestSize.Level0)
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
         content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        AppChangeHookExecute(STAGE_SERVER_APP_ADD, content, appInfo);
+        ProcessMgrHookExecute(STAGE_SERVER_APP_ADD, content, appInfo);
 
         // add success
         ret = GetTestCGroupFilePath(appInfo, "pids.max", path, false);
