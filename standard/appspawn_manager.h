@@ -113,7 +113,6 @@ typedef struct TagAppSpawnMgr {
 AppSpawnMgr *CreateAppSpawnMgr(int mode);
 AppSpawnMgr *GetAppSpawnMgr(void);
 void DeleteAppSpawnMgr(AppSpawnMgr *mgr);
-void ClearAppSpawnMgr(AppSpawnMgr *mgr);
 AppSpawnContent *GetAppSpawnContent(void);
 
 /**

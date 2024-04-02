@@ -179,7 +179,9 @@ static void ClearEnvironment(const AppSpawnMgr *content, const AppSpawningCtx *p
     sigaddset(&mask, SIGTERM);
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
     // close child fd
-    close(property->forkCtx.fd[0]);
+    AppSpawningCtx *ctx = (AppSpawningCtx *)property;
+    close(ctx->forkCtx.fd[0]);
+    ctx->forkCtx.fd[0] = -1;
     return;
 }
 

@@ -44,12 +44,10 @@ typedef enum {
 struct TagAppSpawnExtData;
 typedef void (*AppSpawnExtDataFree)(struct TagAppSpawnExtData *data);
 typedef void (*AppSpawnExtDataDump)(struct TagAppSpawnExtData *data);
-typedef void (*AppSpawnExtDataClear)(struct TagAppSpawnExtData *data);
 typedef struct TagAppSpawnExtData {
     ListNode node;
     uint32_t dataId;
     AppSpawnExtDataFree freeNode;
-    AppSpawnExtDataClear clearNode;
     AppSpawnExtDataDump dumpNode;
 } AppSpawnExtData;
 

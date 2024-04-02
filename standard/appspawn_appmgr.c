@@ -79,25 +79,6 @@ static void ExtDataDestroy(ListNode *node)
     }
 }
 
-static int ExtDataClear(ListNode *node, void *data)
-{
-    AppSpawnExtData *extData = ListEntry(node, AppSpawnExtData, node);
-    AppSpawnExtDataClear clearNode = extData->clearNode;
-    if (clearNode) {
-        clearNode(extData);
-    }
-    return 0;
-}
-
-void ClearAppSpawnMgr(AppSpawnMgr *mgr)
-{
-    APPSPAWN_CHECK_ONLY_EXPER(mgr != NULL, return);
-    OH_ListRemoveAll(&mgr->appQueue, NULL);
-    OH_ListRemoveAll(&mgr->diedQueue, NULL);
-    OH_ListRemoveAll(&mgr->appSpawnQueue, SpawningQueueDestroy);
-    OH_ListTraversal(&mgr->extData, NULL, ExtDataClear, 0);
-}
-
 void DeleteAppSpawnMgr(AppSpawnMgr *mgr)
 {
     APPSPAWN_CHECK_ONLY_EXPER(mgr != NULL, return);
@@ -265,7 +246,7 @@ void DeleteAppSpawningCtx(AppSpawningCtx *property)
 {
     APPSPAWN_CHECK_ONLY_EXPER(property != NULL, return);
     DeleteAppSpawnMsg(property->message);
-    APPSPAWN_LOGV("DeleteAppSpawningCtx");
+    APPSPAWN_LOGV("DeleteAppSpawningCtx %{public}d %{public}d", property->forkCtx.fd[0], property->forkCtx.fd[1]);
     OH_ListRemove(&property->node);
     if (property->forkCtx.timer) {
         LE_StopTimer(LE_GetDefaultLoop(), property->forkCtx.timer);

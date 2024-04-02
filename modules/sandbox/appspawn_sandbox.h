@@ -28,6 +28,7 @@
 extern "C" {
 #endif
 
+#define SANDBOX_STAMP_FILE_SUFFIX ".stamp"
 #define JSON_FLAGS_INTERNAL "__internal__"
 #define SANDBOX_NWEBSPAWN_ROOT_PATH APPSPAWN_BASE_DIR "/mnt/sandbox/com.ohos.render/"
 #define OHOS_RENDER "__internal__.com.ohos.render"
@@ -187,9 +188,6 @@ typedef struct TagAppSpawnSandboxCfg {
     uint32_t appFullMountEnable : 1;
     uint32_t pidNamespaceSupport : 1;
     uint32_t mounted : 1;
-    uint32_t systemConstMounted : 1;
-    uint32_t maxUidCount;
-    uint32_t *systemUid;
     char *rootPath;
 } AppSpawnSandboxCfg;
 
@@ -218,7 +216,6 @@ typedef struct TagSandboxContext {
     uint32_t appFullMountEnable : 1;
     uint32_t nwebspawn : 1;
     char *rootPath;
-    char *sandboxPackagePath;
 } SandboxContext;
 
 /**
@@ -263,7 +260,8 @@ int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx 
 int StagedMountSystemConst(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx *property, int nwebspawn);
 int StagedMountPreUnShare(const SandboxContext *context, const AppSpawnSandboxCfg *sandbox);
 int StagedMountPostUnshare(const SandboxContext *context, const AppSpawnSandboxCfg *sandbox);
-int UnmountSandboxConfigs(const AppSpawnSandboxCfg *sandbox);
+int UnmountDepPaths(const AppSpawnSandboxCfg *sandbox, uid_t uid);
+int UnmountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, uid_t uid, const char *name);
 
 /**
  * @brief Variable op

@@ -49,8 +49,6 @@ typedef struct TagAppSpawnContent {
     int (*runChildProcessor)(struct TagAppSpawnContent *content, AppSpawnClient *client);
     // for cold start
     int (*coldStartApp)(struct TagAppSpawnContent *content, AppSpawnClient *client);
-    // for app exit, and to unmount sandbox config
-    int (*processChildExit)(struct TagAppSpawnContent *content, int result);
 } AppSpawnContent;
 
 typedef struct TagAppSpawnForkArg {

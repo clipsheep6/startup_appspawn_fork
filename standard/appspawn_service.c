@@ -474,6 +474,7 @@ static void NotifyResToParent(AppSpawnContent *content, AppSpawnClient *client, 
     if (fd >= 0) {
         (void)write(fd, &result, sizeof(result));
         (void)close(fd);
+        property->forkCtx.fd[1] = -1;
     }
     APPSPAWN_LOGV("NotifyResToParent client id: %{public}u result: 0x%{public}x", client->id, result);
 }
@@ -614,8 +615,9 @@ static void AppSpawnColdRun(AppSpawnContent *content, int argc, char *const argv
     } else {
         NotifyResToParent(content, &property->client, ret);
     }
-    if (content->processChildExit) {
-        content->processChildExit(content, ret);
+
+    if (ret != 0) {
+        AppSpawnEnvClear(content, &property->client);
     }
     APPSPAWN_LOGI("AppSpawnColdRun exit %{public}d.", getpid());
 }
@@ -643,17 +645,12 @@ static int AppSpawnClearEnv(AppSpawnMgr *content, AppSpawningCtx *property)
     APPSPAWN_LOGV("Clear %{public}s context in child %{public}d process",
         (!IsNWebSpawnMode(content)) ? "appspawn" : "nwebspawn", getpid());
 
-    // clear all spawn info
-    return 0;
-}
+    DeleteAppSpawningCtx(property);
+    AppSpawnDestroyContent(&content->content);
 
-static int AppSpawnChildExit(struct TagAppSpawnContent *content, int32_t result)
-{
-    APPSPAWN_CHECK(content != NULL, return 0, "Invalid appspawn content");
-    APPSPAWN_LOGI("Process child %{public}d exit result: %{public}d", getpid(), result);
-
-    AppSpawnDestroyContent(content);
-    APPSPAWN_LOGI("Process child %{public}d exit end", getpid());
+    AppSpawnModuleMgrUnInstall(MODULE_DEFAULT);
+    AppSpawnModuleMgrUnInstall(IsNWebSpawnMode(content) ? MODULE_APPSPAWN : MODULE_NWEBSPAWN);
+    AppSpawnModuleMgrUnInstall(MODULE_COMMON);
     return 0;
 }
 
@@ -667,7 +664,6 @@ AppSpawnContent *AppSpawnCreateContent(const char *socketName, char *longProcNam
     appSpawnContent->content.longProcName = longProcName;
     appSpawnContent->content.longProcNameLen = nameLen;
     appSpawnContent->content.notifyResToParent = NotifyResToParent;
-    appSpawnContent->content.processChildExit = AppSpawnChildExit;
     if (IsColdRunMode(appSpawnContent)) {
         appSpawnContent->content.runAppSpawn = AppSpawnColdRun;
     } else {

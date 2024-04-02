@@ -100,25 +100,32 @@ int SandboxMountPath(const MountArg *arg)
     return 0;
 }
 
-static int BuildPackagePath(SandboxContext *sandboxContext, const AppSpawnSandboxCfg *sandbox)
+static int BuildRootPath(char *buffer, uint32_t bufferLen, const AppSpawnSandboxCfg *sandbox, uid_t uid)
 {
-    const char *packagePath = GetSandboxRealVar(sandboxContext, BUFFER_FOR_SOURCE, sandbox->rootPath, NULL, NULL);
-    if (packagePath) {
-        sandboxContext->sandboxPackagePath = strdup(packagePath);
-    }
-    APPSPAWN_CHECK(sandboxContext->sandboxPackagePath != NULL,
-        return APPSPAWN_SYSTEM_ERROR, "Failed to format path app: %{public}s", sandboxContext->bundleName);
-    return 0;
-}
+    int ret = 0;
+    int len = 0;
+    uint32_t currLen = 0;
+    uint32_t userIdLen = sizeof(PARAMETER_USER_ID) - 1;
+    uint32_t rootLen = strlen(sandbox->rootPath);
+    char *rootPath = strstr(sandbox->rootPath, PARAMETER_USER_ID);
+    if (rootPath == NULL) {
+        len = sprintf_s(buffer, bufferLen, "%s/%d", sandbox->rootPath, uid);
+    } else {
+        ret = memcpy_s(buffer, bufferLen, sandbox->rootPath, rootPath - sandbox->rootPath);
+        APPSPAWN_CHECK(ret == 0, return ret, "Failed to copy root path %{public}s", sandbox->rootPath);
+        currLen = rootPath - sandbox->rootPath;
 
-static int BuildRootPath(SandboxContext *context, const AppSpawnSandboxCfg *sandbox, const SandboxSection *section)
-{
-    const char *rootPath = GetSandboxRealVar(context, BUFFER_FOR_SOURCE, sandbox->rootPath, NULL, NULL);
-    if (rootPath) {
-        context->rootPath = strdup(rootPath);
+        if (rootLen > (currLen + userIdLen)) {
+            len = sprintf_s(buffer + currLen, bufferLen - currLen, "%d%s",
+                uid, sandbox->rootPath + currLen + userIdLen);
+        } else {
+            len = sprintf_s(buffer + currLen, bufferLen - currLen, "%d", uid);
+        }
+        APPSPAWN_CHECK(len > 0 && (uint32_t)(len < (bufferLen - currLen)), return ret,
+            "Failed to format root path %{public}s", sandbox->rootPath);
+        currLen += (uint32_t)len;
     }
-    APPSPAWN_CHECK(context->rootPath != NULL, return -1,
-        "Failed to build root path app: %{public}s", context->bundleName);
+    buffer[currLen] = '\0';
     return 0;
 }
 
@@ -144,8 +151,6 @@ SandboxContext *GetSandboxContext(void)
         context->sandboxShared = false;
         context->message = NULL;
         context->rootPath = NULL;
-        context->sandboxPackagePath = NULL;
-
         g_sandboxContext = context;
     }
     return g_sandboxContext;
@@ -157,10 +162,6 @@ void DeleteSandboxContext(SandboxContext *context)
     if (context->rootPath) {
         free(context->rootPath);
         context->rootPath = NULL;
-    }
-    if (context->sandboxPackagePath) {
-        free(context->sandboxPackagePath);
-        context->sandboxPackagePath = NULL;
     }
     if (context == g_sandboxContext) {
         g_sandboxContext = NULL;
@@ -189,15 +190,14 @@ static int InitSandboxContext(SandboxContext *context,
         context->sandboxShared = packageNode->section.sandboxShared;
     }
     context->message = property->message;
-    int ret = BuildRootPath(context, sandbox, NULL);
-    if (ret != 0) {
-        DeleteSandboxContext(context);
-        return ret;
+    // root path
+    const char *rootPath = GetSandboxRealVar(context, BUFFER_FOR_SOURCE, sandbox->rootPath, NULL, NULL);
+    if (rootPath) {
+        context->rootPath = strdup(rootPath);
     }
-    ret = BuildPackagePath(context, sandbox);
-    if (ret != 0) {
+    if (context->rootPath == NULL) {
         DeleteSandboxContext(context);
-        return ret;
+        return -1;
     }
     return 0;
 }
@@ -553,7 +553,7 @@ static int SetExpandSandboxConfig(const SandboxContext *context, const AppSpawnS
     if (mountDestBundlePath || (CheckSpawningMsgFlagSet(context, APP_FLAGS_ACCESS_BUNDLE_DIR) != 0)) {
         // need permission check for system app here
         const char *destBundlesPath = GetSandboxRealVar(context,
-            BUFFER_FOR_TARGET, "/data/bundles/", context->sandboxPackagePath, NULL);
+            BUFFER_FOR_TARGET, "/data/bundles/", context->rootPath, NULL);
         CreateSandboxDir(destBundlesPath, FILE_MODE);
         MountArg mountArg = {PHYSICAL_APP_INSTALL_PATH, destBundlesPath, NULL, MS_REC | MS_BIND, NULL, MS_SLAVE};
         ret = SandboxMountPath(&mountArg);
@@ -626,7 +626,7 @@ static int SetBundleResourceSandboxConfig(const SandboxContext *context, const A
         return 0;
     }
     const char *destPath = GetSandboxRealVar(context,
-        BUFFER_FOR_TARGET, "/data/storage/bundle_resources/", context->sandboxPackagePath, NULL);
+        BUFFER_FOR_TARGET, "/data/storage/bundle_resources/", context->rootPath, NULL);
     CreateSandboxDir(destPath, FILE_MODE);
     MountArg mountArg = {
         "/data/service/el1/public/bms/bundle_resources/", destPath, NULL, MS_REC | MS_BIND, NULL, MS_SLAVE
@@ -638,39 +638,39 @@ static int SetBundleResourceSandboxConfig(const SandboxContext *context, const A
 static int32_t ChangeCurrentDir(const SandboxContext *context)
 {
     int32_t ret = 0;
-    ret = chdir(context->sandboxPackagePath);
+    ret = chdir(context->rootPath);
     APPSPAWN_CHECK(ret == 0, return ret,
         "chdir failed, app: %{public}s, path: %{public}s errno: %{public}d",
-        context->bundleName, context->sandboxPackagePath, errno);
+        context->bundleName, context->rootPath, errno);
 
     if (context->sandboxShared) {
-        ret = chroot(context->sandboxPackagePath);
+        ret = chroot(context->rootPath);
         APPSPAWN_CHECK(ret == 0, return ret,
-            "chroot failed, path: %{public}s errno: %{public}d", context->sandboxPackagePath, errno);
+            "chroot failed, path: %{public}s errno: %{public}d", context->rootPath, errno);
         return ret;
     }
-    ret = syscall(SYS_pivot_root, context->sandboxPackagePath, context->sandboxPackagePath);
+    ret = syscall(SYS_pivot_root, context->rootPath, context->rootPath);
     APPSPAWN_CHECK(ret == 0, return ret,
-        "pivot root failed, path: %{public}s errno: %{public}d", context->sandboxPackagePath, errno);
+        "pivot root failed, path: %{public}s errno: %{public}d", context->rootPath, errno);
     ret = umount2(".", MNT_DETACH);
     APPSPAWN_CHECK(ret == 0, return ret,
-        "MNT_DETACH failed,  path: %{public}s errno: %{public}d", context->sandboxPackagePath, errno);
-    APPSPAWN_LOGV("ChangeCurrentDir %{public}s ", context->sandboxPackagePath);
+        "MNT_DETACH failed,  path: %{public}s errno: %{public}d", context->rootPath, errno);
+    APPSPAWN_LOGV("ChangeCurrentDir %{public}s ", context->rootPath);
     return ret;
 }
 
 static int SandboxRootFolderCreateNoShare(
     const SandboxContext *context, const AppSpawnSandboxCfg *sandbox, bool remountProc)
 {
-    APPSPAWN_LOGV("SandboxRootFolderCreateNoShare %{public}s ", context->sandboxPackagePath);
+    APPSPAWN_LOGV("SandboxRootFolderCreateNoShare %{public}s ", context->rootPath);
     int ret = mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL);
     APPSPAWN_CHECK(ret == 0, return ret,
-        "set propagation slave failed, app: %{public}s errno: %{public}d", context->sandboxPackagePath, errno);
+        "set propagation slave failed, app: %{public}s errno: %{public}d", context->rootPath, errno);
 
-    MountArg arg = {context->sandboxPackagePath, context->sandboxPackagePath, NULL, BASIC_MOUNT_FLAGS, NULL, MS_SLAVE};
+    MountArg arg = {context->rootPath, context->rootPath, NULL, BASIC_MOUNT_FLAGS, NULL, MS_SLAVE};
     ret = SandboxMountPath(&arg);
     APPSPAWN_CHECK(ret == 0, return ret,
-        "mount path failed, app: %{public}s errno: %{public}d", context->sandboxPackagePath, ret);
+        "mount path failed, app: %{public}s errno: %{public}d", context->rootPath, ret);
     return ret;
 }
 
@@ -683,12 +683,12 @@ static int SandboxRootFolderCreate(const SandboxContext *context, const AppSpawn
     if (sandbox->topSandboxSwitch == 0 || context->sandboxSwitch == 0) {
         ret = mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL);
         APPSPAWN_CHECK(ret == 0, return ret,
-            "set propagation slave failed, app: %{public}s errno: %{public}d", context->sandboxPackagePath, errno);
+            "set propagation slave failed, app: %{public}s errno: %{public}d", context->rootPath, errno);
         // bind mount "/" to /mnt/sandbox/<packageName> path
         // rootfs: to do more resources bind mount here to get more strict resources constraints
-        ret = mount("/", context->sandboxPackagePath, NULL, BASIC_MOUNT_FLAGS, NULL);
+        ret = mount("/", context->rootPath, NULL, BASIC_MOUNT_FLAGS, NULL);
         APPSPAWN_CHECK(ret == 0, return ret,
-            "mount bind / failed, app: %{public}s errno: %{public}d", context->sandboxPackagePath, errno);
+            "mount bind / failed, app: %{public}s errno: %{public}d", context->rootPath, errno);
     } else if (!context->sandboxShared) {
         bool remountProc = !context->nwebspawn && ((sandbox->sandboxNsFlags & CLONE_NEWPID) == CLONE_NEWPID);
         ret = SandboxRootFolderCreateNoShare(context, sandbox, remountProc);
@@ -739,12 +739,12 @@ int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx 
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
 
     do {
-        APPSPAWN_LOGV("Set sandbox config %{public}s", context->sandboxPackagePath);
+        APPSPAWN_LOGV("Set sandbox config %{public}s", context->rootPath);
 
         ret = StagedMountPreUnShare(context, sandbox);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
-        CreateSandboxDir(context->sandboxPackagePath, FILE_MODE);
+        CreateSandboxDir(context->rootPath, FILE_MODE);
         // add pid to a new mnt namespace
         ret = unshare(CLONE_NEWNS);
         APPSPAWN_CHECK(ret == 0, break,
@@ -763,10 +763,105 @@ int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx 
 
         ret = ChangeCurrentDir(context);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
-        APPSPAWN_LOGV("Change root dir success %{public}s ", context->sandboxPackagePath);
+        APPSPAWN_LOGV("Change root dir success %{public}s ", context->rootPath);
     } while (0);
     DeleteSandboxContext(context);
     return ret;
+}
+
+static bool IsSandboxMounted(const AppSpawnSandboxCfg *sandbox, const char *name, const char *rootPath)
+{
+    char path[PATH_MAX] = {};
+    int len = sprintf_s(path, sizeof(path), "%s%s", rootPath, SANDBOX_STAMP_FILE_SUFFIX);
+    APPSPAWN_CHECK(len > 0, return false, "Failed to format path");
+
+    FILE *f = fopen(path, "rb");
+    if (f != NULL) {
+        fclose(f);
+        return true;
+    }
+    return false;
+}
+
+static int SetSandboxMounted(const AppSpawnSandboxCfg *sandbox, const char *name, char *rootPath)
+{
+    APPSPAWN_LOGW("SetSystemConstMounted %{public}s ", rootPath);
+    char path[PATH_MAX] = {};
+    int len = sprintf_s(path, sizeof(path), "%s%s", rootPath, SANDBOX_STAMP_FILE_SUFFIX);
+    APPSPAWN_CHECK(len > 0, return 0, "Failed to format path");
+
+    FILE *f = fopen(path, "wb");
+    if (f != NULL) {
+        fclose(f);
+    }
+    return 0;
+}
+
+static void UnmountPath(char *rootPath, uint32_t len, const SandboxMountNode *sandboxNode)
+{
+    if (sandboxNode->type == SANDBOX_TAG_MOUNT_PATH) {
+        PathMountNode *pathNode = (PathMountNode *)sandboxNode;
+        int ret = strcat_s(rootPath, len, pathNode->target);
+        APPSPAWN_CHECK(ret == 0, return, "Failed to format");
+        APPSPAWN_LOGI("Unmount sandbox config sandbox path %{public}s ", rootPath);
+        ret = umount2(rootPath, MNT_DETACH);
+        APPSPAWN_CHECK_ONLY_LOG(ret == 0, "Failed to umount2 %{public}s errno: %{public}d", rootPath, errno);
+    }
+}
+
+int UnmountDepPaths(const AppSpawnSandboxCfg *sandbox, uid_t uid)
+{
+    APPSPAWN_CHECK(sandbox != NULL, return -1, "Invalid sandbox or context");
+    APPSPAWN_LOGI("Unmount sandbox mount-paths-deps %{public}u ", sandbox->depNodeCount);
+    char path[PATH_MAX] = {};
+    int ret = BuildRootPath(path, sizeof(path), sandbox, uid / UID_BASE);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return -1);
+    uint32_t rootLen = strlen(path);
+    for (uint32_t i = 0; i < sandbox->depNodeCount; i++) {
+        SandboxNameGroupNode *groupNode = sandbox->depGroupNodes[i];
+        if (groupNode == NULL || groupNode->depNode == NULL) {
+            continue;
+        }
+        // unmount this deps
+        UnmountPath(path, sizeof(path), &groupNode->depNode->sandboxNode);
+        path[rootLen] = '\0';
+    }
+    return 0;
+}
+
+int UnmountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, uid_t uid, const char *name)
+{
+    APPSPAWN_CHECK(sandbox != NULL, return -1, "Invalid sandbox or context");
+    APPSPAWN_CHECK(name != NULL, return -1, "Invalid name");
+    char path[PATH_MAX] = {};
+    int ret = BuildRootPath(path, sizeof(path), sandbox, uid / UID_BASE);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return -1);
+    uint32_t rootLen = strlen(path);
+    APPSPAWN_LOGI("Unmount sandbox %{public}s root: %{public}s", name, path);
+
+    if (!IsSandboxMounted(sandbox, name, path)) {
+        return 0;
+    }
+
+    SandboxSection *section = GetSandboxSection(&sandbox->requiredQueue, name);
+    if (section == NULL) {
+        return 0;
+    }
+    ListNode *node = section->front.next;
+    while (node != &section->front) {
+        SandboxMountNode *sandboxNode = (SandboxMountNode *)ListEntry(node, SandboxMountNode, node);
+        UnmountPath(path, sizeof(path), sandboxNode);
+        path[rootLen] = '\0';
+        // get next
+        node = node->next;
+    }
+
+    // delete stamp file
+    ret = strcat_s(path, sizeof(path), SANDBOX_STAMP_FILE_SUFFIX);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return 0);
+    APPSPAWN_LOGI("Unmount sandbox %{public}s ", path);
+    unlink(path);
+    return 0;
 }
 
 int StagedMountSystemConst(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx *property, int nwebspawn)
@@ -792,7 +887,10 @@ int StagedMountSystemConst(const AppSpawnSandboxCfg *sandbox, const AppSpawningC
     APPSPAWN_CHECK_ONLY_EXPER(context != NULL, return APPSPAWN_SYSTEM_ERROR);
     int ret = InitSandboxContext(context, sandbox, property, nwebspawn);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
-    BuildRootPath((SandboxContext *)context, sandbox, NULL);
+
+    if (IsSandboxMounted(sandbox, "system-const", context->rootPath)) {
+        return 0;
+    }
 
     // 首次挂载，使用sandbox替换
     uint32_t operation = 0;
@@ -801,6 +899,7 @@ int StagedMountSystemConst(const AppSpawnSandboxCfg *sandbox, const AppSpawningC
     if (section != NULL) {
         ret = MountSandboxConfig(context, sandbox, section, operation);
     }
+    SetSandboxMounted(sandbox, "system-const", context->rootPath);
     DeleteSandboxContext(context);
     return ret;
 }
@@ -907,60 +1006,4 @@ int StagedMountPostUnshare(const SandboxContext *context, const AppSpawnSandboxC
     ret = SetSandboxPermissionConfig(context, sandbox);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
     return ret;
-}
-
-static void UnmountPath(uint32_t uid, const SandboxMountNode *sandboxNode)
-{
-    char path[PATH_MAX] = {};
-    if (sandboxNode->type == SANDBOX_TAG_MOUNT_PATH) {
-        PathMountNode *pathNode = (PathMountNode *)sandboxNode;
-        int len = sprintf_s(path, sizeof(path), "/mnt/sandbox/%d/app-root%s", uid, pathNode->target);
-        APPSPAWN_CHECK(len > 0, return, "Failed to format");
-        APPSPAWN_LOGI("Unmount sandbox config sandbox path %{public}s ", path);
-        int ret = umount2(pathNode->target, MNT_DETACH);
-        APPSPAWN_CHECK_ONLY_LOG(ret == 0, "Failed to umount2 %{public}s errno: %{public}d", path, errno);
-    }
-}
-
-static int UnmountSystemConstConfig(const AppSpawnSandboxCfg *sandbox)
-{
-    SandboxSection *section = GetSandboxSection(&sandbox->requiredQueue, "system-const");
-    if (section == NULL) {
-        return 0;
-    }
-
-    for (uint32_t i = 0; i < sandbox->maxUidCount; i++) {
-        if (sandbox->systemUid[i] == INVALID_UID) {
-            continue;
-        }
-        ListNode *node = section->front.next;
-        while (node != &section->front) {
-            SandboxMountNode *sandboxNode = (SandboxMountNode *)ListEntry(node, SandboxMountNode, node);
-            UnmountPath(sandbox->systemUid[i], sandboxNode);
-            // get next
-            node = node->next;
-        }
-    }
-    return 0;
-}
-
-int UnmountSandboxConfigs(const AppSpawnSandboxCfg *sandbox)
-{
-    APPSPAWN_CHECK(sandbox != NULL, return -1, "Invalid sandbox or context");
-    int isServer = IsSpawnServer(GetAppSpawnMgr());
-    APPSPAWN_LOGI("Unmount sandbox %{public}d ", isServer);
-    if (isServer) { // 服务侧退出时，unmount system-const的配置
-        return UnmountSystemConstConfig(sandbox);
-    }
-    APPSPAWN_LOGI("Unmount sandbox mount-paths-deps %{public}u ", sandbox->depNodeCount);
-    for (uint32_t i = 0; i < sandbox->depNodeCount; i++) {
-        SandboxNameGroupNode *groupNode = sandbox->depGroupNodes[i];
-        if (groupNode == NULL || groupNode->depNode == NULL) {
-            continue;
-        }
-        // unmount this deps
-        uid_t uid = getuid() / UID_BASE;
-        UnmountPath(uid, &groupNode->depNode->sandboxNode);
-    }
-    return 0;
 }
