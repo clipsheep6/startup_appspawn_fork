@@ -38,6 +38,7 @@ extern "C" {
 #define APPSPAWN_SOCKET_NAME "AppSpawn"
 #define APPSPAWN_SERVER_NAME "appspawn"
 
+
 enum AppType {
     APP_TYPE_DEFAULT = 0,  // JavaScript app
     APP_TYPE_NATIVE        // Native C++ app
@@ -69,7 +70,8 @@ typedef enum AppOperateType_ {
 #define APP_NO_SANDBOX 0x80  // Do not enter sandbox
 #define APP_OVERLAY_FLAG 0x100
 #define GET_BUNDLE_RESOURCES_FLAG 0x200
-
+#define APP_GWP_ENABLED_FORCE 0x400
+#define APP_GWP_ENABLED_NORMAL 0x800
 #define BITLEN32 32
 #define FDLEN2 2
 #define FD_INIT_VALUE 0
@@ -77,13 +79,13 @@ typedef enum AppOperateType_ {
 #define APPSPAWN_COLDSTART_KEY "cold-start"
 #define NWEBSPAWN_COLDSTART_KEY "nweb-cold-start"
 
-typedef struct ExtraInfo_ {
+typedef struct ExtraInfo {
     uint32_t totalLength;
     uint32_t savedLength;
     char* data;
 } ExtraInfo;
 
-typedef struct AppParameter_ {
+typedef struct AppParameter {
     AppOperateType code;
     uint32_t flags;
     int32_t pid;                     // query render process exited status by render process pid

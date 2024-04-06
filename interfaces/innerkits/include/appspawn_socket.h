@@ -88,6 +88,7 @@ public:
      * @return -1:failed;other means connection FD.
      */
     static int CreateSocket();
+
 protected:
     /**
      * Sets the socket name to the socket address.
@@ -106,14 +107,7 @@ protected:
 #else
     const std::string socketDir_ = "/dev/socket/";
 #endif
-    uint32_t currMsgLen_ = 0;
-    std::vector<uint8_t> message_ {};
     const unsigned int listenBacklog_ = 50;                   // 50: max num of clients
-    void *clientHandle_ = nullptr;
-    int result_ = 0;
-    pid_t childPid_ = 0;
-private:
-    int SendMessage(const uint8_t *buffer, uint32_t bufferLen);
 };
 }  // namespace AppSpawn
 }  // namespace OHOS

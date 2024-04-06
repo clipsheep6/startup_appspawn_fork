@@ -13,8 +13,8 @@
 import("//base/startup/appspawn/appspawn.gni")
 import("//build/ohos.gni")
 
-ohos_shared_library("appspawn_testplugin") {
-  sources = [ "appspawn_test_plugin.cpp" ]
+ohos_shared_library("appspawn_plugin_sample") {
+  sources = [ "appspawn_plugin_sample.c" ]
   include_dirs = [
     ".",
     "${appspawn_path}/common",

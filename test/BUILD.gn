@@ -18,7 +18,6 @@ group("moduletest") {
   if (!defined(ohos_lite)) {
     testonly = true
     deps = [ "moduletest:moduletest" ]
-    deps += [ "testplugin:appspawn_testplugin" ]
   }
 }
 

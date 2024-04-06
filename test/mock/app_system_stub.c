@@ -36,6 +36,7 @@
 
 #include "appspawn_hook.h"
 #include "appspawn_server.h"
+#include "appspawn_sandbox.h"
 #include "hilog/log.h"
 #include "securec.h"
 
@@ -175,7 +176,7 @@ int MountStub(const char *originPath, const char *destinationPath,
     printf("args->fsType %s == %s \n", args->fsType, fsType);
     printf("args->options %s == %s \n", args->options, options);
     printf("mountFlags %lx args->mountFlags %lx \n", mountFlags, args->mountFlags);
-    printf("mountSharedFlag %x args->mountSharedFlag %x \n", mountSharedFlag, args->mountSharedFlag);
+    printf("mountSharedFlag 0x%x args->mountSharedFlag 0x%x \n", mountSharedFlag, args->mountSharedFlag);
 
     if (originPath != NULL && (strcmp(originPath, args->originPath) == 0)) {
         int result = (destinationPath != NULL && (strcmp(destinationPath, args->destinationPath) == 0) &&
@@ -232,6 +233,9 @@ int AccessStub(const char *pathName, int mode)
         return -1;
     }
     if (strstr(pathName, "/mnt/sandbox/50/com.example.myapplication/data/storage/el2") != NULL) {
+        return -1;
+    }
+    if (strstr(pathName, "/data/app/el5/100/base/com.example.myapplication") != NULL) {
         return -1;
     }
     return 0;

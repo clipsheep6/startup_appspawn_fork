@@ -16,6 +16,7 @@
 #include "appspawn_utils.h"
 
 #include <ctype.h>
+#include <dirent.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -216,6 +217,43 @@ int ParseJsonConfig(const char *basePath, const char *fileName, ParseConfig pars
     }
     FreeCfgFiles(files);
     return ret;
+}
+
+void DumpCurrentDir(char *buffer, uint32_t bufferLen, const char *dirPath)
+{
+    char tmp[32] = {0};  // 32 max
+    int ret = GetParameter("startup.appspawn.cold.boot", "", tmp, sizeof(tmp));
+    if (ret <= 0 || strcmp(tmp, "1") != 0) {
+        return;
+    }
+
+    struct stat st = {};
+    if (stat(dirPath, &st) == 0 && S_ISREG(st.st_mode)) {
+        APPSPAWN_LOGW("file %{public}s", dirPath);
+        if (access(dirPath, F_OK) != 0) {
+            APPSPAWN_LOGW("file %{public}s not exist", dirPath);
+        }
+        return;
+    }
+
+    DIR *pDir = opendir(dirPath);
+    APPSPAWN_CHECK(pDir != NULL, return, "Read dir :%{public}s failed.%{public}d", dirPath, errno);
+
+    struct dirent *dp;
+    while ((dp = readdir(pDir)) != NULL) {
+        if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0) {
+            continue;
+        }
+        if (dp->d_type == DT_DIR) {
+            APPSPAWN_LOGW(" Current path %{public}s/%{public}s ", dirPath, dp->d_name);
+            snprintf_s(buffer, bufferLen, bufferLen - 1, "%s/%s", dirPath, dp->d_name);
+            char *path = strdup(buffer);
+            DumpCurrentDir(buffer, bufferLen, path);
+            free(path);
+        }
+    }
+    closedir(pDir);
+    return;
 }
 
 static FILE *g_dumpToStream = NULL;

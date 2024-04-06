@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <gtest/gtest.h>
 
 #include <cstdio>
 #include <fcntl.h>
@@ -25,7 +26,7 @@
 #include "securec.h"
 
 #include "appspawn_test_cmder.h"
-#include <gtest/gtest.h>
+
 
 using namespace testing;
 using namespace testing::ext;
@@ -54,7 +55,6 @@ namespace {
     const char *DELIMITER_NEWLINE = "\n";
 
     char buffer[BUFFER_SIZE] = {"\0"};
-    int32_t newPid = 0;
     int32_t retryCount = 0;
 }  // namespace
 

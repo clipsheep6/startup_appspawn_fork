@@ -106,6 +106,7 @@ group("moduletest") {
   deps = [
     ":AppSpawnModuleTest",
     ":AppSpawnTest",
+    "plugin-sample:appspawn_plugin_sample",
   ]
   deps += [ "hnp_sample:hnpsample" ]
 }

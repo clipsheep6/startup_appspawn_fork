@@ -55,15 +55,6 @@ AppSpawnTestServer::~AppSpawnTestServer()
     }
 }
 
-int AppSpawnTestServer::ChildLoopRun(AppSpawnContent *content, AppSpawnClient *client)
-{
-    APPSPAWN_LOGV("ChildLoopRun ...");
-    while (1) {
-        pause();
-    }
-    return 0;
-}
-
 void AppSpawnTestServer::CloseCheckHandler(void)
 {
     APPSPAWN_LOGV("CloseCheckHandler");
@@ -108,7 +99,6 @@ void *AppSpawnTestServer::ServiceThread(void *arg)
         if (pid == getpid()) {  // 主进程进行处理
             APPSPAWN_LOGV("Service start timer %{public}s ", server->serviceCmd_.c_str());
             server->StartCheckHandler();
-            RegChildLooper(server->content_, ChildLoopRun);
             AppSpawnMgr *content = reinterpret_cast<AppSpawnMgr *>(server->content_);
             APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return nullptr);
             AppSpawnedProcess *info = GetSpawnedProcessByName(NWEBSPAWN_SERVER_NAME);
@@ -647,3 +637,23 @@ AppSpawnContent *AppSpawnTestHelper::StartSpawnServer(std::string &cmd, CmdArgs 
     return content;
 }
 }  // namespace OHOS
+
+static int TestChildLoopRun(AppSpawnContent *content, AppSpawnClient *client)
+{
+    APPSPAWN_LOGV("ChildLoopRun ...");
+    sleep(1);
+    return 0;
+}
+
+static int TestPreLoad(AppSpawnMgr *content)
+{
+    // register
+    RegChildLooper(&content->content, TestChildLoopRun);
+    return 0;
+}
+
+MODULE_CONSTRUCTOR(void)
+{
+    APPSPAWN_LOGV("Load test module ...");
+    AddPreloadHook(HOOK_PRIO_LOWEST, TestPreLoad);
+}

@@ -33,17 +33,12 @@ ohos_static_library("appspawn_socket_client") {
       "//base/startup/appspawn/common",
       "//third_party/json/include",
     ]
-    defines = [
-      "APPSPAWN_NEW_CLIENT",
-      "APPSPAWN_LABEL=\"APPSPAWN_CLIENT\"",
-    ]
+    defines = []
     if (is_asan) {
       defines += [ "APPSPAWN_ASAN" ]
     }
     public_configs = [ ":exported_header_files" ]
-    deps = [
-      "//base/startup/appspawn/interfaces/innerkits_new/client:appspawn_client",
-    ]
+    deps = []
     external_deps = [
       "c_utils:utils",
       "config_policy:configpolicy_util",

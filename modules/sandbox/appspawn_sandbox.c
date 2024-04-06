@@ -15,8 +15,6 @@
 
 #include "appspawn_sandbox.h"
 
-#include <dirent.h>
-
 #include <errno.h>
 #include <fcntl.h>
 #include <sched.h>
@@ -82,6 +80,11 @@ int SandboxMountPath(const MountArg *arg)
 {
     APPSPAWN_CHECK(arg != NULL && arg->originPath != NULL && arg->destinationPath != NULL,
         return APPSPAWN_ARG_INVALID, "Invalid arg ");
+
+    APPSPAWN_LOGV("Bind mount arg: '%{public}s' '%{public}s' %{public}x '%{public}s' %{public}s => %{public}s",
+        arg->fsType, arg->mountSharedFlag == MS_SHARED ? "MS_SHARED" : "MS_SLAVE",
+        (uint32_t)arg->mountFlags, arg->options, arg->originPath, arg->destinationPath);
+
     int ret = mount(arg->originPath, arg->destinationPath, arg->fsType, arg->mountFlags, arg->options);
     if (ret != 0) {
         if (arg->originPath != NULL && strstr(arg->originPath, "/data/app/el2/") != NULL) {
@@ -265,7 +268,7 @@ static int CheckSandboxMountNode(const SandboxContext *context,
     return 1;
 }
 
-static int32_t DoDlpAppMountStrategy(const SandboxContext *context, const MountArg *args)
+static int32_t SandboxMountFusePath(const SandboxContext *context, const MountArg *args)
 {
     AppSpawnMsgDacInfo *info = (AppSpawnMsgDacInfo *)GetSpawningMsgInfo(context, TLV_DAC_INFO);
     APPSPAWN_CHECK(info != NULL, return APPSPAWN_TLV_NONE,
@@ -382,15 +385,11 @@ static int DoSandboxPathNodeMount(const SandboxContext *context,
     }
     int ret = 0;
     if (category == MOUNT_TMP_DLP_FUSE || category == MOUNT_TMP_FUSE) {
-        ret = DoDlpAppMountStrategy(context, &args);
+        ret = SandboxMountFusePath(context, &args);
     } else {
-        APPSPAWN_LOGV("Bind mount %{public}s category %{public}u op 0x%{public}x\n "
-            "mount arg: '%{public}s' '%{public}s' %{public}x '%{public}s' %{public}s => %{public}s",
-            section->name, category, operation, args.fsType,
-            args.mountSharedFlag == MS_SHARED ? "MS_SHARED" : "MS_SLAVE",
-            (uint32_t)args.mountFlags, args.options, args.originPath, args.destinationPath);
         ret = SandboxMountPath(&args);
     }
+
     if (ret != 0 && sandboxNode->checkErrorFlag) {
         APPSPAWN_LOGE("Failed to mount config, section: %{public}s result: %{public}d category: %{public}d",
             section->name, ret, category);
@@ -602,7 +601,8 @@ static int SetSandboxPermissionConfig(const SandboxContext *context, const AppSp
             continue;
         }
 
-        APPSPAWN_LOGV("SetSandboxPermissionConfig permission %{public}s", permissionNode->section.name);
+        APPSPAWN_LOGI("SetSandboxPermissionConfig permission %{public}d %{public}s",
+            permissionNode->permissionIndex, permissionNode->section.name);
         int ret = MountSandboxConfig(context, sandbox, &permissionNode->section, MOUNT_PATH_OP_NONE);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
         node = node->next;
@@ -696,79 +696,6 @@ static int SandboxRootFolderCreate(const SandboxContext *context, const AppSpawn
     return ret;
 }
 
-void DumpCurrentDir(SandboxContext *context, const char *dirPath)
-{
-    struct stat st = {};
-    if (stat(dirPath, &st) == 0 && S_ISREG(st.st_mode)) {
-        APPSPAWN_LOGI("file %{public}s", dirPath);
-        if (access(dirPath, F_OK) != 0) {
-            APPSPAWN_LOGI("file %{public}s not exist", dirPath);
-        }
-        return;
-    }
-
-    DIR *pDir = opendir(dirPath);
-    APPSPAWN_CHECK(pDir != NULL, return, "Read dir :%{public}s failed.%{public}d", dirPath, errno);
-
-    struct dirent *dp;
-    while ((dp = readdir(pDir)) != NULL) {
-        if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0) {
-            continue;
-        }
-        if (dp->d_type == DT_DIR) {
-            APPSPAWN_LOGV(" Current path %{public}s/%{public}s ", dirPath, dp->d_name);
-            snprintf_s(context->buffer[1].buffer, context->buffer[1].bufferLen, context->buffer[1].bufferLen - 1,
-                "%s/%s", dirPath, dp->d_name);
-            char *path = strdup(context->buffer[1].buffer);
-            DumpCurrentDir(context, path);
-            free(path);
-        }
-    }
-    closedir(pDir);
-    return;
-}
-
-int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx *property, int nwebspawn)
-{
-    APPSPAWN_CHECK_ONLY_EXPER(property != NULL, return -1);
-    APPSPAWN_CHECK(sandbox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));
-
-    SandboxContext *context = GetSandboxContext();
-    APPSPAWN_CHECK_ONLY_EXPER(context != NULL, return APPSPAWN_SYSTEM_ERROR);
-    int ret = InitSandboxContext(context, sandbox, property, nwebspawn);
-    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
-
-    do {
-        APPSPAWN_LOGV("Set sandbox config %{public}s", context->rootPath);
-
-        ret = StagedMountPreUnShare(context, sandbox);
-        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
-
-        CreateSandboxDir(context->rootPath, FILE_MODE);
-        // add pid to a new mnt namespace
-        ret = unshare(CLONE_NEWNS);
-        APPSPAWN_CHECK(ret == 0, break,
-            "unshare failed, app: %{public}s errno: %{public}d", context->bundleName, errno);
-
-        ret = SandboxRootFolderCreate(context, sandbox);
-        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
-
-        ret = StagedMountPostUnshare(context, sandbox);
-        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
-
-        ret = SetOverlayAppSandboxConfig(context, sandbox);
-        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
-        ret = SetBundleResourceSandboxConfig(context, sandbox);
-        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
-
-        ret = ChangeCurrentDir(context);
-        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
-        APPSPAWN_LOGV("Change root dir success %{public}s ", context->rootPath);
-    } while (0);
-    DeleteSandboxContext(context);
-    return ret;
-}
-
 static bool IsSandboxMounted(const AppSpawnSandboxCfg *sandbox, const char *name, const char *rootPath)
 {
     char path[PATH_MAX] = {};
@@ -803,7 +730,7 @@ static void UnmountPath(char *rootPath, uint32_t len, const SandboxMountNode *sa
         PathMountNode *pathNode = (PathMountNode *)sandboxNode;
         int ret = strcat_s(rootPath, len, pathNode->target);
         APPSPAWN_CHECK(ret == 0, return, "Failed to format");
-        APPSPAWN_LOGI("Unmount sandbox config sandbox path %{public}s ", rootPath);
+        APPSPAWN_LOGV("Unmount sandbox config sandbox path %{public}s ", rootPath);
         ret = umount2(rootPath, MNT_DETACH);
         APPSPAWN_CHECK_ONLY_LOG(ret == 0, "Failed to umount2 %{public}s errno: %{public}d", rootPath, errno);
     }
@@ -889,12 +816,13 @@ int StagedMountSystemConst(const AppSpawnSandboxCfg *sandbox, const AppSpawningC
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
 
     if (IsSandboxMounted(sandbox, "system-const", context->rootPath)) {
+        APPSPAWN_LOGV("Sandbox system-const %{public}s has been mount", context->rootPath);
         return 0;
     }
 
-    // 首次挂载，使用sandbox替换
+    APPSPAWN_LOGV("Set sandbox system-const %{public}s", context->rootPath);
     uint32_t operation = 0;
-    SetMountPathOperation(&operation, MOUNT_PATH_OP_REPLACE_BY_SANDBOX);
+    SetMountPathOperation(&operation, MOUNT_PATH_OP_REPLACE_BY_SANDBOX); // 首次挂载，使用sandbox替换
     SandboxSection *section = GetSandboxSection(&sandbox->requiredQueue, "system-const");
     if (section != NULL) {
         ret = MountSandboxConfig(context, sandbox, section, operation);
@@ -1005,5 +933,47 @@ int StagedMountPostUnshare(const SandboxContext *context, const AppSpawnSandboxC
 
     ret = SetSandboxPermissionConfig(context, sandbox);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
+    return ret;
+}
+
+
+int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx *property, int nwebspawn)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(property != NULL, return -1);
+    APPSPAWN_CHECK(sandbox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));
+
+    SandboxContext *context = GetSandboxContext();
+    APPSPAWN_CHECK_ONLY_EXPER(context != NULL, return APPSPAWN_SYSTEM_ERROR);
+    int ret = InitSandboxContext(context, sandbox, property, nwebspawn);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
+
+    do {
+        APPSPAWN_LOGV("Set sandbox config %{public}s", context->rootPath);
+
+        ret = StagedMountPreUnShare(context, sandbox);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        CreateSandboxDir(context->rootPath, FILE_MODE);
+        // add pid to a new mnt namespace
+        ret = unshare(CLONE_NEWNS);
+        APPSPAWN_CHECK(ret == 0, break,
+            "unshare failed, app: %{public}s errno: %{public}d", context->bundleName, errno);
+
+        ret = SandboxRootFolderCreate(context, sandbox);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        ret = StagedMountPostUnshare(context, sandbox);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        ret = SetOverlayAppSandboxConfig(context, sandbox);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        ret = SetBundleResourceSandboxConfig(context, sandbox);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        ret = ChangeCurrentDir(context);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        APPSPAWN_LOGV("Change root dir success %{public}s ", context->rootPath);
+    } while (0);
+    DeleteSandboxContext(context);
     return ret;
 }

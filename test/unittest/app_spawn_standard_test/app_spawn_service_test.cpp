@@ -47,6 +47,10 @@ public:
     void TearDown() {}
 };
 
+/**
+ * @brief 正常消息发送和接收，完整应用孵化过程
+ *
+ */
 HWTEST(AppSpawnServiceTest, App_Spawn_001, TestSize.Level0)
 {
     OHOS::AppSpawnTestServer testServer("appspawn -mode appspawn");
@@ -76,6 +80,10 @@ HWTEST(AppSpawnServiceTest, App_Spawn_001, TestSize.Level0)
     ASSERT_EQ(ret, 0);
 }
 
+/**
+ * @brief 模拟测试，孵化进程退出后，MSG_GET_RENDER_TERMINATION_STATUS
+ *
+ */
 HWTEST(AppSpawnServiceTest, App_Spawn_002, TestSize.Level0)
 {
     OHOS::AppSpawnTestServer testServer("appspawn -mode appspawn");
@@ -107,7 +115,43 @@ HWTEST(AppSpawnServiceTest, App_Spawn_002, TestSize.Level0)
     ASSERT_EQ(ret, 0);
 }
 
+/**
+ * @brief 模拟测试，MSG_GET_RENDER_TERMINATION_STATUS 关闭孵化进程
+ *
+ */
 HWTEST(AppSpawnServiceTest, App_Spawn_003, TestSize.Level0)
+{
+    OHOS::AppSpawnTestServer testServer("appspawn -mode appspawn");
+    testServer.Start(nullptr);
+    int ret = 0;
+    AppSpawnClientHandle clientHandle = nullptr;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create client %{public}s", APPSPAWN_SERVER_NAME);
+        AppSpawnReqMsgHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+        AppSpawnResult result = {};
+        ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
+        APPSPAWN_LOGV("App_Spawn_003 recv result %{public}d", ret);
+        if (ret != 0 || result.pid == 0) {
+            ret = -1;
+            break;
+        }
+        // MSG_GET_RENDER_TERMINATION_STATUS
+        ret = AppSpawnTerminateMsgCreate(result.pid, &reqHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create termination msg %{public}s", APPSPAWN_SERVER_NAME);
+        ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
+        APPSPAWN_LOGV("Send MSG_GET_RENDER_TERMINATION_STATUS %{public}d", ret);
+    } while (0);
+    testServer.Stop();
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief dump 消息
+ *
+ */
+HWTEST(AppSpawnServiceTest, App_Spawn_004, TestSize.Level0)
 {
     OHOS::AppSpawnTestServer testServer("appspawn -mode appspawn");
     testServer.Start(nullptr);
@@ -120,6 +164,39 @@ HWTEST(AppSpawnServiceTest, App_Spawn_003, TestSize.Level0)
         AppSpawnResult result = {};
         ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
         APPSPAWN_CHECK(ret == 0, break, "Failed to send msg %{public}d", ret);
+    } while (0);
+    testServer.Stop();
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief MSG_SPAWN_NATIVE_PROCESS 正常消息发送和接收，完整应用孵化过程
+ *
+ */
+HWTEST(AppSpawnServiceTest, App_Spawn_005, TestSize.Level0)
+{
+    OHOS::AppSpawnTestServer testServer("appspawn -mode appspawn");
+    testServer.Start(nullptr);
+    int ret = 0;
+    AppSpawnClientHandle clientHandle = nullptr;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create client %{public}s", APPSPAWN_SERVER_NAME);
+        AppSpawnReqMsgHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
+
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_DEBUGGABLE);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_NATIVEDEBUG);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
+
+        AppSpawnResult result = {};
+        ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to send msg %{public}d", ret);
+        if (ret == 0 && result.pid > 0) {
+            APPSPAWN_LOGI("App_Spawn_Msg_001 Kill pid %{public}d ", result.pid);
+            kill(result.pid, SIGKILL);
+        }
     } while (0);
     testServer.Stop();
     AppSpawnClientDestroy(clientHandle);
@@ -450,7 +527,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_001, TestSize.Level0)
         content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
-        PreloadHookExecute(content);  // 预加载，解析sandbox
+        ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);  // 预加载，解析sandbox
 
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
@@ -491,7 +568,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_002, TestSize.Level0)
         content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
-        PreloadHookExecute(content);
+        ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);
 
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
@@ -533,7 +610,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_003, TestSize.Level0)
         content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
-        PreloadHookExecute(content);
+        ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);
 
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
@@ -580,7 +657,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_004, TestSize.Level0)
         char path[PATH_MAX] = {};
         content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        PreloadHookExecute(content);
+        ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);
         // spawn prepare process
         AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         // spawn
@@ -621,7 +698,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_005, TestSize.Level0)
         char path[PATH_MAX] = {};
         content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        PreloadHookExecute(content);
+        ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);
         // spawn prepare process
         AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         // spawn
@@ -666,7 +743,7 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Child_006, TestSize.Level0)
         char path[PATH_MAX] = {};
         content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_APP_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        PreloadHookExecute(content);
+        ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);
         // spawn prepare process
         AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         // spawn

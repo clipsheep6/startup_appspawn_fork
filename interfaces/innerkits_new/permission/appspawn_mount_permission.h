@@ -45,29 +45,6 @@ typedef struct TagPermissionNode {
     char name[0];
 } SandboxPermissionNode;
 
-/**
- * @brief Get the permission index by permission name
- *
- * @param permission permission name
- * @return int32_t permission index, if not exit, return INVALID_PERMISSION_INDEX
- */
-int32_t GetPermissionIndex(const char *permission);
-
-/**
- * @brief Get the max permission Index
- *
- * @return int32_t max permission Index
- */
-int32_t GetMaxPermissionIndex(void);
-
-/**
- * @brief Get the permission name by index
- *
- * @param index permission index
- * @return const char* permission name
- */
-const char *GetPermissionByIndex(int32_t index);
-
 #ifdef __cplusplus
 }
 #endif

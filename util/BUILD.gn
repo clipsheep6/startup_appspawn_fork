@@ -28,8 +28,8 @@ ohos_static_library("libappspawn_base64") {
 
 ohos_static_library("libappspawn_util") {
   sources = [ "src/appspawn_utils.c" ]
-  deps = [ "//third_party/cJSON:cjson" ]
   external_deps = [
+    "cJSON:cjson",
     "config_policy:configpolicy_util",
     "hilog:libhilog",
     "init:libbegetutil",

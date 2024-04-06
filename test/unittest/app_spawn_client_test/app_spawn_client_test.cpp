@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <thread>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -27,6 +28,7 @@
 
 #include "appspawn_client.h"
 #include "appspawn_manager.h"
+#include "appspawn_mount_permission.h"
 #include "appspawn_utils.h"
 #include "json_utils.h"
 #include "parameter.h"
@@ -104,7 +106,68 @@ HWTEST(AppSpawnClientTest, App_Client_Communication_002, TestSize.Level0)
 }
 
 /**
- * @brief 测试消息构建，msg flags
+ * @brief 测试多线程报文发送
+ *
+ */
+HWTEST(AppSpawnClientTest, App_Client_Communication_003, TestSize.Level0)
+{
+    OHOS::AppSpawnTestServer testServer("appspawn -mode appspawn");
+    testServer.Start(nullptr);
+    AppSpawnClientHandle clientHandle = nullptr;
+    auto sendMsg = [&clientHandle]() {
+        int ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        ASSERT_EQ(ret, 0);
+        AppSpawnReqMsgHandle reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+        AppSpawnResult result = {};
+        ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
+        ASSERT_EQ(ret, 0);
+        ASSERT_EQ(result.result, 0);
+        ASSERT_NE(result.pid, 0);
+        if (result.pid > 0) {
+            kill(result.pid, SIGKILL);
+        }
+    };
+
+    std::thread thread1(sendMsg);
+    std::thread thread2(sendMsg);
+    std::thread thread3(sendMsg);
+    thread1.join();
+    thread3.join();
+    thread2.join();
+
+    testServer.Stop();
+    AppSpawnClientDestroy(clientHandle);
+}
+
+/**
+ * @brief 测试收到报文后，不回复，消息超时
+ *
+ */
+HWTEST(AppSpawnClientTest, App_Client_Communication_004, TestSize.Level0)
+{
+    OHOS::AppSpawnTestServer testServer("appspawn -mode appspawn", false);
+    testServer.Start(
+        [](TestConnection *connection, const uint8_t *buffer, uint32_t buffLen) {
+        },
+        3000);  // 3000 3s
+    int ret = 0;
+    AppSpawnClientHandle clientHandle = nullptr;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        AppSpawnReqMsgHandle reqHandle = testServer.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+
+        AppSpawnResult result = {};
+        (void)AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
+        ret = result.result;
+    } while (0);
+    testServer.Stop();
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, APPSPAWN_TIMEOUT);
+}
+
+/**
+ * @brief 测试消息构建及解析，msg flags
  *
  */
 HWTEST(AppSpawnClientTest, App_Client_Msg_001, TestSize.Level0)
@@ -151,7 +214,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_001, TestSize.Level0)
 }
 
 /**
- * @brief 测试消息构建，dac 测试
+ * @brief 测试消息构建及解析，dac 测试
  *
  */
 HWTEST(AppSpawnClientTest, App_Client_Msg_002, TestSize.Level0)
@@ -186,7 +249,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_002, TestSize.Level0)
 }
 
 /**
- * @brief 测试消息构建，bundle name 测试
+ * @brief 测试消息构建及解析，bundle name 测试
  *
  */
 HWTEST(AppSpawnClientTest, App_Client_Msg_003, TestSize.Level0)
@@ -225,7 +288,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_003, TestSize.Level0)
 }
 
 /**
- * @brief 测试消息构建，render cmd
+ * @brief 测试消息构建及解析，render cmd
  *
  */
 HWTEST(AppSpawnClientTest, App_Client_Msg_004, TestSize.Level0)
@@ -265,7 +328,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_004, TestSize.Level0)
 }
 
 /**
- * @brief 测试消息构建，ownerId cmd
+ * @brief 测试消息构建及解析，ownerId cmd
  *
  */
 HWTEST(AppSpawnClientTest, App_Client_Msg_005, TestSize.Level0)
@@ -301,7 +364,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_005, TestSize.Level0)
 }
 
 /**
- * @brief 测试消息构建，internet permission
+ * @brief 测试消息构建及解析，internet permission
  *
  */
 HWTEST(AppSpawnClientTest, App_Client_Msg_006, TestSize.Level0)
@@ -337,7 +400,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_006, TestSize.Level0)
 }
 
 /**
- * @brief 测试消息构建，domain info
+ * @brief 测试消息构建及解析，domain info
  *
  */
 HWTEST(AppSpawnClientTest, App_Client_Msg_007, TestSize.Level0)
@@ -373,7 +436,7 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_007, TestSize.Level0)
 }
 
 /**
- * @brief 测试消息构建，测试扩展tlv
+ * @brief 测试消息构建及解析，access token
  *
  */
 HWTEST(AppSpawnClientTest, App_Client_Msg_008, TestSize.Level0)
@@ -381,7 +444,92 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_008, TestSize.Level0)
     int ret = 0;
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+
+        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 12345678);  // 12345678
+        APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", APPSPAWN_SERVER_NAME);
+
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+        void *tlvValue = GetAppProperty(property, TLV_ACCESS_TOKEN_INFO);
+        AppSpawnMsgAccessToken *tokenInfo = static_cast<AppSpawnMsgAccessToken *>(tlvValue);
+        APPSPAWN_CHECK(tokenInfo != nullptr, break, "Can not find owner cmd in msg");
+        APPSPAWN_CHECK(12345678 == tokenInfo->accessTokenIdEx, break, "Invalid accessTokenIdEx");
+        ret = 0;
+    } while (0);
+    ASSERT_EQ(ret, 0);
+    DeleteAppSpawningCtx(property);
+    AppSpawnClientDestroy(clientHandle);
+}
+
+/**
+ * @brief 测试消息构建及解析，测试扩展tlv
+ *
+ */
+HWTEST(AppSpawnClientTest, App_Client_Msg_009, TestSize.Level0)
+{
+    int ret = 0;
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
     const char *tlvName = "tlv-name-2";
+    const uint32_t testDataLen = 10;  // 10
+    AppSpawningCtx *property = nullptr;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+
+        std::vector<char> testData(testDataLen, '1');
+        testData.push_back('1');
+        testData.push_back('2');
+        testData.push_back('3');
+        testData.push_back('4');
+        testData.push_back('5');
+        testData.push_back('6');
+        testData.push_back('7');
+        testData.push_back('8');
+        testData.push_back('9');
+        testData.push_back('\0');
+        ret = AppSpawnReqMsgAddExtInfo(reqHandle, tlvName,
+            reinterpret_cast<uint8_t *>(const_cast<char *>(testData.data())), testData.size());
+        APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", APPSPAWN_SERVER_NAME);
+
+        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 12345678);  // 12345678
+        APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", APPSPAWN_SERVER_NAME);
+
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+        uint32_t tlvLen = 0;
+        uint8_t *tlvValue = reinterpret_cast<uint8_t *>(GetAppPropertyExt(property, tlvName, &tlvLen));
+        APPSPAWN_CHECK(tlvValue != nullptr, break, "Can not find tlv in msg");
+        APPSPAWN_CHECK(tlvLen == testData.size(), break, "Invalid tlv len %{public}u", tlvLen);
+        APPSPAWN_CHECK(strncmp(reinterpret_cast<char *>(tlvValue), testData.data(), testData.size()) == 0,
+            break, "Invalid ext tlv %{public}s ", reinterpret_cast<char *>(tlvValue + testDataLen));
+        ret = 0;
+    } while (0);
+    DeleteAppSpawningCtx(property);
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief 测试消息构建及解析，测试扩展tlv-超长
+ *
+ */
+HWTEST(AppSpawnClientTest, App_Client_Msg_010, TestSize.Level0)
+{
+    int ret = 0;
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    const char *tlvName = "tlv-name-3";
     const uint32_t testDataLen = 7416;  // 7416
     AppSpawningCtx *property = nullptr;
     do {
@@ -424,27 +572,103 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_008, TestSize.Level0)
     ASSERT_EQ(ret, 0);
 }
 
-HWTEST(AppSpawnClientTest, App_Client_Msg_009, TestSize.Level0)
+/**
+ * @brief 测试消息构建及解析，测试扩展tlv-最大
+ *
+ */
+HWTEST(AppSpawnClientTest, App_Client_Msg_011, TestSize.Level0)
 {
     int ret = 0;
     AppSpawnClientHandle clientHandle = nullptr;
     AppSpawnReqMsgHandle reqHandle = 0;
+    const char *tlvName = "tlv-name-4";
+    const uint32_t testDataLen = EXTRAINFO_TOTAL_LENGTH_MAX - 10;  // EXTRAINFO_TOTAL_LENGTH_MAX - 10 最大扩展
+    AppSpawningCtx *property = nullptr;
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
         reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
-        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, ret = -1;
-            break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
-        ret = AppSpawnReqMsgSetAppDomainInfo(reqHandle, 1, "system_core");
-        APPSPAWN_CHECK(ret == 0, break, "Failed to add domain %{public}s", APPSPAWN_SERVER_NAME);
+        std::vector<char> testData(testDataLen, '1');
+        testData.push_back('1');
+        testData.push_back('2');
+        testData.push_back('3');
+        testData.push_back('4');
+        testData.push_back('5');
+        testData.push_back('6');
+        testData.push_back('7');
+        testData.push_back('8');
+        testData.push_back('9');
+        testData.push_back('\0');
+        ret = AppSpawnReqMsgAddExtInfo(reqHandle, tlvName,
+            reinterpret_cast<uint8_t *>(const_cast<char *>(testData.data())), testData.size());
+        APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", APPSPAWN_SERVER_NAME);
+
+        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 12345678);  // 12345678
+        APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", APPSPAWN_SERVER_NAME);
+
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+        uint32_t tlvLen = 0;
+        uint8_t *tlvValue = reinterpret_cast<uint8_t *>(GetAppPropertyExt(property, tlvName, &tlvLen));
+        APPSPAWN_CHECK(tlvValue != nullptr, break, "Can not find tlv in msg");
+        APPSPAWN_CHECK(tlvLen == testData.size(), break, "Invalid tlv len %{public}u", tlvLen);
+        APPSPAWN_CHECK(strncmp(reinterpret_cast<char *>(tlvValue), testData.data(), testData.size()) == 0,
+            break, "Invalid ext tlv %{public}s ", reinterpret_cast<char *>(tlvValue + testDataLen));
+        ret = 0;
     } while (0);
-    ASSERT_EQ(ret, 0);
-    AppSpawnReqMsgFree(reqHandle);
+    DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
 }
 
-HWTEST(AppSpawnClientTest, App_Client_Msg_010, TestSize.Level0)
+/**
+ * @brief 测试消息构建及解析，permission flags
+ *
+ */
+HWTEST(AppSpawnClientTest, App_Client_Msg_012, TestSize.Level0)
+{
+    int ret = 0;
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        ret = AppSpawnReqMsgCreate(MSG_APP_SPAWN, "com.example.myapplication", &reqHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+
+        // flags test
+        int max = GetMaxPermissionIndex();
+        for (int i = 0; i < max; i++) {
+            ret = AppSpawnReqMsgAddPermission(reqHandle, GetPermissionByIndex(i));
+            ASSERT_EQ(ret, 0);
+        }
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+
+        ret = 0;
+        for (size_t i = 0; i < max; i++) {
+            if (!CheckAppPermissionFlagSet(property, (uint32_t)i)) {
+                APPSPAWN_LOGE("Invalid permission not set %{public}d  %{public}s", i, GetPermissionByIndex(i));
+                ret = APPSPAWN_ARG_INVALID;
+                break;
+            }
+        }
+    } while (0);
+    DeleteAppSpawningCtx(property);
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief 测试消息构建及解析，测试terminate msg
+ *
+ */
+HWTEST(AppSpawnClientTest, App_Client_Msg_013, TestSize.Level0)
 {
     int ret = 0;
     AppSpawnClientHandle clientHandle = nullptr;
@@ -452,22 +676,16 @@ HWTEST(AppSpawnClientTest, App_Client_Msg_010, TestSize.Level0)
     do {
         ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
         APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
-        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
-        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, ret = -1;
-            break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+        ret = AppSpawnTerminateMsgCreate(100, &reqHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
 
-        AppDacInfo dacInfo = {};
-        dacInfo.uid = 20010029;              // 20010029 test data
-        dacInfo.gid = 20010029;              // 20010029 test data
-        dacInfo.gidCount = 2;                // 2 count
-        dacInfo.gidTable[0] = 20010029;      // 20010029 test data
-        dacInfo.gidTable[1] = 20010029 + 1;  // 20010029 test data
-        (void)strcpy_s(dacInfo.userName, sizeof(dacInfo.userName), "test-app-name");
-        ret = AppSpawnReqMsgSetAppDacInfo(reqHandle, &dacInfo);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to add dac %{public}s", APPSPAWN_SERVER_NAME);
+        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 12345678);  // 12345678
+        ASSERT_NE(ret, 0);
+
+        AppSpawnResult result = {};
+        ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
+        ASSERT_NE(result.result, 0);
     } while (0);
-    ASSERT_EQ(ret, 0);
-    AppSpawnReqMsgFree(reqHandle);
     AppSpawnClientDestroy(clientHandle);
 }
 }  // namespace OHOS

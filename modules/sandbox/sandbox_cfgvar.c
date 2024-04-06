@@ -61,7 +61,7 @@ static int VarCurrentUseIdReplace(const SandboxContext *context,
     if (extraData == NULL || !CHECK_FLAGS_BY_INDEX(extraData->operation, SANDBOX_TAG_PERMISSION)) {
         len = sprintf_s((char *)buffer, bufferLen, "%u", info->uid / UID_BASE);
     } else if (context->appFullMountEnable && strlen(info->userName) > 0) {
-        len = sprintf_s((char *)buffer, bufferLen, "%s", info->userName);
+        len = sprintf_s((char *)buffer, bufferLen, "%s", "currentUser");
     } else {
         len = sprintf_s((char *)buffer, bufferLen, "%s", "currentUser");
     }
@@ -126,7 +126,7 @@ static int ReplaceVariableForDepPath(const SandboxContext *context,
     char *path = extraData->data.depNode->source;
     if (CHECK_FLAGS_BY_INDEX(extraData->operation, MOUNT_PATH_OP_REPLACE_BY_SANDBOX)) {
         path = extraData->data.depNode->target;
-    } else if (CHECK_FLAGS_BY_INDEX(extraData->operation, MOUNT_PATH_OP_REPLACE_BY_SRC) && path == NULL) {
+    } else if (CHECK_FLAGS_BY_INDEX(extraData->operation, MOUNT_PATH_OP_REPLACE_BY_SRC) && IsPathEmpty(path)) {
         path = extraData->data.depNode->target;
     }
     APPSPAWN_CHECK(path != NULL, return -1, "Invalid path %{public}x ", extraData->operation);

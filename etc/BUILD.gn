@@ -21,7 +21,7 @@ ohos_prebuilt_etc("appdata-sandbox-nweb.json") {
 }
 
 ohos_prebuilt_etc("appdata-sandbox-app.json") {
-  source = "../appdata-sandbox-app.json"
+  source = "../appdata-sandbox.json"
   part_name = "${part_name}"
   module_install_dir = "etc/sandbox"
 }

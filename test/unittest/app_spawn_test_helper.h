@@ -157,7 +157,6 @@ private:
 #else
     static void ProcessIdle(const IdleHandle taskHandle, void *context);
 #endif
-    static int ChildLoopRun(AppSpawnContent *content, AppSpawnClient *client);
 
     AppSpawnContent *content_ = nullptr;
     std::atomic<long> appPid_{-1};

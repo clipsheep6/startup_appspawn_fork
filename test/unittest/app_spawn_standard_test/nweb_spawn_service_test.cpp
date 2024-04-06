@@ -175,7 +175,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_001, TestSize.Level0)
         content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
-        PreloadHookExecute(content);  // 预加载，解析sandbox
+        ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);  // 预加载，解析sandbox
 
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
@@ -213,7 +213,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_002, TestSize.Level0)
         content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
-        PreloadHookExecute(content);  // 预加载，解析sandbox
+        ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);  // 预加载，解析sandbox
 
         ret = APPSPAWN_ARG_INVALID;
         AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_DEBUGGABLE);
@@ -265,7 +265,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_004, TestSize.Level0)
         content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
-        PreloadHookExecute(content);
+        ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);
 
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
@@ -310,7 +310,7 @@ HWTEST(NWebSpawnServiceTest, NWeb_Spawn_Child_005, TestSize.Level0)
         content = AppSpawnCreateContent(NWEBSPAWN_SOCKET_NAME, path, sizeof(path), MODE_FOR_NWEB_SPAWN);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
 
-        PreloadHookExecute(content);
+        ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);
 
         ret = APPSPAWN_ARG_INVALID;
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);

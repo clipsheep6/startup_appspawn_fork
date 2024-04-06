@@ -101,10 +101,10 @@ void DeleteAppSpawnHookMgr(void)
     g_appspawnHookMgr = NULL;
 }
 
-static int PreloadHookRun(const HOOK_INFO *hookInfo, void *executionContext)
+static int ServerStageHookRun(const HOOK_INFO *hookInfo, void *executionContext)
 {
     AppSpawnHookArg *arg = (AppSpawnHookArg *)executionContext;
-    PreloadHook realHook = (PreloadHook)hookInfo->hookCookie;
+    ServerStageHook realHook = (ServerStageHook)hookInfo->hookCookie;
     return realHook((void *)arg->content);
 }
 
@@ -126,7 +126,7 @@ static void PostHookExec(const HOOK_INFO *hookInfo, void *executionContext, int 
         hookInfo->stage, hookInfo->prio, diff, executionRetVal);
 }
 
-int PreloadHookExecute(AppSpawnContent *content)
+int ServerStageHookExecute(AppSpawnHookStage stage, AppSpawnContent *content)
 {
     AppSpawnHookArg arg;
     arg.content = content;
@@ -135,20 +135,20 @@ int PreloadHookExecute(AppSpawnContent *content)
     options.flags = TRAVERSE_STOP_WHEN_ERROR;
     options.preHook = PreHookExec;
     options.postHook = PostHookExec;
-    int ret = HookMgrExecute(GetAppSpawnHookMgr(), STAGE_SERVER_PRELOAD, (void *)(&arg), &options);
-    APPSPAWN_LOGV("Execute hook [%{public}d] result %{public}d", STAGE_SERVER_PRELOAD, ret);
+    int ret = HookMgrExecute(GetAppSpawnHookMgr(), stage, (void *)(&arg), &options);
+    APPSPAWN_LOGV("Execute hook [%{public}d] result %{public}d", stage, ret);
     return ret == ERR_NO_HOOK_STAGE ? 0 : ret;
 }
 
-int AddPreloadHook(int prio, PreloadHook hook)
+int AddServerStageHook(AppSpawnHookStage stage, int prio, ServerStageHook hook)
 {
     APPSPAWN_CHECK(hook != NULL, return APPSPAWN_ARG_INVALID, "Invalid hook");
     HOOK_INFO info;
-    info.stage = STAGE_SERVER_PRELOAD;
+    info.stage = stage;
     info.prio = prio;
-    info.hook = PreloadHookRun;
+    info.hook = ServerStageHookRun;
     info.hookCookie = (void *)hook;
-    APPSPAWN_LOGI("AddPreloadHook prio: %{public}d", prio);
+    APPSPAWN_LOGI("AddServerStageHook prio: %{public}d", prio);
     return HookMgrAddEx(GetAppSpawnHookMgr(), &info);
 }
 

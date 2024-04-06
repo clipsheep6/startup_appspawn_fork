@@ -80,8 +80,58 @@ void AddSandboxMountNode(SandboxMountNode *node, SandboxSection *queue)
     OH_ListAddWithOrder(&queue->front, &node->node, SandboxNodeCompareProc);
 }
 
+static int PathMountNodeCompare(ListNode *node, void *data)
+{
+    PathMountNode *node1 = (PathMountNode *)ListEntry(node, SandboxMountNode, node);
+    PathMountNode *node2 = (PathMountNode *)data;
+    return (node1->sandboxNode.type == node2->sandboxNode.type) &&
+        (strcmp(node1->source, node2->source) == 0) &&
+        (strcmp(node1->target, node2->target) == 0) ? 0 : 1;
+}
+
+static int SymbolLinkNodeCompare(ListNode *node, void *data)
+{
+    SymbolLinkNode *node1 = (SymbolLinkNode *)ListEntry(node, SandboxMountNode, node);
+    SymbolLinkNode *node2 = (SymbolLinkNode *)data;
+    return (node1->sandboxNode.type == node2->sandboxNode.type) &&
+        (strcmp(node1->target, node2->target) == 0) &&
+        (strcmp(node1->linkName, node2->linkName) == 0) ? 0 : 1;
+}
+
+PathMountNode *GetPathMountNode(const SandboxSection *section, int type, const char *source, const char *target)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(section != NULL, return NULL);
+    APPSPAWN_CHECK_ONLY_EXPER(source != NULL && target != NULL, return NULL);
+    PathMountNode pathNode = {};
+    pathNode.sandboxNode.type = type;
+    pathNode.source = (char *)source;
+    pathNode.target = (char *)target;
+    ListNode *node = OH_ListFind(&section->front, (void *)&pathNode, PathMountNodeCompare);
+    if (node == NULL) {
+        return NULL;
+    }
+    return (PathMountNode *)ListEntry(node, SandboxMountNode, node);
+}
+
+SymbolLinkNode *GetSymbolLinkNode(const SandboxSection *section, const char *target, const char *linkName)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(section != NULL, return NULL);
+    APPSPAWN_CHECK_ONLY_EXPER(linkName != NULL && target != NULL, return NULL);
+    SymbolLinkNode linkNode = {};
+    linkNode.sandboxNode.type = SANDBOX_TAG_SYMLINK;
+    linkNode.target = (char *)target;
+    linkNode.linkName = (char *)linkName;
+    ListNode *node = OH_ListFind(&section->front, (void *)&linkNode, SymbolLinkNodeCompare);
+    if (node == NULL) {
+        return NULL;
+    }
+    return (SymbolLinkNode *)ListEntry(node, SandboxMountNode, node);
+}
+
 void DeleteSandboxMountNode(SandboxMountNode *sandboxNode)
 {
+    OH_ListRemove(&sandboxNode->node);
+    OH_ListInit(&sandboxNode->node);
     switch (sandboxNode->type) {
         case SANDBOX_TAG_MOUNT_PATH:
         case SANDBOX_TAG_MOUNT_FILE:
@@ -252,7 +302,9 @@ SandboxSection *GetSandboxSection(const SandboxQueue *queue, const char *name)
 void AddSandboxSection(SandboxSection *node, SandboxQueue *queue)
 {
     APPSPAWN_CHECK_ONLY_EXPER(node != NULL && queue != NULL, return);
-    OH_ListAddWithOrder(&queue->front, &node->sandboxNode.node, SandboxConditionalNodeCompareNode);
+    if (ListEmpty(node->sandboxNode.node)) {
+        OH_ListAddWithOrder(&queue->front, &node->sandboxNode.node, SandboxConditionalNodeCompareNode);
+    }
 }
 
 void DeleteSandboxSection(SandboxSection *section)
@@ -432,6 +484,14 @@ static int PreLoadSandboxCfg(AppSpawnMgr *content)
     return 0;
 }
 
+static int SandboxHandleServerExit(AppSpawnMgr *content)
+{
+    AppSpawnSandboxCfg *sandbox = GetAppSpawnSandbox(content);
+    APPSPAWN_CHECK(sandbox != NULL, return 0, "Sandbox not load");
+    // 系统退出时，添加sandbox unmount
+    return 0;
+}
+
 int SpawnBuildSandboxEnv(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     AppSpawnSandboxCfg *appSandbox = GetAppSpawnSandbox(content);
@@ -459,6 +519,7 @@ static int AppendPermissionGid(const AppSpawnSandboxCfg *sandbox, AppSpawningCtx
     APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_TLV_NONE,
         "No tlv %{public}d in msg %{public}s", TLV_DAC_INFO, GetProcessName(property));
 
+    APPSPAWN_LOGV("AppendPermissionGid %{public}s", GetProcessName(property));
     ListNode *node = sandbox->permissionQueue.front.next;
     while (node != &sandbox->permissionQueue.front) {
         SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)ListEntry(node, SandboxMountNode, node);
@@ -470,6 +531,9 @@ static int AppendPermissionGid(const AppSpawnSandboxCfg *sandbox, AppSpawningCtx
             node = node->next;
             continue;
         }
+        APPSPAWN_LOGV("Add permission %{public}s gid %{public}d to %{public}s",
+                permissionNode->section.name, permissionNode->section.gidTable[0], GetProcessName(property));
+
         size_t copyLen = permissionNode->section.gidCount;
         if ((permissionNode->section.gidCount + dacInfo->gidCount) > APP_MAX_GIDS) {
             APPSPAWN_LOGW("More gid for %{public}s msg count %{public}u permission %{public}u",
@@ -481,7 +545,10 @@ static int AppendPermissionGid(const AppSpawnSandboxCfg *sandbox, AppSpawningCtx
         if (ret != EOK) {
             APPSPAWN_LOGW("Failed to append permission %{public}s gid to %{public}s",
                 permissionNode->section.name, GetProcessName(property));
+            node = node->next;
+            continue;
         }
+        dacInfo->gidCount += copyLen;
         node = node->next;
     }
     return 0;
@@ -520,10 +587,11 @@ static int SandboxUnmountPath(const AppSpawnMgr *content, const AppSpawnedProces
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load sandbox module ...");
-    AddPreloadHook(HOOK_PRIO_SANDBOX, PreLoadSandboxCfg);
-    AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_SANDBOX, SpawnPrepareSandboxCfg);
-    AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_SANDBOX, SpawnBuildSandboxEnv);
-    AddProcessMgrHook(STAGE_SERVER_APP_DIED, 0, SandboxUnmountPath);
+    (void)AddServerStageHook(STAGE_SERVER_PRELOAD, HOOK_PRIO_SANDBOX, PreLoadSandboxCfg);
+    (void)AddServerStageHook(STAGE_SERVER_EXIT, HOOK_PRIO_SANDBOX, SandboxHandleServerExit);
+    (void)AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_SANDBOX, SpawnPrepareSandboxCfg);
+    (void)AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_SANDBOX, SpawnBuildSandboxEnv);
+    (void)AddProcessMgrHook(STAGE_SERVER_APP_DIED, 0, SandboxUnmountPath);
 }
 
 MODULE_DESTRUCTOR(void)

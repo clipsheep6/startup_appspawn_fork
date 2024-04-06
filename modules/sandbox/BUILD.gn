@@ -37,9 +37,9 @@ ohos_shared_library("appspawn_sandbox") {
   deps = [
     "${appspawn_path}/modules/module_engine:libappspawn_module_engine",
     "${appspawn_path}/util:libappspawn_util",
-    "//third_party/cJSON:cjson",
   ]
   external_deps = [
+    "cJSON:cjson",
     "c_utils:utils",
     "hilog:libhilog",
     "init:libbegetutil",

@@ -38,7 +38,8 @@ typedef struct TagAppSpawnClient AppSpawnClient;
 typedef struct TagAppSpawnedProcess AppSpawnedProcessInfo;
 
 typedef enum {
-    EXT_DATA_SANDBOX
+    EXT_DATA_SANDBOX,
+    EXT_DATA_NAMESPACE,
 } ExtDataType;
 
 struct TagAppSpawnExtData;
@@ -52,15 +53,17 @@ typedef struct TagAppSpawnExtData {
 } AppSpawnExtData;
 
 typedef enum TagAppSpawnHookStage {
-    // run in init
+    // 服务状态处理
     STAGE_SERVER_PRELOAD  = 10,
+    STAGE_SERVER_EXIT,
+    // 应用状态处理
     STAGE_SERVER_APP_ADD,
     STAGE_SERVER_APP_DIED,
-
     // run before fork
     STAGE_PARENT_PRE_FORK = 20,
-    STAGE_PARENT_PRE_RELY = 21,
-    STAGE_PARENT_POST_RELY = 22,
+    STAGE_PARENT_POST_FORK = 21,
+    STAGE_PARENT_PRE_RELY = 22,
+    STAGE_PARENT_POST_RELY = 23,
 
     // run in child process
     STAGE_CHILD_PRE_COLDBOOT = 30, // clear env, set token before cold boot
@@ -84,7 +87,7 @@ typedef enum TagAppSpawnHookPrio {
  * @param content appspawn appspawn管理数据
  * @return int
  */
-typedef int (*PreloadHook)(AppSpawnMgr *content);
+typedef int (*ServerStageHook)(AppSpawnMgr *content);
 
 /**
  * @brief 应用孵化各阶段注册函数
@@ -105,13 +108,26 @@ typedef int (*AppSpawnHook)(AppSpawnMgr *content, AppSpawningCtx *property);
 typedef int (*ProcessChangeHook)(const AppSpawnMgr *content, const AppSpawnedProcessInfo *appInfo);
 
 /**
+ * @brief 添加服务阶段的处理函数
+ *
+ * @param stage 阶段信息
+ * @param prio 优先级
+ * @param hook 预加载处理函数
+ * @return int
+ */
+int AddServerStageHook(AppSpawnHookStage stage, int prio, ServerStageHook hook);
+
+/**
  * @brief 添加预加载处理函数
  *
  * @param prio 优先级
  * @param hook 预加载处理函数
  * @return int
  */
-int AddPreloadHook(int prio, PreloadHook hook);
+__attribute__((always_inline)) inline int AddPreloadHook(int prio, ServerStageHook hook)
+{
+    return AddServerStageHook(STAGE_SERVER_PRELOAD, prio, hook);
+}
 
 /**
  * @brief 按阶段添加应用孵化处理函数

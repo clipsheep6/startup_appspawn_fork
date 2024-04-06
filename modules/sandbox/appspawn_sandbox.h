@@ -228,7 +228,6 @@ AppSpawnSandboxCfg *GetAppSpawnSandbox(const AppSpawnMgr *content);
 void DeleteAppSpawnSandbox(AppSpawnSandboxCfg *sandbox);
 int LoadAppSandboxConfig(AppSpawnSandboxCfg *sandbox, int nwebSpawn);
 void DumpAppSpawnSandboxCfg(AppSpawnSandboxCfg *sandbox);
-void DumpCurrentDir(SandboxContext *context, const char *dirPath);
 
 /**
  * @brief SandboxSection op
@@ -251,6 +250,8 @@ SandboxMountNode *CreateSandboxMountNode(uint32_t dataLen, uint32_t type);
 SandboxMountNode *GetFirstSandboxMountNode(const SandboxSection *section);
 void DeleteSandboxMountNode(SandboxMountNode *mountNode);
 void AddSandboxMountNode(SandboxMountNode *node, SandboxSection *section);
+PathMountNode *GetPathMountNode(const SandboxSection *section, int type, const char *source, const char *target);
+SymbolLinkNode *GetSymbolLinkNode(const SandboxSection *section, const char *target, const char *linkName);
 
 /**
  * @brief sandbox mount interface
@@ -260,6 +261,7 @@ int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx 
 int StagedMountSystemConst(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx *property, int nwebspawn);
 int StagedMountPreUnShare(const SandboxContext *context, const AppSpawnSandboxCfg *sandbox);
 int StagedMountPostUnshare(const SandboxContext *context, const AppSpawnSandboxCfg *sandbox);
+// 在子进程退出时，由父进程发起unmount操作
 int UnmountDepPaths(const AppSpawnSandboxCfg *sandbox, uid_t uid);
 int UnmountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, uid_t uid, const char *name);
 
@@ -362,6 +364,14 @@ typedef struct {
 } MountArg;
 
 int SandboxMountPath(const MountArg *arg);
+
+__attribute__((always_inline)) inline int IsPathEmpty(const char *path)
+{
+    if (path == NULL || path[0] == '\0') {
+        return 1;
+    }
+    return 0;
+}
 
 #ifdef __cplusplus
 }

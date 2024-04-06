@@ -257,8 +257,6 @@ int AppSpawnTestCommander::BuildMsgFromJson(const cJSON *appInfoConfig, AppSpawn
 
     AppDacInfo dacInfo = {};
     ret = GetDacInfoFromJson(appInfoConfig, dacInfo);
-    APPSPAWN_LOGE("*************, %d", dacInfo.gidCount);
-    APPSPAWN_LOGE("*************, %d", dacInfo.uid);
     ret = AppSpawnReqMsgSetAppDacInfo(reqHandle, &dacInfo);
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to add dac %{public}s", processName_.c_str());
 

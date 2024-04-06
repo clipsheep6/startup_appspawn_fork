@@ -57,6 +57,8 @@ static void AppQueueDestroyProc(const AppSpawnMgr *mgr, AppSpawnedProcess *appIn
 {
     pid_t pid = appInfo->pid;
     APPSPAWN_LOGI("kill %{public}s pid: %{public}d", appInfo->name, appInfo->pid);
+    // 通知子进程died，清除sandbox信息
+    ProcessMgrHookExecute(STAGE_SERVER_APP_DIED, GetAppSpawnContent(), appInfo);
     OH_ListRemove(&appInfo->node);
     OH_ListInit(&appInfo->node);
     free(appInfo);
@@ -399,6 +401,7 @@ static void ProcessSpawnReqMsg(AppSpawnConnection *connection, AppSpawnMsgNode *
 
     clock_gettime(CLOCK_MONOTONIC, &property->spawnStart);
     ret = AppSpawnProcessMsg(GetAppSpawnContent(), &property->client, &property->pid);
+    AppSpawnHookExecute(STAGE_PARENT_POST_FORK, 0, GetAppSpawnContent(), &property->client);
     if (ret != 0) {  // wait child process result
         SendResponse(connection, &message->msgHeader, ret, 0);
         DeleteAppSpawningCtx(property);
@@ -463,7 +466,10 @@ static void ProcessChildResponse(const WatcherHandle taskHandle, int fd, uint32_
         // 添加max信息
     }
     ProcessMgrHookExecute(STAGE_SERVER_APP_ADD, GetAppSpawnContent(), appInfo);
+    // response
+    AppSpawnHookExecute(STAGE_PARENT_PRE_RELY, 0, GetAppSpawnContent(), &property->client);
     SendResponse(property->message->connection, &property->message->msgHeader, result, property->pid);
+    AppSpawnHookExecute(STAGE_PARENT_POST_RELY, 0, GetAppSpawnContent(), &property->client);
     DeleteAppSpawningCtx(property);
 }
 
@@ -636,6 +642,8 @@ static void AppSpawnRun(AppSpawnContent *content, int argc, char *const argv[])
 
     LE_RunLoop(LE_GetDefaultLoop());
     APPSPAWN_LOGI("AppSpawnRun exit mode: %{public}d ", content->mode);
+
+    (void)ServerStageHookExecute(STAGE_SERVER_EXIT, content); // 服务退出，插件可以进行业务处理
     AppSpawnDestroyContent(content);
 }
 
@@ -714,7 +722,7 @@ AppSpawnContent *StartSpawnService(const AppSpawnStartArg *startArg, uint32_t ar
     APPSPAWN_CHECK(content != NULL, return NULL, "Failed to create content for %{public}s", arg->socketName);
 
     AppSpawnLoadAutoRunModules(arg->moduleType);  // 按启动的模式加在对应的插件
-    int ret = PreloadHookExecute(content);   // 预加载，解析sandbox
+    int ret = ServerStageHookExecute(STAGE_SERVER_PRELOAD, content);   // 预加载，解析sandbox
     APPSPAWN_CHECK(ret == 0, AppSpawnDestroyContent(content);
         return NULL, "Failed to prepare load %{public}s result: %{public}d", arg->serviceName, ret);
     APPSPAWN_CHECK(content->runChildProcessor != NULL, AppSpawnDestroyContent(content);

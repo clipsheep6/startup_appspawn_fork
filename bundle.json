@@ -60,7 +60,8 @@
                 "ui_lite",
                 "code_signature",
                 "bounds_checking_function",
-                "zlib"
+                "zlib",
+                "cJSON"
             ],
 	    "third_party": [
                 "bounds_checking_function",

@@ -106,6 +106,8 @@ typedef int (*SplitStringHandle)(const char *str, void *context);
 int32_t StringSplit(const char *str, const char *separator, void *context, SplitStringHandle handle);
 char *GetLastStr(const char *str, const char *dst);
 
+void DumpCurrentDir(char *buffer, uint32_t bufferLen, const char *dirPath);
+
 #ifndef APP_FILE_NAME
 #define APP_FILE_NAME   (strrchr((__FILE__), '/') ? strrchr((__FILE__), '/') + 1 : (__FILE__))
 #endif

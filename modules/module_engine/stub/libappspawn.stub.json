@@ -1,5 +1,5 @@
 [
-    { "name": "AddPreloadHook" },
+    { "name": "AddServerStageHook" },
     { "name": "AddProcessMgrHook" },
     { "name": "AddAppSpawnHook" },
     { "name": "AppSpawnHookExecute" },
