@@ -336,6 +336,10 @@ static int SpawnInitSpawningEnv(AppSpawnMgr *content, AppSpawningCtx *property)
 
     ret = SetAppAccessToken(content, property);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
+
+    ret = SetEnvInfo(content, property);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
+
     return 0;
 }
 
@@ -377,9 +381,6 @@ static int SpawnSetProperties(AppSpawnMgr *content, AppSpawningCtx *property)
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
 
     ret = SetSelinuxCon(content, property) == -1;
-    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
-
-    ret = SetEnvInfo(content, property);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
 
     ret = WaitForDebugger(property);
