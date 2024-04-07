@@ -59,6 +59,7 @@ typedef enum AppOperateType_ {
 #define APP_APL_MAX_LEN 32
 #define APP_RENDER_CMD_MAX_LEN 1024
 #define APP_OWNER_ID_LEN 64
+#define APP_USER_NAME 64
 
 /* AppParameter.flags bit definition */
 #define APP_COLD_BOOT 0x01
@@ -100,6 +101,7 @@ typedef struct AppParameter_ {
     char apl[APP_APL_MAX_LEN];
     char renderCmd[APP_RENDER_CMD_MAX_LEN];
     char ownerId[APP_OWNER_ID_LEN];  // app identifier id
+    char userName[APP_USER_NAME];    // app user name
     uint32_t accessTokenId;
     int32_t bundleIndex;
     uint64_t accessTokenIdEx;
