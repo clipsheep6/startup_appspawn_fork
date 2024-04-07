@@ -59,8 +59,6 @@
                 "surface_lite",
                 "ui_lite",
                 "code_signature",
-                "bounds_checking_function",
-                "zlib"
             ],
 	    "third_party": [
                 "bounds_checking_function",
