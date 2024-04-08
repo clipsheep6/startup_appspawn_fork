@@ -338,12 +338,22 @@ static int ParseMountGroupsConfig(AppSpawnSandboxCfg *sandbox, const cJSON *grou
     APPSPAWN_LOGV("mount-group in section %{public}s  %{public}u", section->name, count);
     APPSPAWN_CHECK_ONLY_EXPER(count > 0, return 0);
     count += section->number;
-    section->nameGroups = (SandboxMountNode **)realloc(section->nameGroups, sizeof(SandboxMountNode *) * count);
-    APPSPAWN_CHECK(section->nameGroups != NULL, return APPSPAWN_SYSTEM_ERROR, "Failed to alloc memory for group name");
+    SandboxMountNode **nameGroups = (SandboxMountNode **)calloc(1, sizeof(SandboxMountNode *) * count);
+    APPSPAWN_CHECK(nameGroups != NULL, return APPSPAWN_SYSTEM_ERROR, "Failed to alloc memory for group name");
+
+    uint32_t j = 0;
+    uint32_t number = 0;
+    for (j = 0; j < section->number; j++) { // copy old
+        if (section->nameGroups[j] == NULL) {
+            continue;;
+        }
+        nameGroups[number++] = section->nameGroups[j];
+    }
 
     SandboxNameGroupNode *mountNode = NULL;
     for (uint32_t i = 0; i < count; i++) {
-        section->nameGroups[section->number] = NULL;
+        nameGroups[number] = NULL;
+
         char *name = cJSON_GetStringValue(cJSON_GetArrayItem(groupConfig, i));
         mountNode = (SandboxNameGroupNode *)GetSandboxSection(&sandbox->nameGroupsQueue, name);
         if (mountNode == NULL) {
@@ -356,7 +366,6 @@ static int ParseMountGroupsConfig(AppSpawnSandboxCfg *sandbox, const cJSON *grou
             continue;
         }
         // 过滤重复的节点
-        uint32_t j = 0;
         for (j = 0; j < section->number; j++) {
             if (section->nameGroups[j] != NULL && section->nameGroups[j] == (SandboxMountNode *)mountNode) {
                 APPSPAWN_LOGE("Name-group %{public}s bas been set", name);
@@ -366,9 +375,14 @@ static int ParseMountGroupsConfig(AppSpawnSandboxCfg *sandbox, const cJSON *grou
         if (j < section->number) {
             continue;
         }
-        section->nameGroups[section->number++] = (SandboxMountNode *)mountNode;
+        nameGroups[number++] = (SandboxMountNode *)mountNode;
         APPSPAWN_LOGV("Name-group %{public}d %{public}s set", section->number, name);
     }
+    if (section->nameGroups != NULL) {
+        free(section->nameGroups);
+    }
+    section->nameGroups = nameGroups;
+    section->number = number;
     APPSPAWN_LOGV("mount-group in section %{public}s  %{public}u", section->name, section->number);
     return 0;
 }

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #include "appspawn_hook.h"
 #include "appspawn_manager.h"
 #include "appspawn_utils.h"
@@ -85,18 +84,18 @@ MODULE_CONSTRUCTOR(void)
     APPSPAWN_LOGV("Load test plugin module ...");
     AddProcessMgrHook(STAGE_SERVER_APP_DIED, 0, TestPluginReportProcessExit);
     AddProcessMgrHook(STAGE_SERVER_APP_ADD, 0, TestPluginReportProcessAdd);
-	AddPreloadHook(HOOK_PRIO_LOWEST - 1, TestPluginPreload);
-	AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_COMMON - 1, TestPluginPreFork);
-	AddAppSpawnHook(STAGE_PARENT_POST_RELY, HOOK_PRIO_COMMON -1 , TestPluginPostReply);
-	AddAppSpawnHook(STAGE_PARENT_PRE_RELY, HOOK_PRIO_COMMON - 1, TestPluginPreReply);
-	AddAppSpawnHook(STAGE_CHILD_PRE_COLDBOOT, HOOK_PRIO_COMMON - 1, ChildPreColdBoot);
-	AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_HIGHEST - 1, ChildExecute);
+    AddPreloadHook(HOOK_PRIO_LOWEST - 1, TestPluginPreload);
+    AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_COMMON - 1, TestPluginPreFork);
+    AddAppSpawnHook(STAGE_PARENT_POST_RELY, HOOK_PRIO_COMMON - 1, TestPluginPostReply);
+    AddAppSpawnHook(STAGE_PARENT_PRE_RELY, HOOK_PRIO_COMMON - 1, TestPluginPreReply);
+    AddAppSpawnHook(STAGE_CHILD_PRE_COLDBOOT, HOOK_PRIO_COMMON - 1, ChildPreColdBoot);
+    AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_HIGHEST - 1, ChildExecute);
     AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_COMMON - 1, ChildExecute);
     AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_SANDBOX - 1, ChildExecute);
     AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_SANDBOX + 1, ChildExecute);
     AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_PROPERTY - 1, ChildExecute);
     AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_PROPERTY + 1, ChildExecute);
-	AddAppSpawnHook(STAGE_CHILD_PRE_RELY, HOOK_PRIO_COMMON - 1, ChildPreRely);
-	AddAppSpawnHook(STAGE_CHILD_POST_RELY, HOOK_PRIO_COMMON - 1, ChildPostRely);
-	AddAppSpawnHook(STAGE_CHILD_PRE_RUN, HOOK_PRIO_COMMON - 1, ChildPreRun);
+    AddAppSpawnHook(STAGE_CHILD_PRE_RELY, HOOK_PRIO_COMMON - 1, ChildPreRely);
+    AddAppSpawnHook(STAGE_CHILD_POST_RELY, HOOK_PRIO_COMMON - 1, ChildPostRely);
+    AddAppSpawnHook(STAGE_CHILD_PRE_RUN, HOOK_PRIO_COMMON - 1, ChildPreRun);
 }

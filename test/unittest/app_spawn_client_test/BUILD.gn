@@ -69,8 +69,8 @@ ohos_unittest("AppSpawn_client_ut") {
   if (asan_detector || is_asan) {
     defines += [ "ASAN_DETECTOR" ]
   }
-  deps += [ "//third_party/cJSON:cjson" ]
   external_deps = [
+    "cJSON:cjson",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hilog:libhilog",

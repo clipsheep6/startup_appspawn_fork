@@ -50,8 +50,8 @@ extern "C" {
 
 #define APPSPAWN_INLINE __attribute__((always_inline)) inline
 
-typedef struct TagAppSpawnContent AppSpawnContent;
-typedef struct TagAppSpawnClient AppSpawnClient;
+typedef struct AppSpawnContent AppSpawnContent;
+typedef struct AppSpawnClient AppSpawnClient;
 typedef struct TagAppSpawnConnection AppSpawnConnection;
 
 typedef struct TagAppSpawnMsgNode {

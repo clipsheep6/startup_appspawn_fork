@@ -29,8 +29,8 @@
 extern "C" {
 #endif
 
-typedef struct TagAppSpawnContent AppSpawnContent;
-typedef struct TagAppSpawnClient AppSpawnClient;
+typedef struct AppSpawnContent AppSpawnContent;
+typedef struct AppSpawnClient AppSpawnClient;
 typedef struct TagAppSpawnReqMsgNode AppSpawnReqMsgNode;
 typedef void *AppSpawnClientHandle;
 typedef struct TagAppSpawnReqMsgMgr AppSpawnReqMsgMgr;

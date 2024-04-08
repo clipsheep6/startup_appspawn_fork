@@ -257,6 +257,8 @@ int AppSpawnTestCommander::BuildMsgFromJson(const cJSON *appInfoConfig, AppSpawn
 
     AppDacInfo dacInfo = {};
     ret = GetDacInfoFromJson(appInfoConfig, dacInfo);
+    APPSPAWN_LOGE("*************, %d", dacInfo.gidCount);
+    APPSPAWN_LOGE("*************, %d", dacInfo.uid);
     ret = AppSpawnReqMsgSetAppDacInfo(reqHandle, &dacInfo);
     APPSPAWN_CHECK(ret == 0, return ret, "Failed to add dac %{public}s", processName_.c_str());
 
@@ -575,10 +577,8 @@ int AppSpawnTestCommander::InitPtyInterface()
     // open master pty and get slave pty
     int pfd = open("/dev/ptmx", O_RDWR | O_CLOEXEC | O_NOCTTY | O_NONBLOCK);
     APPSPAWN_CHECK(pfd >= 0, return -1, "Failed open pty err=%d", errno);
-    APPSPAWN_CHECK(grantpt(pfd) >= 0, close(pfd);
-        return -1, "Failed to call grantpt");
-    APPSPAWN_CHECK(unlockpt(pfd) >= 0, close(pfd);
-        return -1, "Failed to call unlockpt");
+    APPSPAWN_CHECK(grantpt(pfd) >= 0, close(pfd); return -1, "Failed to call grantpt");
+    APPSPAWN_CHECK(unlockpt(pfd) >= 0, close(pfd); return -1, "Failed to call unlockpt");
     char ptsbuffer[PTY_PATH_SIZE] = {0};
     int ret = ptsname_r(pfd, ptsbuffer, sizeof(ptsbuffer));
     APPSPAWN_CHECK(ret >= 0, close(pfd);

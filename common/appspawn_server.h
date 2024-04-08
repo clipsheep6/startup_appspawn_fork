@@ -32,27 +32,27 @@ typedef enum {
     MODE_INVALID
 } RunMode;
 
-typedef struct TagAppSpawnClient {
+typedef struct AppSpawnClient {
     uint32_t id;
     uint32_t flags;  // Save negotiated flags
 } AppSpawnClient;
 
-typedef struct TagAppSpawnContent {
+typedef struct AppSpawnContent {
     char *longProcName;
     uint32_t longProcNameLen;
     uint32_t sandboxNsFlags;
     RunMode mode;
 
     // system
-    void (*runAppSpawn)(struct TagAppSpawnContent *content, int argc, char *const argv[]);
-    void (*notifyResToParent)(struct TagAppSpawnContent *content, AppSpawnClient *client, int result);
-    int (*runChildProcessor)(struct TagAppSpawnContent *content, AppSpawnClient *client);
+    void (*runAppSpawn)(struct AppSpawnContent *content, int argc, char *const argv[]);
+    void (*notifyResToParent)(struct AppSpawnContent *content, AppSpawnClient *client, int result);
+    int (*runChildProcessor)(struct AppSpawnContent *content, AppSpawnClient *client);
     // for cold start
-    int (*coldStartApp)(struct TagAppSpawnContent *content, AppSpawnClient *client);
+    int (*coldStartApp)(struct AppSpawnContent *content, AppSpawnClient *client);
 } AppSpawnContent;
 
 typedef struct TagAppSpawnForkArg {
-    struct TagAppSpawnContent *content;
+    struct AppSpawnContent *content;
     AppSpawnClient *client;
 } AppSpawnForkArg;
 

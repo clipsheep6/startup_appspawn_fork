@@ -23,7 +23,7 @@
 
 #include "appspawn_utils.h"
 
-static void NotifyResToParent(struct TagAppSpawnContent *content, AppSpawnClient *client, int result)
+static void NotifyResToParent(struct AppSpawnContent *content, AppSpawnClient *client, int result)
 {
     APPSPAWN_LOGI("NotifyResToParent: %{public}d", result);
     if (content->notifyResToParent != NULL) {

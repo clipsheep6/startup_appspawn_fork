@@ -254,7 +254,7 @@ int AddProcessMgrHook(AppSpawnHookStage stage, int prio, ProcessChangeHook hook)
     return HookMgrAddEx(GetAppSpawnHookMgr(), &info);
 }
 
-void RegChildLooper(struct TagAppSpawnContent *content, ChildLoop loop)
+void RegChildLooper(struct AppSpawnContent *content, ChildLoop loop)
 {
     APPSPAWN_CHECK(content != NULL && loop != NULL, return, "Invalid content for RegChildLooper");
     content->runChildProcessor = loop;

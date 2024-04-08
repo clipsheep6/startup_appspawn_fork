@@ -528,7 +528,7 @@ void AppSpawnDestroyContent(AppSpawnContent *content)
     DeleteAppSpawnMgr(appSpawnContent);
 }
 
-static int AppSpawnColdStartApp(struct TagAppSpawnContent *content, AppSpawnClient *client)
+static int AppSpawnColdStartApp(struct AppSpawnContent *content, AppSpawnClient *client)
 {
     AppSpawningCtx *property = (AppSpawningCtx *)client;
     char *path = property->forkCtx.coldRunPath != NULL ? property->forkCtx.coldRunPath : "/system/bin/appspawn";

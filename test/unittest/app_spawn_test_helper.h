@@ -44,7 +44,7 @@ typedef struct {
     char *argv[0];
 } CmdArgs;
 
-typedef struct TagAppSpawnClient AppSpawnClient;
+typedef struct AppSpawnClient AppSpawnClient;
 struct TestConnection;
 class LocalTestServer;
 using RecvMsgProcess = std::function<void(struct TestConnection *connection, const uint8_t *buffer, uint32_t buffLen)>;

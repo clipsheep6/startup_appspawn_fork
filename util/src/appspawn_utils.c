@@ -62,13 +62,23 @@ int MakeDirRec(const char *path, mode_t mode, int lastPath)
         }
         int ret = memcpy_s(buffer, PATH_MAX, path, p - path - 1);
         APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy path");
+        if (access(buffer, F_OK) == 0) {
+            curPos = strchr(p, slash);
+            continue;
+        }
         ret = mkdir(buffer, mode);
+        APPSPAWN_LOGE("mkdir %{public}s ", buffer);
         if (ret == -1 && errno != EEXIST) {
+            APPSPAWN_LOGE("Error %{public}d create path %{public}s", errno, path);
             return errno;
         }
         curPos = strchr(p, slash);
     }
     if (lastPath) {
+        if (access(path, F_OK) == 0) {
+            APPSPAWN_LOGV("Path %{public}s exist", path);
+            return 0;
+        }
         if (mkdir(path, mode) == -1 && errno != EEXIST) {
             return errno;
         }

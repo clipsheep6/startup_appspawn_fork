@@ -601,7 +601,7 @@ static int SetSandboxPermissionConfig(const SandboxContext *context, const AppSp
             continue;
         }
 
-        APPSPAWN_LOGI("SetSandboxPermissionConfig permission %{public}d %{public}s",
+        APPSPAWN_LOGV("SetSandboxPermissionConfig permission %{public}d %{public}s",
             permissionNode->permissionIndex, permissionNode->section.name);
         int ret = MountSandboxConfig(context, sandbox, &permissionNode->section, MOUNT_PATH_OP_NONE);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
@@ -936,7 +936,6 @@ int StagedMountPostUnshare(const SandboxContext *context, const AppSpawnSandboxC
     return ret;
 }
 
-
 int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx *property, int nwebspawn)
 {
     APPSPAWN_CHECK_ONLY_EXPER(property != NULL, return -1);
@@ -973,6 +972,8 @@ int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx 
         ret = ChangeCurrentDir(context);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
         APPSPAWN_LOGV("Change root dir success %{public}s ", context->rootPath);
+        APPSPAWN_LOGE("Change root dir uid %{public}d %{public}d ", getuid(), getgid());
+ 
     } while (0);
     DeleteSandboxContext(context);
     return ret;

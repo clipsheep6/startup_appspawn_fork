@@ -36,17 +36,16 @@ ohos_executable("AppSpawnTest") {
     "${appspawn_path}/test/mock",
     "${appspawn_path}/test/unittest",
     "${appspawn_path}/util/include",
-    "//third_party/cJSON",
   ]
 
   deps = [
     "${appspawn_innerkits_path}/client:appspawn_client",
     "${appspawn_path}/test/moduletest/threadpool:libappspawn_threadpool",
     "${appspawn_path}/util:libappspawn_util",
-    "//third_party/cJSON:cjson",
   ]
 
   external_deps = [
+    "cJSON:cjson",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hilog:libhilog",
@@ -82,16 +81,16 @@ ohos_moduletest("AppSpawnModuleTest") {
     "${appspawn_path}/test/mock",
     "${appspawn_path}/test/unittest",
     "${appspawn_path}/util/include",
-    "//third_party/cJSON",
   ]
 
   deps = [
     "${appspawn_innerkits_path}/client:appspawn_client",
-    "//third_party/cJSON:cjson",
+    "${appspawn_path}/util:libappspawn_util",
     "//third_party/googletest:gtest_main",
   ]
 
   external_deps = [
+    "cJSON:cjson",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hilog:libhilog",

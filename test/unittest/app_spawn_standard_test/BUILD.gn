@@ -118,8 +118,7 @@ ohos_unittest("AppSpawn_ut") {
     "${appspawn_path}/test/unittest/app_spawn_test_helper.cpp",
   ]
 
-  configs = [ "//base/startup/appspawn:appspawn_config" ]
-  deps += [ "//third_party/cJSON:cjson" ]
+  configs = [ "${appspawn_path}:appspawn_config" ]
   external_deps = [
     "ability_base:want",
     "ability_runtime:app_manager",
@@ -130,6 +129,7 @@ ohos_unittest("AppSpawn_ut") {
     "ace_engine:ace_forward_compatibility",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
+    "cJSON:cjson",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "eventhandler:libeventhandler",

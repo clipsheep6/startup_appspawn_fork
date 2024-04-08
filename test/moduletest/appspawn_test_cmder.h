@@ -45,7 +45,7 @@ public:
     }
     ~AppSpawnTestCommander()
     {
-         if (ptyFd_ != -1) {
+        if (ptyFd_ != -1) {
             (void)close(ptyFd_);
             ptyFd_ = -1;
         }
@@ -85,7 +85,7 @@ private:
     static void DumpThread(ThreadTaskHandle handle, const ThreadContext *context);
 
     int ptyFd_{-1};
-    uint32_t dumpFlags: 1;
+    uint32_t dumpFlags : 1;
     uint32_t exit_ : 1;
     uint32_t appSpawn_ : 1;
     uint32_t msgType_;

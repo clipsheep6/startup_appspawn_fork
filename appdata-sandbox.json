@@ -148,6 +148,9 @@
             }, {
                 "src-path" : "/data/app/el1/bundle/public/com.ohos.nweb",
                 "sandbox-path" : "/data/storage/el1/bundle/nweb"
+            },{
+                "src-path" : "/mnt/hmdfs/<currentUserId>",
+                "sandbox-path" : "/mnt/hmdfs/<currentUserId>"
             }],
             "mount-groups": ["el2", "el3", "el4"]
         }

@@ -20,7 +20,7 @@
 #include <cstdlib>
 #include <fcntl.h>
 #include <pthread.h>
-#include <signal.h>
+#include <csignal>
 #include <string>
 #include <sys/eventfd.h>
 #include <sys/wait.h>

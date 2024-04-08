@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <gtest/gtest.h>
 
 #include <cstdio>
 #include <fcntl.h>
@@ -26,7 +25,7 @@
 #include "securec.h"
 
 #include "appspawn_test_cmder.h"
-
+#include <gtest/gtest.h>
 
 using namespace testing;
 using namespace testing::ext;
@@ -58,7 +57,7 @@ namespace {
     int32_t retryCount = 0;
 }  // namespace
 
-bool checkFileIsExists(const char *filepath)
+bool CheckFileIsExists(const char *filepath)
 {
     retryCount = 0;
     while ((access(filepath, F_OK) != 0) && (retryCount < CONNECT_RETRY_MAX_TIMES)) {
@@ -72,7 +71,7 @@ bool checkFileIsExists(const char *filepath)
     return CHECK_ERROR;
 }
 
-bool readFileInfo(char *buffer, const int32_t &pid, const char *fileName)
+bool ReadFileInfo(char *buffer, const int32_t &pid, const char *fileName)
 {
     // Set file path
     char filePath[FILE_PATH_SIZE];
@@ -80,7 +79,7 @@ bool readFileInfo(char *buffer, const int32_t &pid, const char *fileName)
         HILOG_ERROR(LOG_CORE, "filePath sprintf_s fail .");
         return CHECK_ERROR;
     }
-    if (!checkFileIsExists(filePath)) {
+    if (!CheckFileIsExists(filePath)) {
         HILOG_ERROR(LOG_CORE, "file %{public}s is not exists .", fileName);
         return CHECK_ERROR;
     }
@@ -103,9 +102,9 @@ bool readFileInfo(char *buffer, const int32_t &pid, const char *fileName)
     return CHECK_OK;
 }
 
-bool checkUid(const int32_t &pid, const int newUid)
+bool CheckUid(const int32_t &pid, const int newUid)
 {
-    if (readFileInfo(buffer, pid, "status")) {
+    if (ReadFileInfo(buffer, pid, "status")) {
         // Move to Uid position
         char *uidPtr = strstr(buffer, "Uid:");
         if (uidPtr == nullptr) {
@@ -115,7 +114,7 @@ bool checkUid(const int32_t &pid, const int newUid)
         if (strlen(uidPtr) > UID_POSITION_MOVE) {
             uidPtr = uidPtr + UID_POSITION_MOVE;
         }
-        int32_t uid = (int32_t)strtol(uidPtr, NULL, BASE_TYPE);
+        int32_t uid = static_cast<int32_t>(strtol(uidPtr, NULL, BASE_TYPE));
         HILOG_INFO(LOG_CORE, "new proc(%{public}d) uid = %{public}d, setUid=%{public}d.", pid, uid, newUid);
         if (uid == newUid) {
             return CHECK_OK;
@@ -124,9 +123,9 @@ bool checkUid(const int32_t &pid, const int newUid)
     return CHECK_ERROR;
 }
 
-bool checkGid(const int32_t &pid, const int newGid)
+bool CheckGid(const int32_t &pid, const int newGid)
 {
-    if (readFileInfo(buffer, pid, "status")) {
+    if (ReadFileInfo(buffer, pid, "status")) {
         // Move to Gid position
         char *gidPtr = strstr(buffer, "Gid:");
         if (gidPtr == nullptr) {
@@ -140,7 +139,7 @@ bool checkGid(const int32_t &pid, const int newGid)
             HILOG_ERROR(LOG_CORE, "get Gid info failed.");
             return CHECK_ERROR;
         }
-        int32_t gid = (int32_t)strtol(gidPtr, NULL, BASE_TYPE);
+        int32_t gid = static_cast<int32_t>(strtol(gidPtr, NULL, BASE_TYPE));
         HILOG_INFO(LOG_CORE, "new proc(%{public}d) gid = %{public}d, setGid=%{public}d.", pid, gid, newGid);
         if (gid == newGid) {
             return CHECK_OK;
@@ -148,9 +147,10 @@ bool checkGid(const int32_t &pid, const int newGid)
     }
     return CHECK_ERROR;
 }
-std::size_t getGids(const int32_t &pid, std::vector<int32_t> &gids)
+
+std::size_t GetGids(const int32_t &pid, std::vector<int32_t> &gids)
 {
-    if (readFileInfo(buffer, pid, "status")) {
+    if (ReadFileInfo(buffer, pid, "status")) {
         // Move to Groups position
         char *groupsPtr = strstr(buffer, "Groups");
         if (groupsPtr == nullptr || strlen(groupsPtr) > BUFFER_SIZE) {
@@ -182,11 +182,11 @@ std::size_t getGids(const int32_t &pid, std::vector<int32_t> &gids)
     return gids.size();
 }
 
-bool checkGids(const int32_t &pid, const std::vector<int32_t> newGids)
+bool CheckGids(const int32_t &pid, const std::vector<int32_t> newGids)
 {
     // Get Gids
     std::vector<int32_t> gids;
-    std::size_t gCount = getGids(pid, gids);
+    std::size_t gCount = GetGids(pid, gids);
     if ((gCount == newGids.size()) && (gids == newGids)) {
         return CHECK_OK;
     }
@@ -194,12 +194,11 @@ bool checkGids(const int32_t &pid, const std::vector<int32_t> newGids)
     return CHECK_ERROR;
 }
 
-bool checkGidsCount(const int32_t &pid, const std::vector<int32_t> newGids)
+bool CheckGidsCount(const int32_t &pid, const std::vector<int32_t> newGids)
 {
     // Get GidsCount
     std::vector<int32_t> gids;
-    std::size_t gCount = getGids(pid, gids);
-
+    std::size_t gCount = GetGids(pid, gids);
     if (gCount == newGids.size()) {
         return CHECK_OK;
     }
@@ -207,7 +206,7 @@ bool checkGidsCount(const int32_t &pid, const std::vector<int32_t> newGids)
     return CHECK_ERROR;
 }
 
-bool checkProcName(const int32_t &pid, const std::string &newProcessName)
+bool CheckProcName(const int32_t &pid, const std::string &newProcessName)
 {
     FILE *fp = nullptr;
     char cmd[CMD_SIZE];
@@ -246,7 +245,8 @@ bool checkProcName(const int32_t &pid, const std::string &newProcessName)
 
     return CHECK_ERROR;
 }
-bool checkProcessIsDestroyed(const int32_t &pid)
+
+bool CheckProcessIsDestroyed(const int32_t &pid)
 {
     char filePath[FILE_PATH_SIZE];
     if (sprintf_s(filePath, sizeof(filePath), "/proc/%d", pid) <= 0) {
@@ -254,7 +254,7 @@ bool checkProcessIsDestroyed(const int32_t &pid)
         return CHECK_ERROR;
     }
 
-    if (checkFileIsExists(filePath)) {
+    if (CheckFileIsExists(filePath)) {
         HILOG_ERROR(LOG_CORE, "File %{public}d is not exists .", pid);
         return CHECK_ERROR;
     }
@@ -262,7 +262,7 @@ bool checkProcessIsDestroyed(const int32_t &pid)
     return CHECK_OK;
 }
 
-bool checkAppspawnPID()
+bool CheckAppspawnPID()
 {
     FILE *fp = nullptr;
     fp = popen("pidof appspawn", "r");
@@ -317,18 +317,203 @@ public:
     static void TearDownTestCase();
     void SetUp();
     void TearDown();
+
+    const std::string defaultAppInfo1 = "{ \
+        \"msg-type\": 0, \
+        \"msg-flags\": [ 3 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+
+    const std::string defaultAppInfo2 = "{ \
+        \"msg-type\": 0, \
+        \"msg-flags\": [ 3 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [ 20010043 ],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+
+    const std::string defaultAppInfo3 = "{ \
+        \"msg-type\": 1, \
+        \"msg-flags\": [ 3 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+
+    const std::string defaultAppInfo4 = "{ \
+        \"msg-type\": 1, \
+        \"msg-flags\": [ 3 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [ 20010043, 20010044 ],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
+
+    const std::string defaultAppInfo5 = "{ \
+        \"msg-type\": 1, \
+        \"msg-flags\": [ 3 ], \
+        \"process-name\" : \"com.example.myapplication\", \
+        \"dac-info\" : { \
+                \"uid\" : 20010043, \
+                \"gid\" : 20010043,\
+                \"gid-table\" : [ 20010043 ],\
+                \"user-name\" : \"\" \
+        },\
+        \"access-token\" : {\
+                \"accessTokenIdEx\" : 537854093\
+        },\
+        \"permission\" : [\
+        ],\
+        \"internet-permission\" : {\
+                \"set-allow-internet\" : 0,\
+                \"allow-internet\" : 0\
+        },\
+        \"bundle-info\" : {\
+                \"bundle-index\" : 0,\
+                \"bundle-name\" : \"com.example.myapplication\" \
+        },\
+        \"owner-id\" : \"\",\
+        \"render-cmd\" : \"1234567890\",\
+        \"domain-info\" : {\
+                \"hap-flags\" : 0,\
+                \"apl\" : \"system_core\"\
+        },\
+        \"ext-info\" : [\
+                {\
+                        \"name\" : \"test\",\
+                        \"value\" : \"4444444444444444444\" \
+                } \
+        ]\
+    }";
 };
 
 void AppSpawnModuleTest::SetUpTestCase()
 {
-    if (!checkAppspawnPID()) {
+    if (!CheckAppspawnPID()) {
         EXPECT_EQ(startAppspawn(), CHECK_OK);
     }
 }
 
 void AppSpawnModuleTest::TearDownTestCase()
 {
-    if (checkAppspawnPID()) {
+    if (CheckAppspawnPID()) {
         EXPECT_EQ(stopAppspawn(), CHECK_OK);
     }
 }
@@ -356,7 +541,7 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_listen_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_listen_001 start");
 
-    EXPECT_EQ(CHECK_OK, checkAppspawnPID());
+    EXPECT_EQ(CHECK_OK, CheckAppspawnPID());
 
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_listen_001 end");
 }
@@ -374,52 +559,18 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_listen_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_listen_002 start");
 
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 0, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo1.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_listen_002 end");
 }
 
@@ -436,52 +587,18 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_listen_002, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_fork_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_fork_001 start");
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 0, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo1.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_fork_001 end");
 }
 
@@ -499,53 +616,19 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_fork_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_fork_002 start");
 
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 1, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo3.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
     EXPECT_NE(0, result.pid);
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_fork_002 end");
 }
 
@@ -563,56 +646,21 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_001 start");
 
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 0, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo1.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
     EXPECT_NE(0, result.pid);
     GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
-    EXPECT_EQ(CHECK_OK, checkUid(result.pid, 20010043));
-
+    EXPECT_EQ(CHECK_OK, CheckUid(result.pid, 20010043));
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_001 end");
 }
 
@@ -629,62 +677,28 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_001, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_002 start");
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 1, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo3.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
     EXPECT_NE(0, result.pid);
     GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
-    EXPECT_EQ(CHECK_OK, checkGid(result.pid, 20010043));
+    EXPECT_EQ(CHECK_OK, CheckGid(result.pid, 20010043));
 
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_002 end");
 }
 
 /*
  * Feature: AppSpawn
- * Function: checkGid
+ * Function: CheckGid
  * SubFunction: Set child process permissions
  * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
  * EnvConditions: AppSpawn main process has started.
@@ -695,61 +709,28 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setUid_002, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGid_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGid_001 start");
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 1, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [ 20010043, 20010044 ],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo4.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
     EXPECT_NE(0, result.pid);
     GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
-    EXPECT_EQ(CHECK_OK, checkGid(result.pid, 20010043));
+    EXPECT_EQ(CHECK_OK, CheckGid(result.pid, 20010043));
+
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGid_001 end");
 }
 
 /*
  * Feature: AppSpawn
- * Function: checkGid
+ * Function: CheckGid
  * SubFunction: Set child process permissions
  * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
  * EnvConditions: AppSpawn main process has started.
@@ -760,63 +741,29 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGid_001, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGid_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGid_002 start");
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 0, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [ 20010043 ],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo2.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
 
     EXPECT_NE(0, result.pid);
     GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
-    EXPECT_EQ(CHECK_OK, checkGid(result.pid, 20010043));
+    EXPECT_EQ(CHECK_OK, CheckGid(result.pid, 20010043));
 
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGid_002 end");
 }
 
 /*
  * Feature: AppSpawn
- * Function: checkGids
+ * Function: CheckGids
  * SubFunction: Set child process permissions
  * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
  * EnvConditions: AppSpawn main process has started.
@@ -827,49 +774,11 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGid_002, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGids_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGids_001 start");
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 0, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [ 20010043 ],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo2.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
@@ -877,14 +786,18 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGids_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
 
     std::vector<int32_t> gids = {20010043};
-    EXPECT_EQ(CHECK_OK, checkGids(result.pid, gids));
+    EXPECT_EQ(CHECK_OK, CheckGids(result.pid, gids));
 
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setUid_001 end");
 }
 
 /*
  * Feature: AppSpawn
- * Function: checkGids
+ * Function: CheckGids
  * SubFunction: Set child process permissions
  * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
  * EnvConditions: AppSpawn main process has started.
@@ -895,49 +808,11 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGids_001, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGids_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGids_002 start");
-   static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 1, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [ 20010043 ],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo5.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
@@ -945,14 +820,18 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGids_002, TestSize.Level0)
     GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
 
     std::vector<int32_t> gids = { 20010043 };
-    EXPECT_EQ(CHECK_OK, checkGids(result.pid, gids));
+    EXPECT_EQ(CHECK_OK, CheckGids(result.pid, gids));
 
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGids_002 end");
 }
 
 /*
  * Feature: AppSpawn
- * Function: checkGidsCount
+ * Function: CheckGidsCount
  * SubFunction: Set child process permissions
  * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
  * EnvConditions: AppSpawn main process has started.
@@ -963,49 +842,11 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGids_002, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGidsCount_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGidsCount_001 start");
-   static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 0, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [ 20010043 ],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo2.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
@@ -1013,14 +854,18 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGidsCount_001, TestSize.Level0)
     GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
 
     std::vector<int32_t> gids = {20010043 };
-    EXPECT_EQ(CHECK_OK, checkGidsCount(result.pid, gids));
+    EXPECT_EQ(CHECK_OK, CheckGidsCount(result.pid, gids));
 
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGidsCount_001 end");
 }
 
 /*
  * Feature: AppSpawn
- * Function: checkGidsCount
+ * Function: CheckGidsCount
  * SubFunction: Set child process permissions
  * FunctionPoints: Set the permissions of the child process to increase the priority of the new process
  * EnvConditions: AppSpawn main process has started.
@@ -1031,57 +876,23 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGidsCount_001, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGidsCount_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGidsCount_002 start");
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 1, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [ 20010043 ],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo5.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
     EXPECT_NE(0, result.pid);
     GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
     std::vector<int32_t> gids = {20010043};
-    EXPECT_EQ(CHECK_OK, checkGidsCount(result.pid, gids));
+    EXPECT_EQ(CHECK_OK, CheckGidsCount(result.pid, gids));
 
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_checkGidsCount_002 end");
 }
 
@@ -1098,57 +909,23 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_checkGidsCount_002, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setProcName_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setProcName_001 start");
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 0, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
+
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo1.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
     EXPECT_NE(0, result.pid);
     GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
     // Check new app proc name
-    EXPECT_EQ(CHECK_OK, checkProcName(result.pid, "com.example.myapplication"));
+    EXPECT_EQ(CHECK_OK, CheckProcName(result.pid, "com.example.myapplication"));
 
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setProcName_001 end");
 }
 
@@ -1165,56 +942,22 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setProcName_001, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setProcName_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setProcName_002 start");
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 1, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [ 20010043, 20010044 ],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo4.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
     EXPECT_NE(0, result.pid);
     GTEST_LOG_(INFO) << "newPid :" << result.pid << ".";
     // Check new app proc name
-    EXPECT_EQ(CHECK_OK, checkProcName(result.pid, "com.example.myapplication"));
+    EXPECT_EQ(CHECK_OK, CheckProcName(result.pid, "com.example.myapplication"));
+
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_setProcName_002 end");
 }
 
@@ -1229,49 +972,10 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_setProcName_002, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_recycleProc_001, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_recycleProc_001 start");
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 1, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [ 20010043, 20010044 ],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo4.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
@@ -1282,8 +986,12 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_recycleProc_001, TestSize.Level0)
     result.pid = DEFAULT_PID;
 
     // Check Process Is Destroyed
-    EXPECT_EQ(CHECK_OK, checkProcessIsDestroyed(result.pid));
+    EXPECT_EQ(CHECK_OK, CheckProcessIsDestroyed(result.pid));
 
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_recycleProc_001 end");
 }
 
@@ -1298,49 +1006,10 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_recycleProc_001, TestSize.Level0)
 HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_recycleProc_002, TestSize.Level0)
 {
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_recycleProc_002 start");
-    static const std::string defaultAppInfo = "{ \
-        \"msg-type\": 0, \
-        \"msg-flags\": [1, 2 ], \
-        \"process-name\" : \"com.example.myapplication\", \
-        \"dac-info\" : { \
-                \"uid\" : 20010043, \
-                \"gid\" : 20010043,\
-                \"gid-table\" : [],\
-                \"user-name\" : \"\" \
-        },\
-        \"access-token\" : {\
-                \"accessTokenIdEx\" : 537854093\
-        },\
-        \"permission\" : [\
-                \"ohos.permission.READ_IMAGEVIDEO\",\
-                \"ohos.permission.FILE_CROSS_APP\",\
-                \"ohos.permission.ACTIVATE_THEME_PACKAGE\"\
-        ],\
-        \"internet-permission\" : {\
-                \"set-allow-internet\" : 0,\
-                \"allow-internet\" : 0\
-        },\
-        \"bundle-info\" : {\
-                \"bundle-index\" : 0,\
-                \"bundle-name\" : \"com.example.myapplication\" \
-        },\
-        \"owner-id\" : \"\",\
-        \"render-cmd\" : \"1234567890\",\
-        \"domain-info\" : {\
-                \"hap-flags\" : 0,\
-                \"apl\" : \"system_core\"\
-        },\
-        \"ext-info\" : [\
-                {\
-                        \"name\" : \"test\",\
-                        \"value\" : \"4444444444444444444\" \
-                } \
-        ]\
-    }";
     OHOS::AppSpawnModuleTest::AppSpawnTestCommander commander;
     AppSpawnReqMsgHandle reqHandle;
     AppSpawnResult result;
-    commander.CreateMsg(reqHandle, defaultAppInfo.c_str());
+    commander.CreateMsg(reqHandle, defaultAppInfo1.c_str());
     int ret = AppSpawnClientSendMsg(commander.GetClientHandle(), reqHandle, &result);
     EXPECT_EQ(0, ret);
     EXPECT_EQ(0, result.result);
@@ -1350,7 +1019,12 @@ HWTEST_F(AppSpawnModuleTest, AppSpawn_HF_recycleProc_002, TestSize.Level0)
     EXPECT_EQ(0, kill(result.pid, SIGKILL));
     result.pid = DEFAULT_PID;
     // Check Process Is Destroyed
-    EXPECT_EQ(CHECK_OK, checkProcessIsDestroyed(result.pid));
+    EXPECT_EQ(CHECK_OK, CheckProcessIsDestroyed(result.pid));
+
+    if (result.pid > 0) {
+        EXPECT_EQ(0, kill(result.pid, SIGKILL));
+        result.pid = DEFAULT_PID;
+    }
     HILOG_INFO(LOG_CORE, "AppSpawn_HF_recycleProc_002 end");
 }
 }  // namespace AppSpawn

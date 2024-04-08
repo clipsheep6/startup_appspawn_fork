@@ -50,7 +50,6 @@ extern "C" {
 #define APP_FLAGS_SECTION 0x80000000
 #define BASIC_MOUNT_FLAGS (MS_REC | MS_BIND)
 #define INVALID_UID ((uint32_t)-1)
-#define DEFAULT_MAX_UID_COUNT 5
 
 #ifdef APPSPAWN_64
 #define APPSPAWN_LIB_NAME "lib64"

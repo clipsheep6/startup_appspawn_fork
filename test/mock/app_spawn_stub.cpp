@@ -153,52 +153,6 @@ int InUpdaterMode(void)
     return 0;
 }
 
-char *GetRealPath(const char *source)
-{
-    char *path = realpath(source, nullptr);
-    if (path == nullptr && errno != ENOENT) {
-        return nullptr;
-    }
-    return path;
-}
-
-uid_t DecodeUid(const char *name)
-{
-    if (strcmp(name, "root") == 0) {
-        return 0;
-    }
-    struct passwd *p = getpwnam("axw");
-    if (p == nullptr) {
-        return -1;
-    }
-    return p->pw_uid;
-}
-
-gid_t DecodeGid(const char *name)
-{
-    if (name == nullptr) {
-        return -1;
-    }
-    if (strcmp(name, "file_manager") == 0) {
-        return 1006;
-    }
-    if (strcmp(name, "user_data_rw") == 0) {
-        return 1008;
-    }
-    gid_t gid = 0;
-    struct group *data = getgrnam(name);
-    if (data != NULL) {
-        return data->gr_gid;
-    }
-    while ((data = getgrent()) != NULL) {
-        if ((data->gr_name != NULL) && (strcmp(data->gr_name, name) == 0)) {
-            gid = data->gr_gid;
-            break;
-        }
-    }
-    endgrent();
-    return gid;
-}
 
 #ifdef __cplusplus
 }
