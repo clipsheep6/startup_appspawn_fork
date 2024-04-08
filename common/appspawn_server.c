@@ -89,11 +89,6 @@ int DoStartApp(struct AppSpawnContent *content, AppSpawnClient *client, char *lo
         content->handleInternetPermission(client);
     }
 
-    if (content->setEnvInfo) {
-        ret = content->setEnvInfo(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret); return ret, "Failed to setEnvInfo");
-    }
-
     if (content->setAppSandbox) {
         ret = content->setAppSandbox(content, client);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret); return ret, "Failed to set app sandbox");
@@ -145,24 +140,15 @@ int DoStartApp(struct AppSpawnContent *content, AppSpawnClient *client, char *lo
     return 0;
 }
 
-static int AppSpawnChild(void *arg)
+static int AppSpawnChildFirst(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
-    APPSPAWN_CHECK(arg != NULL, return -1, "Invalid arg for appspawn child");
-    AppSandboxArg *sandbox = (AppSandboxArg *)arg;
-    struct AppSpawnContent *content = sandbox->content;
-    AppSpawnClient *client = sandbox->client;
-    int ret = -1;
-
+    int ret = 0;
     if (content->setProcessName) {
         ret = content->setProcessName(content, client, content->longProcName, content->longProcNameLen);
         APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
             return ret, "Failed to set setProcessName");
     }
 
-#ifdef OHOS_DEBUG
-    struct timespec tmStart = {0};
-    clock_gettime(CLOCK_REALTIME, &tmStart);
-#endif
     // close socket id and signal for child
     if (content->clearEnvironment != NULL) {
         content->clearEnvironment(content, client);
@@ -175,6 +161,29 @@ static int AppSpawnChild(void *arg)
             return -1;
         }
     }
+
+    if (content->setEnvInfo) {
+        ret = content->setEnvInfo(content, client);
+        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
+            return ret, "Failed to setEnvInfo");
+    }
+    return ret;
+}
+
+static int AppSpawnChild(void *arg)
+{
+    APPSPAWN_CHECK(arg != NULL, return -1, "Invalid arg for appspawn child");
+    AppSandboxArg *sandbox = (AppSandboxArg *)arg;
+    struct AppSpawnContent_ *content = sandbox->content;
+    AppSpawnClient *client = sandbox->client;
+
+#ifdef OHOS_DEBUG
+    struct timespec tmStart = {0};
+    clock_gettime(CLOCK_REALTIME, &tmStart);
+#endif
+
+    int ret = AppSpawnChildFirst(content, client);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
 
     if ((content->getWrapBundleNameValue != NULL && content->getWrapBundleNameValue(content, client) == 0) ||
         ((client->flags & APP_COLD_START) != 0)) {
