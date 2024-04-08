@@ -47,7 +47,7 @@ long long DiffTime(struct timespec *startTime)
     return diff;
 }
 
-static void NotifyResToParent(struct AppSpawnContent_ *content, AppSpawnClient *client, int result)
+static void NotifyResToParent(struct AppSpawnContent *content, AppSpawnClient *client, int result)
 {
     if (content->notifyResToParent != NULL) {
         content->notifyResToParent(content, client, result);
@@ -81,7 +81,7 @@ void exit(int code)
 }
 #endif
 
-int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
+int DoStartApp(struct AppSpawnContent *content, AppSpawnClient *client, char *longProcName, uint32_t longProcNameLen)
 {
     int32_t ret = 0;
     APPSPAWN_LOGV("DoStartApp id %{public}d longProcNameLen %{public}u", client->id, longProcNameLen);
@@ -91,8 +91,7 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
 
     if (content->setAppSandbox) {
         ret = content->setAppSandbox(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to set app sandbox");
+        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret); return ret, "Failed to set app sandbox");
     }
 
     (void)umask(DEFAULT_UMASK);
@@ -104,38 +103,32 @@ int DoStartApp(struct AppSpawnContent_ *content, AppSpawnClient *client, char *l
 
     if (content->setXpmConfig) {
         ret = content->setXpmConfig(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to set setXpmConfig");
+        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret); return ret, "Failed to set setXpmConfig");
     }
 
     if (content->setProcessName) {
         ret = content->setProcessName(content, client, content->longProcName, content->longProcNameLen);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to set setProcessName");
+        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret); return ret, "Failed to set setProcessName");
     }
 
     if (content->setUidGid) {
         ret = content->setUidGid(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to setUidGid");
+        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret); return ret, "Failed to setUidGid");
     }
 
     if (content->setFileDescriptors) {
         ret = content->setFileDescriptors(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to setFileDescriptors");
+        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret); return ret, "Failed to setFileDescriptors");
     }
 
     if (content->setCapabilities) {
         ret = content->setCapabilities(content, client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to setCapabilities");
+        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret); return ret, "Failed to setCapabilities");
     }
 
     if (content->waitForDebugger) {
         ret = content->waitForDebugger(client);
-        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret);
-            return ret, "Failed to waitForDebugger");
+        APPSPAWN_CHECK(ret == 0, NotifyResToParent(content, client, ret); return ret, "Failed to waitForDebugger");
     }
 
 #ifdef SECURITY_COMPONENT_ENABLE
