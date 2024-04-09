@@ -30,6 +30,7 @@
 #include "appspawn_msg.h"
 #include "appspawn_utils.h"
 #include "command_lexer.h"
+#include "json_utils.h"
 #include "cJSON.h"
 #include "securec.h"
 #include "thread_manager.h"

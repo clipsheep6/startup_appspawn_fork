@@ -27,12 +27,11 @@ extern "C" {
 #ifndef APPSPAWN_TEST
 #define  SOCKET_DIR "/dev/unix/socket/"
 #else
-#define  SOCKET_DIR "/data/appspawn_ut/dev/unix/socket/"
+#define  SOCKET_DIR APPSPAWN_BASE_DIR "/dev/unix/socket/"
 #endif
 #else
-#define  SOCKET_DIR "/dev/socket/"
+#define  SOCKET_DIR APPSPAWN_BASE_DIR "/dev/socket/"
 #endif
-
 
 #define NWEBSPAWN_SOCKET_NAME "NWebSpawn"
 #define NWEBSPAWN_SERVER_NAME "nwebspawn"

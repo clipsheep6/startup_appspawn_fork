@@ -23,7 +23,6 @@ ohos_source_set("libappspawn_threadpool") {
   include_dirs = [
     ".",
     "${appspawn_path}/util/include",
-    "${appspawn_path}/common",
   ]
 
   external_deps = [

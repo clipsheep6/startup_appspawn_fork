@@ -33,6 +33,9 @@
 #include "appspawn_utils.h"
 #include "securec.h"
 
+#include "app_spawn_stub.h"
+#include "app_spawn_test_helper.h"
+
 using namespace testing;
 using namespace testing::ext;
 
