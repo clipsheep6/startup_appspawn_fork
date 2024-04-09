@@ -338,6 +338,7 @@ static int SpawnInitSpawningEnv(AppSpawnMgr *content, AppSpawningCtx *property)
 
     ret = SetAppAccessToken(content, property);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
+
     return 0;
 }
 
