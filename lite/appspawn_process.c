@@ -80,14 +80,14 @@ static int SetCapability(unsigned int capsCnt, const unsigned int *caps)
     return 0;
 }
 
-static int SetProcessName(struct AppSpawnContent *content, AppSpawnClient *client,
+static int SetProcessName(struct AppSpawnContent_ *content, AppSpawnClient *client,
     char *longProcName, uint32_t longProcNameLen)
 {
     AppSpawnClientLite *appProperty = (AppSpawnClientLite *)client;
     return prctl(PR_SET_NAME, appProperty->message.bundleName);
 }
 
-static int SetKeepCapabilities(struct AppSpawnContent *content, AppSpawnClient *client)
+static int SetKeepCapabilities(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     APPSPAWN_LOGE("SetKeepCapabilities");
 #ifdef __LINUX__
@@ -99,7 +99,7 @@ static int SetKeepCapabilities(struct AppSpawnContent *content, AppSpawnClient *
     return 0;
 }
 
-static int SetUidGid(struct AppSpawnContent *content, AppSpawnClient *client)
+static int SetUidGid(struct AppSpawnContent_ *content, AppSpawnClient *client)
 {
     AppSpawnClientLite *appProperty = (AppSpawnClientLite *)client;
     APPSPAWN_LOGE("SetUidGid %d %d", appProperty->message.uID, appProperty->message.gID);
@@ -182,6 +182,7 @@ void SetContentFunction(AppSpawnContent *content)
     APPSPAWN_LOGI("SetContentFunction");
     content->setProcessName = SetProcessName;
     content->setKeepCapabilities = SetKeepCapabilities;
+    content->enableSilk = NULL;
     content->setUidGid = SetUidGid;
     content->setCapabilities = SetCapabilities;
     content->runChildProcessor = RunChildProcessor;
