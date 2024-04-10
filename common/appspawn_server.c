@@ -33,6 +33,8 @@
 #endif
 
 #define DEFAULT_UMASK 0002
+#define RENDER_PROCESS 1
+#define GPU_PROCESS 2
 
 long long DiffTime(struct timespec *startTime)
 {
@@ -233,7 +235,11 @@ int AppSpawnProcessMsg(AppSandboxArg *sandbox, pid_t *childPid)
 
     pid_t pid = 0;
     if (sandbox->content->isNweb) {
-        pid = clone(CloneAppSpawn, NULL, sandbox->client->cloneFlags | SIGCHLD, (void *)sandbox);
+        if (sandbox->client->processType == RENDER_PROCESS) {
+            pid = clone(CloneAppSpawn, NULL, sandbox->client->cloneFlags | SIGCHLD, (void *)sandbox);
+        } else if (sandbox->client->processType == GPU_PROCESS) {
+            pid = clone(CloneAppSpawn, NULL, CLONE_NEWNET | SIGCHLD, (void *)sandbox);
+        }
     } else {
         if (sandbox->content->sandboxNsFlags & CLONE_NEWPID) {
             SetPidNamespace(sandbox->content->nsInitPidFd, CLONE_NEWPID); // pid_ns_init is the init process

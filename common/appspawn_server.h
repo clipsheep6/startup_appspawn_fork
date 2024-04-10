@@ -42,6 +42,7 @@ typedef struct AppSpawnClient {
     uint32_t id;
     uint32_t flags; // Save negotiated flags
     uint32_t cloneFlags; // for clone flags
+    uint32_t processType; // for different process types 
 } AppSpawnClient;
 
 #define MAX_SOCKEYT_NAME_LEN 128

@@ -469,6 +469,7 @@ static int HandleMessage(AppSpawnClientExt *appProperty)
     sandboxArg.content = &g_appSpawnContent->content;
     sandboxArg.client = &appProperty->client;
     sandboxArg.client->cloneFlags = sandboxArg.content->sandboxNsFlags;
+    sandboxArg.client->processType = appProperty->property.processType;
 
     SHOW_CLIENT("Receive client message ", appProperty);
 #ifndef APPSPAWN_TEST

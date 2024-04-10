@@ -144,6 +144,11 @@
                     "sandbox-path" : "/vendor/lib64",
                     "sandbox-flags" : [ "bind", "rec" ],
                     "check-action-status": "false"
+                }, {
+                    "src-path" : "/vendor/etc",
+                    "sandbox-path" : "/vendor/etc",
+                    "sandbox-flags" : [ "bind", "rec" ],
+                    "check-action-status": "false"
                 }
             ],
             "symbol-links" : [{
