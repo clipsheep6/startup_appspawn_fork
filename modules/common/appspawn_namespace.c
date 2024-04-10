@@ -222,7 +222,7 @@ static int SetPidNamespace(int nsPidFd, int nsType)
 {
     APPSPAWN_LOGI("SetPidNamespace 0x%{public}x", nsType);
     if (setns(nsPidFd, nsType) < 0) {
-        APPSPAWN_LOGE("set pid namespace nsType:%{pudblic}d failed", nsType);
+        APPSPAWN_LOGE("set pid namespace nsType:%{public}d failed", nsType);
         return -1;
     }
     return 0;

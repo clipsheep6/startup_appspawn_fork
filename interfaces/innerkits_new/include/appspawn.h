@@ -93,8 +93,8 @@ int AppSpawnClientSendMsg(AppSpawnClientHandle handle, AppSpawnReqMsgHandle reqH
 
 typedef enum {
     MSG_APP_SPAWN = 0,
-    MSG_SPAWN_NATIVE_PROCESS,
     MSG_GET_RENDER_TERMINATION_STATUS,
+    MSG_SPAWN_NATIVE_PROCESS,
     MSG_DUMP,
     MAX_TYPE_INVALID
 } AppSpawnMsgType;
