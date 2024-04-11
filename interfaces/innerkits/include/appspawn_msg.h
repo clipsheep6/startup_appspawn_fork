@@ -57,7 +57,7 @@ typedef enum AppOperateType_ {
 #define APP_LEN_SO_PATH 256             // load so lib
 #define APP_MAX_GIDS 64
 #define APP_APL_MAX_LEN 32
-#define APP_RENDER_CMD_MAX_LEN 1024
+#define APP_RENDER_CMD_MAX_LEN 2048
 #define APP_OWNER_ID_LEN 64
 
 /* AppParameter.flags bit definition */
@@ -73,6 +73,7 @@ typedef enum AppOperateType_ {
 #define GET_BUNDLE_RESOURCES_FLAG 0x200
 #define APP_GWP_ENABLED_FORCE 0x400
 #define APP_GWP_ENABLED_NORMAL 0x800
+#define APP_TSANENABLED 0x1000
 #define BITLEN32 32
 #define FDLEN2 2
 #define FD_INIT_VALUE 0
