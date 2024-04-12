@@ -24,40 +24,13 @@
 #include "appspawn.h"
 #include "appspawn_msg.h"
 #include "appspawn_utils.h"
+#include "json_utils.h"
 #include "cJSON.h"
 #include "securec.h"
 #include "thread_manager.h"
 
 typedef struct TagThreadContext {
 } ThreadContext;
-
-__attribute__((always_inline)) inline char *GetStringFromJsonObj(const cJSON *json, const char *key)
-{
-    APPSPAWN_CHECK_ONLY_EXPER(key != NULL && json != NULL, NULL);
-    APPSPAWN_CHECK(cJSON_IsObject(json), return NULL, "json is not object %{public}s %s", key, cJSON_Print(json));
-    cJSON *obj = cJSON_GetObjectItemCaseSensitive(json, key);
-    APPSPAWN_CHECK_ONLY_EXPER(obj != NULL, return NULL);
-    APPSPAWN_CHECK(cJSON_IsString(obj), return NULL, "json is not string %{public}s %s", key, cJSON_Print(obj));
-    return cJSON_GetStringValue(obj);
-}
-
-__attribute__((always_inline)) inline bool GetBoolValueFromJsonObj(const cJSON *json, const char *key, bool def)
-{
-    char *value = GetStringFromJsonObj(json, key);
-    APPSPAWN_CHECK_ONLY_EXPER(value != NULL, return def);
-
-    if (strcmp(value, "true") == 0 || strcmp(value, "ON") == 0 || strcmp(value, "True") == 0) {
-        return true;
-    }
-    return false;
-}
-
-__attribute__((always_inline)) inline uint32_t GetIntValueFromJsonObj(const cJSON *json, const char *key, uint32_t def)
-{
-    APPSPAWN_CHECK(json != NULL, return def, "Invalid json");
-    APPSPAWN_CHECK(cJSON_IsObject(json), return def, "json is not object.");
-    return cJSON_GetNumberValue(cJSON_GetObjectItemCaseSensitive(json, key));
-}
 
 namespace OHOS {
 namespace AppSpawnModuleTest {
