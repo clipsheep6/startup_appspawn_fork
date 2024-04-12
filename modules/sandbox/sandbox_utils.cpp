@@ -115,10 +115,10 @@ namespace {
 
 static uint32_t GetAppMsgFlags(const AppSpawningCtx *property)
 {
-    APPSPAWN_CHECK(property != NULL && property->message != NULL,
+    APPSPAWN_CHECK(property != nullptr && property->message != nullptr,
         return 0, "Invalid property for name %{public}u", TLV_MSG_FLAGS);
     AppSpawnMsgFlags *msgFlags = (AppSpawnMsgFlags *)GetAppSpawnMsgInfo(property->message, TLV_MSG_FLAGS);
-    APPSPAWN_CHECK(msgFlags != NULL,
+    APPSPAWN_CHECK(msgFlags != nullptr,
         return 0, "No TLV_MSG_FLAGS in msg %{public}s", property->message->msgHeader.processName);
     return msgFlags->flags[0];
 }
@@ -248,7 +248,7 @@ int32_t SandboxUtils::DoAppSandboxMountOnce(const char *originPath, const char *
                       destinationPath);
         return ret;
     }
-    ret = mount(NULL, destinationPath, NULL, mountSharedFlag, NULL);
+    ret = mount(nullptr, destinationPath, nullptr, mountSharedFlag, nullptr);
     APPSPAWN_CHECK(ret == 0, return ret,
         "errno is: %{public}d, private mount to %{public}s failed", errno, destinationPath);
     return 0;
@@ -512,7 +512,7 @@ static int32_t DoDlpAppMountStrategy(const AppSpawningCtx *appProperty,
     APPSPAWN_CHECK(ret == 0, return ret, "DoDlpAppMountStrategy failed, bind mount %{public}s to %{public}s"
         "failed %{public}d", srcPath.c_str(), sandboxPath.c_str(), errno);
 
-    ret = mount(NULL, sandboxPath.c_str(), NULL, MS_SHARED, NULL);
+    ret = mount(nullptr, sandboxPath.c_str(), nullptr, MS_SHARED, nullptr);
     APPSPAWN_CHECK(ret == 0, return ret,
         "errno is: %{public}d, private mount to %{public}s failed", errno, sandboxPath.c_str());
 #endif
@@ -524,8 +524,7 @@ static int32_t DoDlpAppMountStrategy(const AppSpawningCtx *appProperty,
 }
 
 static int32_t HandleSpecialAppMount(const AppSpawningCtx *appProperty,
-                                     const std::string &srcPath, const std::string &sandboxPath,
-                                     const std::string &fsType, unsigned long mountFlags)
+    const std::string &srcPath, const std::string &sandboxPath, const std::string &fsType, unsigned long mountFlags)
 {
     std::string bundleName = GetBundleName(appProperty);
     std::string processName = GetProcessName(appProperty);
@@ -540,7 +539,6 @@ static int32_t HandleSpecialAppMount(const AppSpawningCtx *appProperty,
             return DoDlpAppMountStrategy(appProperty, srcPath, sandboxPath, fsType, mountFlags);
         }
     }
-
     return -1;
 }
 
@@ -606,7 +604,7 @@ void SandboxUtils::GetSandboxMountConfig(const std::string &section, nlohmann::j
 }
 
 std::string SandboxUtils::GetSandboxPath(const AppSpawningCtx *appProperty, nlohmann::json &mntPoint,
-                                     const std::string &section, std::string sandboxRoot)
+    const std::string &section, std::string sandboxRoot)
 {
     std::string sandboxPath = "";
     if (section.compare(g_permissionPrefix) == 0) {
@@ -1090,7 +1088,7 @@ int32_t SandboxUtils::MountAllHsp(const AppSpawningCtx *appProperty, std::string
 int32_t SandboxUtils::DoSandboxRootFolderCreateAdapt(std::string &sandboxPackagePath)
 {
 #ifndef APPSPAWN_TEST
-    int rc = mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL);
+    int rc = mount(nullptr, "/", nullptr, MS_REC | MS_SLAVE, nullptr);
     APPSPAWN_CHECK(rc == 0, return rc, "set propagation slave failed");
 #endif
     MakeDirRecursive(sandboxPackagePath, FILE_MODE);
@@ -1098,7 +1096,7 @@ int32_t SandboxUtils::DoSandboxRootFolderCreateAdapt(std::string &sandboxPackage
     // bind mount "/" to /mnt/sandbox/<currentUserId>/<packageName> path
     // rootfs: to do more resources bind mount here to get more strict resources constraints
 #ifndef APPSPAWN_TEST
-    rc = mount("/", sandboxPackagePath.c_str(), NULL, BASIC_MOUNT_FLAGS, NULL);
+    rc = mount("/", sandboxPackagePath.c_str(), nullptr, BASIC_MOUNT_FLAGS, nullptr);
     APPSPAWN_CHECK(rc == 0, return rc, "mount bind / failed, %{public}d", errno);
 #endif
     return 0;
@@ -1147,7 +1145,7 @@ int32_t SandboxUtils::DoSandboxRootFolderCreate(const AppSpawningCtx *appPropert
                                                 std::string &sandboxPackagePath)
 {
 #ifndef APPSPAWN_TEST
-    int rc = mount(NULL, "/", NULL, MS_REC | MS_SLAVE, NULL);
+    int rc = mount(nullptr, "/", nullptr, MS_REC | MS_SLAVE, nullptr);
     if (rc) {
         return rc;
     }
@@ -1165,7 +1163,7 @@ uint32_t SandboxUtils::GetSandboxNsFlags(bool isNweb)
     const std::map<std::string, uint32_t> NamespaceFlagsMap = { {"pid", CLONE_NEWPID},
                                                                 {"net", CLONE_NEWNET} };
 
-    if (!CheckTotalSandboxSwitchStatus(NULL)) {
+    if (!CheckTotalSandboxSwitchStatus(nullptr)) {
         return nsFlags;
     }
 
@@ -1320,8 +1318,7 @@ bool SandboxUtils::CheckAppFullMountEnable()
     return true;
 }
 
-int32_t SandboxUtils::SetSandboxProperty(AppSpawningCtx *appProperty,
-                                                std::string &sandboxPackagePath)
+int32_t SandboxUtils::SetSandboxProperty(AppSpawningCtx *appProperty, std::string &sandboxPackagePath)
 {
     int32_t ret = 0;
     const std::string bundleName = GetBundleName(appProperty);
@@ -1374,7 +1371,7 @@ int32_t SandboxUtils::ChangeCurrentDir(std::string &sandboxPackagePath, const st
 
 int32_t SandboxUtils::SetAppSandboxProperty(AppSpawningCtx *appProperty)
 {
-    APPSPAWN_CHECK(appProperty != NULL, return -1, "Invalid appspwn client");
+    APPSPAWN_CHECK(appProperty != nullptr, return -1, "Invalid appspwn client");
     if (CheckBundleName(GetBundleName(appProperty)) != 0) {
         return -1;
     }
@@ -1421,7 +1418,7 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawningCtx *appProperty)
 
 int32_t SandboxUtils::SetAppSandboxPropertyNweb(AppSpawningCtx *appProperty)
 {
-    APPSPAWN_CHECK(appProperty != NULL, return -1, "Invalid appspwn client");
+    APPSPAWN_CHECK(appProperty != nullptr, return -1, "Invalid appspwn client");
     if (CheckBundleName(GetBundleName(appProperty)) != 0) {
         return -1;
     }
@@ -1525,8 +1522,8 @@ int LoadAppSandboxConfig(AppSpawnMgr *content)
 
 int32_t SetAppSandboxProperty(AppSpawnMgr *content, AppSpawningCtx *property)
 {
-    APPSPAWN_CHECK(property != NULL, return -1, "Invalid appspwn client");
-    APPSPAWN_CHECK(content != NULL, return -1, "Invalid appspwn content");
+    APPSPAWN_CHECK(property != nullptr, return -1, "Invalid appspwn client");
+    APPSPAWN_CHECK(content != nullptr, return -1, "Invalid appspwn content");
     int ret = 0;
     if ((content->content.sandboxNsFlags & CLONE_NEWPID) == CLONE_NEWPID) {
         ret = getprocpid();

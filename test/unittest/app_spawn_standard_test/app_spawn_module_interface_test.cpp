@@ -41,7 +41,6 @@
 using namespace testing;
 using namespace testing::ext;
 
-// AppSpawningCtx g_appspawnCtx;
 namespace OHOS {
 class AppSpawnModuleInterfaceTest : public testing::Test {
 public:
@@ -324,7 +323,6 @@ static int TestAppSpawn(AppSpawnMgr *content, AppSpawningCtx *property)
 
 HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_Add_App_Spawn_Hook_001, TestSize.Level0)
 {
-    // int stage = 0;
     int ret = AddAppSpawnHook(STAGE_CHILD_POST_RELY, HOOK_PRIO_HIGHEST, TestAppSpawn);
     EXPECT_EQ(0, ret);
 
@@ -424,8 +422,6 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_Add_App_SandboxMountPath_001, Test
 
     int ret = SandboxMountPath(&arg);
     EXPECT_EQ(ret, 0);
-    // ret = MakeDirRec("/data/appspawn/test", 1, 0);
-    // EXPECT_EQ(ret, 0);  // 13  无权限
     ret = SandboxMountPath(&arg);
     EXPECT_EQ(ret, 0);
     ret = SandboxMountPath(nullptr);
@@ -543,7 +539,6 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_GetPermissionNodeInQueue_001, Test
 
     SandboxQueue queue;
     OH_ListInit(&queue.front);
-    // EXPECT_EQ(0, AddSandboxPermissionNode("xxx", &queue));
     EXPECT_EQ(nullptr, GetPermissionNodeInQueue(&queue, nullptr));
     EXPECT_EQ(nullptr, GetPermissionNodeInQueue(&queue, "xxxxx"));
     EXPECT_EQ(nullptr, GetPermissionNodeInQueue(&queue, "xxx"));
@@ -571,8 +566,6 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_PermissionRenumber_001, TestSize.L
 
     SandboxQueue queue;
     OH_ListInit(&queue.front);
-    // ret = AddSandboxPermissionNode("xxx", &queue);
-    // EXPECT_EQ(0, ret);
     ret = PermissionRenumber(&queue);
     EXPECT_EQ(0, ret);
 }
@@ -640,7 +633,6 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_CreateSandboxSection_001, TestSize
     EXPECT_NE(SANDBOX_TAG_INVALID, GetSectionType(&node));
 
     DeleteSandboxSection(nullptr);
-    // DeleteSandboxSection(&node);
 }
 
 /**
@@ -696,22 +688,14 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_MountSandboxConfigs_001, TestSize.
     EXPECT_EQ(0, ret);
     AppSpawnReqMsgHandle reqHandle;
     ret = AppSpawnReqMsgCreate(MSG_APP_SPAWN, "com.ohos.myapplication", &reqHandle);
-    // EXPECT_EQ(0, ret);
-    AppSpawningCtx property;
 
+    AppSpawningCtx property;
     OH_ListInit(&property.node);
-    // ret = strcpy_s(property.message->msgHeader.processName, 256, "com.ohos.myapplication");
-    // EXPECT_EQ(0, ret);
-    // g_testHelper.GetAppProperty(clientHandle, reqHandle);
-    // EXPECT_NE(nullptr, property);
-    // EXPECT_NE(0, MountSandboxConfigs(sandbox, property, 0));
     EXPECT_NE(0, MountSandboxConfigs(nullptr, nullptr, 0));
     EXPECT_NE(0, MountSandboxConfigs(sandbox, nullptr, 0));
 
-    // EXPECT_NE(0, StagedMountSystemConst(sandbox, &property, 0));
     EXPECT_NE(0, StagedMountSystemConst(nullptr, nullptr, 0));
     EXPECT_NE(0, StagedMountSystemConst(sandbox, nullptr, 0));
-    // EXPECT_NE(0, StagedMountSystemConst(nullptr, &property, 0));
 
     SandboxContext content;
     EXPECT_EQ(0, StagedMountPreUnShare(&content, sandbox));
@@ -736,9 +720,6 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_GetSandboxRealVar_001, TestSize.Le
     SandboxContext content;
     var = GetSandboxRealVar(&content, 4, "", "", nullptr);
     EXPECT_EQ(nullptr, var);
-
-    // const char *real = "/system/test.variable.001/test001";
-    // GetSandboxRealVar(&content, 0, "", real, nullptr);
 
     ClearVariable();
 }

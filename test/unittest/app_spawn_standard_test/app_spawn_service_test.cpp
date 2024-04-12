@@ -324,14 +324,14 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Msg_004, TestSize.Level0)
                 break;
             }
             len = write(socketId, buffer.data() + currIndex, sendStep);
-            APPSPAWN_CHECK(len > 0, break, "Failed to send msg %{public}s", g_testServer->GetDefaultTestAppBundleName());
+            APPSPAWN_CHECK(len > 0, break, "Failed to send %{public}s", g_testServer->GetDefaultTestAppBundleName());
             usleep(2000);  // wait recv
             currIndex += sendStep;
         } while (1);
-        APPSPAWN_CHECK(len > 0, break, "Failed to send msg %{public}s", g_testServer->GetDefaultTestAppBundleName());
+        APPSPAWN_CHECK(len > 0, break, "Failed to send %{public}s", g_testServer->GetDefaultTestAppBundleName());
         if (msgLen > currIndex) {
             len = write(socketId, buffer.data() + currIndex, msgLen - currIndex);
-            APPSPAWN_CHECK(len > 0, break, "Failed to send msg %{public}s", g_testServer->GetDefaultTestAppBundleName());
+            APPSPAWN_CHECK(len > 0, break, "Failed to send %{public}s", g_testServer->GetDefaultTestAppBundleName());
         }
 
         // recv
