@@ -62,6 +62,7 @@ if (!defined(ohos_lite)) {
       "ability_runtime:appkit_native",
       "ability_runtime:runtime",
       "access_token:libtoken_setproc",
+      "access_token:libaccesstoken_sdk",
       "ace_engine:ace_forward_compatibility",
       "cJSON:cjson",
       "c_utils:utils",
