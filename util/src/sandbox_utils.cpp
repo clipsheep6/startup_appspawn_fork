@@ -113,6 +113,8 @@ namespace {
     const std::string g_ohosRender = "__internal__.com.ohos.render";
     const std::string g_sandBoxRootDirNweb = "/mnt/sandbox/com.ohos.render/";
     const std::string FILE_CROSS_APP_MODE = "ohos.permission.FILE_CROSS_APP";
+    constexpr uint32_t RENDER_TYPE = 1;
+    const std::string g_ohos_file = "/vendor/etc";
 }
 
 std::vector<nlohmann::json> SandboxUtils::appSandboxConfig_ = {};
@@ -581,6 +583,12 @@ int SandboxUtils::DoAllMntPointsMount(const ClientSocket::AppProperty *appProper
 
     for (unsigned int i = 0; i < mountPointSize; i++) {
         nlohmann::json mntPoint = mountPoints[i];
+
+        if (section == g_ohosRender &&
+            appProperty->processType == RENDER_TYPE &&
+            mntPoint[g_srcPath].get<std::string>() == g_ohos_file) {
+            continue;
+        }
 
         if (CheckMountConfig(mntPoint, appProperty, checkFlag) == false) {
             continue;

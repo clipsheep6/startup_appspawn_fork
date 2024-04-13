@@ -35,6 +35,8 @@ const char* RENDERER_NAME = "renderer";
 #include "tokenid_kit.h"
 #include "access_token.h"
 #define NWEBSPAWN_SERVER_NAME "nwebspawn"
+#define RENDER_PROCESS 1
+#define GPU_PROCESS 2
 using namespace OHOS::Security::AccessToken;
 
 int SetAppAccessToken(struct AppSpawnContent *content, AppSpawnClient *client)
@@ -67,11 +69,15 @@ int SetAppAccessToken(struct AppSpawnContent *content, AppSpawnClient *client)
 int SetSelinuxCon(struct AppSpawnContent *content, AppSpawnClient *client)
 {
 #ifdef WITH_SELINUX
+    AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
     if (content->isNweb) {
-        setcon("u:r:isolated_render:s0");
+        if (appProperty->property.processType == RENDER_PROCESS) {
+            setcon("u:r:isolated_render:s0");
+        } else if (appProperty->property.processType == GPU_PROCESS) {
+            setcon("u:r:isolated_gpu:s0");
+        }
     } else {
         UNUSED(content);
-        AppSpawnClientExt *appProperty = reinterpret_cast<AppSpawnClientExt *>(client);
         if (appProperty->property.code == SPAWN_NATIVE_PROCESS) {
             if (!IsDeveloperModeOn()) {
                 APPSPAWN_LOGE("Denied Launching a native process: not in developer mode");
