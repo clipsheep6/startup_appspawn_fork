@@ -61,13 +61,15 @@
                 "code_signature",
                 "bounds_checking_function",
                 "zlib",
-                "cJSON"
+                "cJSON",
+                "json"
             ],
 	    "third_party": [
                 "bounds_checking_function",
                 "zlib",
                 "selinux",
-                "cJSON"
+                "cJSON",
+                "json"
 	    ]
         },
         "build": {
