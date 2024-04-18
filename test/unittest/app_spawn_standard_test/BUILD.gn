@@ -45,6 +45,7 @@ ohos_unittest("AppSpawn_ut") {
     "setuid=SetuidStub",
     "setgid=SetgidStub",
     "execvp=ExecvpStub",
+    "ioctl=IoctlStub",
   ]
 
   include_dirs = [

@@ -27,12 +27,17 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <linux/if.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
 
 #include "appspawn_msg.h"
 #include "appspawn_utils.h"
 #include "init_utils.h"
 #include "parameter.h"
 #include "securec.h"
+
+static int SetNewNetNamespace(const SandboxContext *context, const AppSpawnSandboxCfg *sandbox);
 
 static inline void SetMountPathOperation(uint32_t *operation, uint32_t index)
 {
@@ -193,6 +198,12 @@ static int InitSandboxContext(SandboxContext *context,
         context->sandboxShared = packageNode->section.sandboxShared;
     }
     context->message = property->message;
+
+    context->sandboxNsFlags = CLONE_NEWNS;
+    if (CheckSpawningMsgFlagSet(context, APP_FLAGS_ISOLATED_SANDBOX)) {
+        context->sandboxNsFlags |= sandbox->sandboxNsFlags & CLONE_NEWNET ? CLONE_NEWNET : 0;
+    }
+
     // root path
     const char *rootPath = GetSandboxRealVar(context, BUFFER_FOR_SOURCE, sandbox->rootPath, NULL, NULL);
     if (rootPath) {
@@ -817,6 +828,7 @@ int StagedMountSystemConst(const AppSpawnSandboxCfg *sandbox, const AppSpawningC
 
     if (IsSandboxMounted(sandbox, "system-const", context->rootPath)) {
         APPSPAWN_LOGV("Sandbox system-const %{public}s has been mount", context->rootPath);
+        DeleteSandboxContext(context);
         return 0;
     }
 
@@ -940,17 +952,20 @@ int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx 
     int ret = InitSandboxContext(context, sandbox, property, nwebspawn);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
 
+    APPSPAWN_LOGV("Set sandbox config %{public}s sandboxNsFlags 0x%{public}x",
+        context->rootPath, context->sandboxNsFlags);
     do {
-        APPSPAWN_LOGV("Set sandbox config %{public}s", context->rootPath);
-
         ret = StagedMountPreUnShare(context, sandbox);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
         CreateSandboxDir(context->rootPath, FILE_MODE);
         // add pid to a new mnt namespace
-        ret = unshare(CLONE_NEWNS);
+        ret = unshare(context->sandboxNsFlags);
         APPSPAWN_CHECK(ret == 0, break,
             "unshare failed, app: %{public}s errno: %{public}d", context->bundleName, errno);
+
+        ret = SetNewNetNamespace(context, sandbox);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
 
         ret = SandboxRootFolderCreate(context, sandbox);
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
@@ -969,4 +984,38 @@ int MountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const AppSpawningCtx 
     } while (0);
     DeleteSandboxContext(context);
     return ret;
+}
+
+static int SetNewNetNamespace(const SandboxContext *context, const AppSpawnSandboxCfg *sandbox)
+{
+    if ((context->sandboxNsFlags & CLONE_NEWNET) != CLONE_NEWNET) {
+        return 0;
+    }
+    if (!CheckSpawningMsgFlagSet(context, APP_FLAGS_ISOLATED_SANDBOX)) {
+        return 0;
+    }
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    APPSPAWN_CHECK(sockfd >= 0, return APPSPAWN_SYSTEM_ERROR, "Failed to create socket errno %{public}d", errno);
+
+    // enable loop
+    struct ifreq ifr = {};
+    int ret = strcpy_s(ifr.ifr_name, sizeof(ifr.ifr_name), "lo");
+    APPSPAWN_CHECK(ret == 0, close(sockfd);
+        return APPSPAWN_SYSTEM_ERROR, "Failed to copy if name");
+
+    if (ioctl(sockfd, SIOCGIFFLAGS, &ifr) < 0) {
+        APPSPAWN_LOGE("ioctl SIOCGIFFLAGS errno %{public}d", errno);
+        close(sockfd);
+        return APPSPAWN_SYSTEM_ERROR;
+    }
+
+    ifr.ifr_flags |= IFF_UP | IFF_LOOPBACK;
+    if (ioctl(sockfd, SIOCSIFFLAGS, &ifr) < 0) {
+        APPSPAWN_LOGE("ioctl SIOCSIFFLAGS errno %{public}d", errno);
+        close(sockfd);
+        return APPSPAWN_SYSTEM_ERROR;
+    }
+    close(sockfd);
+    APPSPAWN_LOGV("Enable network namespace success");
+    return 0;
 }

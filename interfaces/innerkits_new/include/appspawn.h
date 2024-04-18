@@ -156,6 +156,10 @@ typedef enum {
     APP_FLAGS_GWP_ENABLED_FORCE,   // APP_GWP_ENABLED_FORCE 0x400
     APP_FLAGS_GWP_ENABLED_NORMAL,  // APP_GWP_ENABLED_NORMAL 0x800
     APP_FLAGS_TSAN_ENABLED,  // APP_TSANENABLED 0x1000
+    APP_FLAGS_IGNORE_SANDBOX = 13,  // ignore sandbox result
+    APP_FLAGS_ISOLATED_SANDBOX,
+    APP_FLAGS_EXTENSION_SANDBOX,
+    APP_FLAGS_CLONE_ENABLE,
     MAX_FLAGS_INDEX = 63,
 } AppFlagsIndex;
 
@@ -231,6 +235,7 @@ int AppSpawnReqMsgAddPermission(AppSpawnReqMsgHandle reqHandle, const char *perm
 #define MSG_EXT_NAME_OVERLAY "Overlay"
 #define MSG_EXT_NAME_DATA_GROUP "DataGroup"
 #define MSG_EXT_NAME_APP_ENV "AppEnv"
+#define MSG_EXT_NAME_APP_EXTENSION "AppExtension"
 
 int AppSpawnReqMsgAddExtInfo(AppSpawnReqMsgHandle reqHandle, const char *name, const uint8_t *value, uint32_t valueLen);
 

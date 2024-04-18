@@ -346,6 +346,24 @@ static int TestParseAppSandboxConfig(AppSpawnSandboxCfg *sandbox, const char *bu
         return -1;
     }
     int ret = ParseAppSandboxConfig(config, sandbox);
+    APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);
+
+    uint32_t depNodeCount = sandbox->depNodeCount;
+    APPSPAWN_CHECK_ONLY_EXPER(depNodeCount > 0, return ret);
+
+    sandbox->depGroupNodes = (SandboxNameGroupNode **)calloc(1, sizeof(SandboxNameGroupNode *) * depNodeCount);
+    APPSPAWN_CHECK(sandbox->depGroupNodes != NULL, return APPSPAWN_SYSTEM_ERROR, "Failed alloc memory ");
+    sandbox->depNodeCount = 0;
+    ListNode *node = sandbox->nameGroupsQueue.front.next;
+    while (node != &sandbox->nameGroupsQueue.front) {
+        SandboxNameGroupNode *groupNode = (SandboxNameGroupNode *)ListEntry(node, SandboxMountNode, node);
+        if (groupNode->depNode) {
+            sandbox->depGroupNodes[sandbox->depNodeCount++] = groupNode;
+        }
+        node = node->next;
+    }
+    APPSPAWN_LOGI("LoadAppSandboxConfig depNodeCount %{public}d", sandbox->depNodeCount);
+
     cJSON_Delete(config);
     return ret;
 }
@@ -434,6 +452,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_JsonUtil_007, TestSize.Level0)
  */
 HWTEST(AppSpawnSandboxTest, App_Spawn_Variable_001, TestSize.Level0)
 {
+    AddDefaultVariable();
     AppSpawningCtx *spawningCtx = TestCreateAppSpawningCtx();
     SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
     ASSERT_EQ(context != nullptr, 1);
@@ -1148,7 +1167,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_mount_001, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1202,7 +1220,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_mount_002, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1255,7 +1272,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_mount_003, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1316,7 +1332,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_mount_004, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1368,7 +1383,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_mount_005, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1421,13 +1435,15 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_mount_006, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
 
         ret = TestParseAppSandboxConfig(sandbox, g_permissionConfig.c_str());
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        // set permission flags
+        int index = GetPermissionIndexInQueue(&sandbox->permissionQueue, "ohos.permission.FILE_ACCESS_MANAGER");
+        SetAppPermissionFlags(property, index);
 
         // set check point
         MountArg args = {};
@@ -1442,7 +1458,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_mount_006, TestSize.Level0)
         stub->result = 0;
         ret = MountSandboxConfigs(sandbox, property, 0);
         ASSERT_EQ(ret, 0);  // do not check result
-        ASSERT_EQ(stub->result != 0, 1);
+        ASSERT_EQ(stub->result, 0);
         ret = 0;
     } while (0);
     if (sandbox) {
@@ -1477,13 +1493,15 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_mount_007, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
 
         ret = TestParseAppSandboxConfig(sandbox, g_permissionConfig.c_str());
         APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        // set permission flags
+        int index = GetPermissionIndexInQueue(&sandbox->permissionQueue, "ohos.permission.FILE_ACCESS_MANAGER");
+        SetAppPermissionFlags(property, index);
 
         // set check point
         MountArg args = {};
@@ -1532,7 +1550,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_Category_001, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1586,7 +1603,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_Category_002, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1640,7 +1656,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_Category_003, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1694,7 +1709,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_Category_004, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1747,7 +1761,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_Deps_001, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1800,7 +1813,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_Deps_002, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1852,7 +1864,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_Deps_003, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1905,7 +1916,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_Deps_004, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1958,7 +1968,6 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_Deps_005, TestSize.Level0)
         property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
         APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
 
-        AddDefaultVariable();
         sandbox = CreateAppSpawnSandbox();
         APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
         sandbox->appFullMountEnable = 1;
@@ -1986,5 +1995,259 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_Deps_005, TestSize.Level0)
     DeleteAppSpawningCtx(property);
     AppSpawnClientDestroy(clientHandle);
     ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief 测试app extension
+ *
+ */
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_001, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = nullptr;
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
+    int ret = -1;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+
+        // set APP_FLAGS_ISOLATED_SANDBOX
+        ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ISOLATED_SANDBOX);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+
+        sandbox = CreateAppSpawnSandbox();
+        APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
+        ret = TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        ret = MountSandboxConfigs(sandbox, property, 0);
+    } while (0);
+    if (sandbox) {
+        DeleteAppSpawnSandbox(sandbox);
+    }
+    DeleteAppSpawningCtx(property);
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_002, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = nullptr;
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
+    int ret = -1;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+
+        // set APP_FLAGS_ISOLATED_SANDBOX
+        ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ISOLATED_SANDBOX);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+
+        sandbox = CreateAppSpawnSandbox();
+        APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
+        ret = TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+
+        sandbox->sandboxNsFlags = CLONE_NEWPID;  // only pid
+        ret = MountSandboxConfigs(sandbox, property, 0);
+    } while (0);
+    if (sandbox) {
+        DeleteAppSpawnSandbox(sandbox);
+    }
+    DeleteAppSpawningCtx(property);
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_003, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = nullptr;
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnReqMsgHandle reqHandle = 0;
+    AppSpawningCtx *property = nullptr;
+    int ret = -1;
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create reqMgr %{public}s", APPSPAWN_SERVER_NAME);
+        reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 1);
+        APPSPAWN_CHECK(reqHandle != INVALID_REQ_HANDLE, break, "Failed to create req %{public}s", APPSPAWN_SERVER_NAME);
+
+        // set APP_FLAGS_ISOLATED_SANDBOX
+        ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ISOLATED_SANDBOX);
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        // add expand info to msg
+        const char dataGroupInfoListStr[] = "{ \
+            \"dataGroupId\":[\"1234abcd5678efgh\", \"abcduiop1234\"], \
+            \"dir\":[\"/data/app/el2/100/group/091a68a9-2cc9-4279-8849-28631b598975\", \
+                     \"/data/app/el2/100/group/ce876162-fe69-45d3-aa8e-411a047af564\"], \
+            \"gid\":[\"20100001\", \"20100002\"] \
+        }";
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, "DataGroup", dataGroupInfoListStr);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to ext tlv %{public}s", dataGroupInfoListStr);
+
+        ret = APPSPAWN_ARG_INVALID;
+        property = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+        APPSPAWN_CHECK_ONLY_EXPER(property != nullptr, break);
+
+        sandbox = CreateAppSpawnSandbox();
+        APPSPAWN_CHECK_ONLY_EXPER(sandbox != nullptr, break);
+        ret = TestParseAppSandboxConfig(sandbox, g_commonConfig.c_str());
+        APPSPAWN_CHECK_ONLY_EXPER(ret == 0, break);
+        ret = MountSandboxConfigs(sandbox, property, 0);
+    } while (0);
+    if (sandbox) {
+        DeleteAppSpawnSandbox(sandbox);
+    }
+    DeleteAppSpawningCtx(property);
+    AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_004, TestSize.Level0)
+{
+    AppSpawningCtx *spawningCtx = TestCreateAppSpawningCtx();
+    SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
+    ASSERT_EQ(context != nullptr, 1);
+
+    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    APPSPAWN_LOGV("value %{public}s", value);
+    ASSERT_EQ(value != nullptr, 1);
+    ASSERT_EQ(strcmp(value, "/system/com.example.myapplication/module") == 0, 1);
+    DeleteSandboxContext(context);
+    DeleteAppSpawningCtx(spawningCtx);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_005, TestSize.Level0)
+{
+    AppSpawningCtx *spawningCtx = TestCreateAppSpawningCtx();
+    ASSERT_EQ(spawningCtx != nullptr, 1);
+    int ret = SetAppSpawnMsgFlag(spawningCtx->message, TLV_MSG_FLAGS, APP_FLAGS_CLONE_ENABLE);
+    ASSERT_EQ(ret, 0);
+    SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
+    ASSERT_EQ(context != nullptr, 1);
+
+    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    APPSPAWN_LOGV("value %{public}s", value);
+    ASSERT_EQ(value != nullptr, 1);  // clone/packageName/bundleIndex
+    ASSERT_EQ(strcmp(value, "/system/clone/com.example.myapplication/100/module") == 0, 1);
+    DeleteSandboxContext(context);
+    DeleteAppSpawningCtx(spawningCtx);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_006, TestSize.Level0)
+{
+    AppSpawnClientHandle clientHandle = nullptr;
+    int ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+    ASSERT_EQ(ret, 0);
+    AppSpawnReqMsgHandle reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+    ASSERT_EQ(reqHandle != nullptr, 1);
+    ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_APP_EXTENSION, "test001");
+    ASSERT_EQ(ret, 0);
+    ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_EXTENSION_SANDBOX);
+    ASSERT_EQ(ret, 0);
+    AppSpawningCtx *spawningCtx = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+    ASSERT_EQ(spawningCtx != nullptr, 1);
+
+    SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
+    ASSERT_EQ(context != nullptr, 1);
+
+    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    APPSPAWN_LOGV("value %{public}s", value);
+    ASSERT_EQ(value != nullptr, 1);  // extension/packageName/<extensionType>
+    ASSERT_EQ(strcmp(value, "/system/extension/com.example.myapplication/test001/module") == 0, 1);
+    DeleteSandboxContext(context);
+    DeleteAppSpawningCtx(spawningCtx);
+    AppSpawnClientDestroy(clientHandle);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_007, TestSize.Level0)
+{
+    AppSpawnClientHandle clientHandle = nullptr;
+    int ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+    ASSERT_EQ(ret, 0);
+    AppSpawnReqMsgHandle reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+    ASSERT_EQ(reqHandle != nullptr, 1);
+    ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_APP_EXTENSION, "test001");
+    ASSERT_EQ(ret, 0);
+    ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_EXTENSION_SANDBOX);
+    ASSERT_EQ(ret, 0);
+    ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_CLONE_ENABLE);
+    ASSERT_EQ(ret, 0);
+    AppSpawningCtx *spawningCtx = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+    ASSERT_EQ(spawningCtx != nullptr, 1);
+
+    SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
+    ASSERT_EQ(context != nullptr, 1);
+
+    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    APPSPAWN_LOGV("value %{public}s", value);
+    ASSERT_EQ(value != nullptr, 1);  // clone/extension/packageName/bundleIndex/<extensionType>
+    ASSERT_EQ(strcmp(value, "/system/clone/extension/com.example.myapplication/100/test001/module") == 0, 1);
+    DeleteSandboxContext(context);
+    DeleteAppSpawningCtx(spawningCtx);
+    AppSpawnClientDestroy(clientHandle);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_008, TestSize.Level0)
+{
+    AppSpawnClientHandle clientHandle = nullptr;
+    int ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+    ASSERT_EQ(ret, 0);
+    AppSpawnReqMsgHandle reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+    ASSERT_EQ(reqHandle != nullptr, 1);
+    ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_EXTENSION_SANDBOX);
+    ASSERT_EQ(ret, 0);
+    ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_CLONE_ENABLE);
+    ASSERT_EQ(ret, 0);
+    AppSpawningCtx *spawningCtx = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+    ASSERT_EQ(spawningCtx != nullptr, 1);
+
+    SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
+    ASSERT_EQ(context != nullptr, 1);
+
+    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    ASSERT_EQ(value == nullptr, 1);
+
+    DeleteSandboxContext(context);
+    DeleteAppSpawningCtx(spawningCtx);
+    AppSpawnClientDestroy(clientHandle);
+}
+
+HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_009, TestSize.Level0)
+{
+    AppSpawnClientHandle clientHandle = nullptr;
+    int ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+    ASSERT_EQ(ret, 0);
+    AppSpawnReqMsgHandle reqHandle = g_testHelper.CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
+    ASSERT_EQ(reqHandle != nullptr, 1);
+    ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_EXTENSION_SANDBOX);
+    ASSERT_EQ(ret, 0);
+    AppSpawningCtx *spawningCtx = g_testHelper.GetAppProperty(clientHandle, reqHandle);
+    ASSERT_EQ(spawningCtx != nullptr, 1);
+
+    SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
+    ASSERT_EQ(context != nullptr, 1);
+
+    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    ASSERT_EQ(value == nullptr, 1);
+
+    DeleteSandboxContext(context);
+    DeleteAppSpawningCtx(spawningCtx);
+    AppSpawnClientDestroy(clientHandle);
 }
 }  // namespace OHOS

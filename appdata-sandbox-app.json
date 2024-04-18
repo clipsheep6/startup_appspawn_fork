@@ -69,8 +69,8 @@
                 "sandbox-path" : "/system/etc",
                 "src-path" : "/system/etc"
             }, {
-                "sandbox-path" : "/system/resources",
-                "src-path" : "/system/resources"
+                "sandbox-path" : "/system/resource",
+                "src-path" : "/system/resource"
             }, {
                 "sandbox-path" : "/vendor/<lib>",
                 "src-path" : "/vendor/<lib>"
@@ -80,6 +80,12 @@
             }, {
                 "sandbox-path" : "/vendor/etc/hiai",
                 "src-path" : "/vendor/etc/hiai"
+            }, {
+                "src-path" : "/system/asan/<lib>",
+                "sandbox-path" : "/system/asan/<lib>"
+            }, {
+                "src-path" : "/vendor/asan/<lib>",
+                "sandbox-path" : "/vendor/asan/<lib>"
             }],
             "mount-files": [{
                 "src-path" : "/system/<lib>/ld-musl-arm.so.1",
@@ -415,21 +421,21 @@
             "src-path": "/data/app/el4/<currentUserId>/database/<PackageName>"
         }]
     }, {
-        "name": "hsp",
+        "name": "HspList",
         "type": "app-variable",
         "mount-paths": [{
             "sandbox-path": "/data/storage/el2/group/<bundle-name>/<module-name>",
             "src-path": "/data/app/el1/bundle/public/<bundle-name>/<version>/<module-name>"
         }]
     }, {
-        "name": "data-group",
+        "name": "DataGroup",
         "type": "app-variable",
         "mount-paths": [{
-            "sandbox-path": "/data/storage/el2/group/<uuid>",
+            "sandbox-path": "/data/storage/el2/group/<data-uuid>",
             "src-path": "<data-dir>"
         }]
     }, {
-        "name": "overlay",
+        "name": "Overlay",
         "type": "app-variable",
         "mount-paths": [{
             "sandbox-path": "/data/storage/overlay/<hap-name>",
