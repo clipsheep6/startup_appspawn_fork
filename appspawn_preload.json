@@ -11,7 +11,7 @@
         "application.AbilityStageContext",
         "application.AbilityStage",
         "app.ability.ExtensionAbility",
-		"app.ability.UIAbility",
+        "app.ability.UIAbility",
         "file.bfs",
         "deviceinfo",
         "data.preferences",
