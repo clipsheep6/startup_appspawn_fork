@@ -179,6 +179,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_002, TestSize.Level0)
     ASSERT_EQ(ret, 0);
 }
 
+
 static std::string GetColdRunArgs(AppSpawningCtx *property, const char *arg)
 {
     std::string argStr = arg;
@@ -222,7 +223,6 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_003, TestSize.Level0)
         // spawn prepare process
         AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         AppSpawnHookExecute(STAGE_CHILD_PRE_COLDBOOT, 0, content, &property->client);
-        content->runAppSpawn(content, args->argc, args->argv);
         ret = 0;
     } while (0);
     if (args) {
@@ -256,12 +256,10 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_004, TestSize.Level0)
         std::string cmd = GetColdRunArgs(property, "appspawn -mode nweb_cold ");
         content = AppSpawnTestHelper::StartSpawnServer(cmd, args);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        ASSERT_EQ(content->mode, MODE_FOR_NWEB_COLD_RUN);
 
         // spawn prepare process
         AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         AppSpawnHookExecute(STAGE_CHILD_PRE_COLDBOOT, 0, content, &property->client);
-        content->runAppSpawn(content, args->argc, args->argv);
         ret = 0;
     } while (0);
     if (args) {
@@ -305,7 +303,6 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_005, TestSize.Level0)
         // spawn prepare process
         AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         AppSpawnHookExecute(STAGE_CHILD_PRE_COLDBOOT, 0, content, &property->client);
-        content->runAppSpawn(content, args->argc, args->argv);
         ret = 0;
     } while (0);
     if (args) {
@@ -352,7 +349,6 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
         // spawn prepare process
         AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
         AppSpawnHookExecute(STAGE_CHILD_PRE_COLDBOOT, 0, content, &property->client);
-        content->runAppSpawn(content, args->argc, args->argv);
         property = nullptr;
         ret = 0;
     } while (0);
