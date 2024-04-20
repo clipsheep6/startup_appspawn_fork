@@ -29,6 +29,7 @@ extern "C" {
 #endif
 
 #define HOOK_STOP_WHEN_ERROR 0x2
+#define APPSPAWN_MAX_TIME 3000000
 
 typedef enum {
     MODULE_DEFAULT,
@@ -44,6 +45,9 @@ typedef struct {
     struct timespec tmStart;
     struct timespec tmEnd;
 } AppSpawnHookArg;
+
+extern int g_minAppSpawnTime;
+extern int g_maxAppSpawnTime;
 
 int AppSpawnModuleMgrInstall(const char *mgrName);
 int AppSpawnLoadAutoRunModules(int type);

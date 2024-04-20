@@ -94,6 +94,11 @@ typedef struct TagAppSpawnedProcess {
     char name[0];
 } AppSpawnedProcess;
 
+typedef struct {
+    int minAppspawnTime;
+    int maxAppspawnTime;
+} SpawnTime;
+
 typedef struct TagAppSpawnMgr {
     AppSpawnContent content;
     TaskHandle server;
@@ -106,6 +111,7 @@ typedef struct TagAppSpawnMgr {
     struct timespec perLoadStart;
     struct timespec perLoadEnd;
     struct ListNode extData;
+    struct SpawnTime spawnTime;
 } AppSpawnMgr;
 
 /**

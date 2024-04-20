@@ -37,6 +37,8 @@ static struct {
     {NULL, MODULE_COMMON, "appspawn/common"},
 };
 static HOOK_MGR *g_appspawnHookMgr = NULL;
+int g_minAppSpawnTime = APPSPAWN_MAX_TIME;
+int g_maxAppSpawnTime = 0;
 
 int AppSpawnModuleMgrInstall(const char *moduleName)
 {
@@ -108,6 +110,16 @@ static int ServerStageHookRun(const HOOK_INFO *hookInfo, void *executionContext)
     return realHook((void *)arg->content);
 }
 
+static void UpdateAppSpawnTime(int used)
+{
+    if (used > GetAppSpawnMgr()->spawnTime.minAppspawnTime) {
+        GetAppSpawnMgr()->spawnTime.minAppspawnTime = used;
+    }
+    if (used < GetAppSpawnMgr()->spawnTime.maxAppspawnTime) {
+        GetAppSpawnMgr()->spawnTime.maxAppspawnTime = used;
+    }
+}
+
 static void PreHookExec(const HOOK_INFO *hookInfo, void *executionContext)
 {
     AppSpawnHookArg *arg = (AppSpawnHookArg *)executionContext;
@@ -124,6 +136,7 @@ static void PostHookExec(const HOOK_INFO *hookInfo, void *executionContext, int 
     uint64_t diff = DiffTime(&spawnMgr->perLoadStart, &spawnMgr->perLoadEnd);
     APPSPAWN_LOGI("Hook stage: %{public}d prio: %{public}d end time %{public}" PRId64 " ns result: %{public}d",
         hookInfo->stage, hookInfo->prio, diff, executionRetVal);
+    UpdateAppSpawnTime(diff);
 }
 
 int ServerStageHookExecute(AppSpawnHookStage stage, AppSpawnContent *content)
