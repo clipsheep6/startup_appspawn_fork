@@ -57,6 +57,7 @@ extern "C" {
 #define APP_COLD_START 0x01
 #define APP_ASAN_DETECTOR 0x02
 #define APP_DEVELOPER_MODE 0x04
+#define APP_BEGETCTL_BOOT 0x400
 
 #define MAX_LEN_SHORT_NAME 16
 #define DEFAULT_UMASK 0002
@@ -96,6 +97,7 @@ typedef enum {
     APPSPAWN_BUFFER_NOT_ENOUGH,
     APPSPAWN_TIMEOUT,
     APPSPAWN_FORK_FAIL,
+    APPSPAWN_DEBUG_MODE_NOT_SUPPORT,
     APPSPAWN_NODE_EXIST,
 } AppSpawnErrorCode;
 
@@ -105,6 +107,7 @@ void SetDumpToStream(FILE *stream);
 typedef int (*SplitStringHandle)(const char *str, void *context);
 int32_t StringSplit(const char *str, const char *separator, void *context, SplitStringHandle handle);
 char *GetLastStr(const char *str, const char *dst);
+int IsDeveloperModeOpen();
 
 void DumpCurrentDir(char *buffer, uint32_t bufferLen, const char *dirPath);
 
