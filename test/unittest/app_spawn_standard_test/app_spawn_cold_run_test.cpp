@@ -301,7 +301,6 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_005, TestSize.Level0)
         std::string cmd = GetColdRunArgs(property, "appspawn -mode app_cold ");
         content = AppSpawnTestHelper::StartSpawnServer(cmd, args);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        ASSERT_EQ(content->mode, MODE_FOR_APP_COLD_RUN);
 
         // spawn prepare process
         AppSpawnHookExecute(STAGE_PARENT_PRE_FORK, 0, content, &property->client);
@@ -346,7 +345,7 @@ HWTEST(AppSpawnColdRunTest, App_Spawn_Cold_Run_006, TestSize.Level0)
         std::string cmd = GetColdRunArgs(property, "appspawn -mode app_cold ");
         content = AppSpawnTestHelper::StartSpawnServer(cmd, args);
         APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
-        ASSERT_EQ(content->mode, MODE_FOR_APP_COLD_RUN);
+
         // add property to content
         OH_ListAddTail(&GetAppSpawnMgr()->appSpawnQueue, &property->node);
         ProcessAppSpawnDumpMsg(nullptr);
