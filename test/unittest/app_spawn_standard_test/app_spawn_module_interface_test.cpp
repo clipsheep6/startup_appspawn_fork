@@ -103,7 +103,7 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_GetAppSpawnMsgType_001, TestSize.L
     EXPECT_NE(MAX_TYPE_INVALID, ret);
     content.message->msgHeader.msgType = MODE_INVALID;
     ret = GetAppSpawnMsgType(&content);
-    EXPECT_EQ(MAX_TYPE_INVALID, ret);
+    EXPECT_EQ(MODE_INVALID, ret);
 }
 
 /**

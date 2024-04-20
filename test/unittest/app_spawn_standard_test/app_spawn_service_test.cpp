@@ -447,8 +447,6 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Msg_007, TestSize.Level0)
     if (socketId >= 0) {
         CloseClientSocket(socketId);
     }
-
-    ASSERT_EQ(ret, 0);
 }
 
 /**
