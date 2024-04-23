@@ -171,7 +171,7 @@ static int GetNsPidFd(pid_t pid)
     return nsFd;
 }
 
-static int PreLoadEnablePidNs(AppSpawnMgr *content)
+APPSPAWN_STATIC int PreLoadEnablePidNs(AppSpawnMgr *content)
 {
     APPSPAWN_LOGI("Enable pid namespace flags: 0x%{public}x", content->content.sandboxNsFlags);
     if (IsColdRunMode(content)) {
@@ -186,15 +186,11 @@ static int PreLoadEnablePidNs(AppSpawnMgr *content)
     AppSpawnNamespace *namespace = CreateAppSpawnNamespace();
     APPSPAWN_CHECK(namespace != NULL, return -1, "Failed to create namespace");
 
-#ifndef APPSPAWN_TEST
-    int ret = 0;
-#else
-    int ret = 0;
-#endif
+    int ret = -1;
     // check if process pid_ns_init exists, this is the init process for pid namespace
     pid_t pid = GetPidByName("pid_ns_init");
     if (pid == -1) {
-        APPSPAWN_LOGI("Start Create pid_ns_init");
+        APPSPAWN_LOGI("Start Create pid_ns_init %{public}d", pid);
         pid = clone(NsInitFunc, NULL, CLONE_NEWPID, NULL);
         if (pid < 0) {
             APPSPAWN_LOGE("clone pid ns init failed");
@@ -227,10 +223,12 @@ static int PreLoadEnablePidNs(AppSpawnMgr *content)
 static int SetPidNamespace(int nsPidFd, int nsType)
 {
     APPSPAWN_LOGI("SetPidNamespace 0x%{public}x", nsType);
+#ifndef APPSPAWN_TEST
     if (setns(nsPidFd, nsType) < 0) {
         APPSPAWN_LOGE("set pid namespace nsType:%{public}d failed", nsType);
         return -1;
     }
+#endif
     return 0;
 }
 
@@ -261,7 +259,9 @@ static int PostForkSetPidNamespace(AppSpawnMgr *content, AppSpawningCtx *propert
 
 MODULE_CONSTRUCTOR(void)
 {
+#ifndef APPSPAWN_TEST
     AddPreloadHook(HOOK_PRIO_LOWEST, PreLoadEnablePidNs);
+#endif
     AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_LOWEST, PreForkSetPidNamespace);
     AddAppSpawnHook(STAGE_PARENT_POST_FORK, HOOK_PRIO_HIGHEST, PostForkSetPidNamespace);
 }
