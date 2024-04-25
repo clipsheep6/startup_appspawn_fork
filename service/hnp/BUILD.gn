@@ -87,5 +87,5 @@ if (!defined(ohos_lite)) {
 }
 
 group("hnpcli_host_toolchain") {
-  deps = [ ":hnpcli($host_toolchain)" ]
+  deps = [ "hnpcli($host_toolchain)" ]
 }
