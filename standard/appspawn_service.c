@@ -43,6 +43,42 @@ static void WaitChildDied(pid_t pid);
 static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen);
 static void ProcessRecvMsg(AppSpawnConnection *connection, AppSpawnMsgNode *message);
 
+typedef struct TagAppSpawnCommonEnv {
+    const char *envName;
+    const char *envValue;
+    int developerModeEnable;
+} AppSpawnCommonEnv;
+
+static const AppSpawnCommonEnv COMMON_ENV[] = {
+    {"HNP_PRIVATE_HOME", "/data/app", true},
+    {"HNP_PUBLIC_HOME", "/data/service/hnp", true},
+    {"PATH", "${HNP_PRIVATE_HOME}/bin:${HNP_PUBLIC_HOME}/bin:${PATH}", true},
+    {"HOME", "/storage/Users/currentUser", false},
+    {"TMPDIR", "/data/storage/el2/base/cache", false},
+    {"SHELL", "/bin/sh", false},
+    {"PWD", "/storage/Users/currentUser", false}
+};
+
+void InitCommonEnv(void)
+{
+    uint32_t count = ARRAY_LENGTH(COMMON_ENV);
+    int32_t ret;
+    char envValue[MAX_ENV_VALUE_LEN];
+    int developerMode = IsDeveloperModeOpen();
+
+    for (uint32_t i = 0; i < count; i++) {
+        if (COMMON_ENV[i].developerModeEnable == true && developerMode == false) {
+            continue;
+        }
+        ret = ConvertEnvValue(COMMON_ENV[i].envValue, envValue, MAX_ENV_VALUE_LEN);
+        APPSPAWN_CHECK(ret == 0, return, "Convert env value fail name=%{public}s, value=%{public}s",
+            COMMON_ENV[i].envName, COMMON_ENV[i].envValue);
+        ret = setenv(COMMON_ENV[i].envName, envValue, true);
+        APPSPAWN_CHECK(ret == 0, return, "Set env fail name=%{public}s, value=%{public}s",
+            COMMON_ENV[i].envName, envValue);
+    }
+}
+
 // FD_CLOEXEC
 static inline void SetFdCtrl(int fd, int opt)
 {
