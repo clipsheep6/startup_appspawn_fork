@@ -154,6 +154,15 @@ char *GetLastStr(const char *str, const char *dst)
     return NULL;
 }
 
+int IsDeveloperModeOpen()
+{
+    char tmp[32] = {0};  // 32 max
+    int ret = GetParameter("const.security.developermode.state", "", tmp, sizeof(tmp));
+    APPSPAWN_LOGV("IsDeveloperModeOpen ret %{public}d result: %{public}s", ret, tmp);
+    int enabled = (ret > 0 && strcmp(tmp, "true") == 0);
+    return enabled;
+}
+
 static char *ReadFile(const char *fileName)
 {
     char *buffer = NULL;
