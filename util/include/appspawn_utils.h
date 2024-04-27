@@ -63,6 +63,7 @@ extern "C" {
 #define UID_BASE 200000 // 20010029
 #define DEFAULT_DIR_MODE 0711
 #define USER_ID_BUFFER_SIZE 32
+#define MAX_ENV_VALUE_LEN 1024
 
 #define APPSPAWN_SEC_TO_NSEC 1000000000
 #define APPSPAWN_MSEC_TO_NSEC 1000000
@@ -107,6 +108,8 @@ int32_t StringSplit(const char *str, const char *separator, void *context, Split
 char *GetLastStr(const char *str, const char *dst);
 uint32_t GetSpawnTimeout(uint32_t def);
 void DumpCurrentDir(char *buffer, uint32_t bufferLen, const char *dirPath);
+int ConvertEnvValue(const char *srcEnv, char *dstEnv, int len);
+int IsDeveloperModeOpen();
 
 int IsDeveloperModeOpen();
 

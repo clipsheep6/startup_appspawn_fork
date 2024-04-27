@@ -188,6 +188,52 @@ static char *ReadFile(const char *fileName)
     return NULL;
 }
 
+int ConvertEnvValue(const char *srcEnv, char *dstEnv, int len)
+{
+    char *tmpEnv = NULL;
+    char *ptr;
+    char *tmpPtr1;
+    char *tmpPtr2;
+    char *envGet;
+
+    int srcLen = strlen(srcEnv) + 1;
+    tmpEnv = malloc(srcLen);
+    APPSPAWN_CHECK(tmpEnv != NULL, return -1, "malloc size=%{public}d fail", srcLen);
+
+    int ret = memcpy_s(tmpEnv, srcLen, srcEnv, srcLen);
+    APPSPAWN_CHECK(ret == EOK, free(tmpEnv); return -1, "Failed to copy env value");
+
+    ptr = tmpEnv;
+    dstEnv[0] = 0;
+    while (((tmpPtr1 = strchr(ptr, '$')) != NULL) && (*(tmpPtr1 + 1) == '{') &&
+        (tmpPtr2 = strchr(tmpPtr1, '}')) != NULL)) {
+        *tmpPtr1 = 0;
+        ret = strcat_s(dstEnv, len, ptr);
+        APPSPAWN_CHECK(ret == 0, free(tmpEnv); return -1, "Failed to strcat env value");
+        *tmpPtr2 = 0;
+        tmpPtr1++;
+        envGet = getenv(tmpPtr1 + 1);
+        if (envGet != NULL) {
+            ret = strcat_s(dstEnv, len, envGet);
+            APPSPAWN_CHECK(ret == 0, free(tmpEnv); return -1, "Failed to strcat env value");
+        }
+        ptr = tmpPtr2 + 1;
+    }
+    ret = strcat_s(dstEnv, len, ptr);
+    APPSPAWN_CHECK(ret == 0, free(tmpEnv); return -1, "Failed to strcat env value");
+    free(tmpEnv);
+    return 0;
+}
+
+int IsDeveloperModeOpen()
+{
+    char tmp[32] = {0};  // 32 max
+    int ret = GetParameter("const.security.developermode.state", "", tmp, sizeof(tmp));
+    APPSPAWN_LOGV("IsDeveloperModeOpen ret %{public}d result: %{public}s", ret, tmp);
+    int enabled = (ret > 0 && strcmp(tmp, "true") == 0);
+    return enabled;
+}
+
 cJSON *GetJsonObjFromFile(const char *jsonPath)
 {
     APPSPAWN_CHECK_ONLY_EXPER(jsonPath != NULL && *jsonPath != '\0', NULL);
