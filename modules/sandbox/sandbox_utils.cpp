@@ -33,6 +33,7 @@
 #include "appspawn_server.h"
 #include "appspawn_service.h"
 #include "config_policy_utils.h"
+#include "appspawn_manager.h"
 #include "init_param.h"
 #include "parameter.h"
 #include "securec.h"
@@ -543,7 +544,7 @@ static int32_t HandleSpecialAppMount(const AppSpawningCtx *appProperty,
 static uint32_t ConvertFlagStr(const std::string &flagStr)
 {
     const std::map<std::string, int> flagsMap = {{"0", 0}, {"START_FLAGS_BACKUP", 1},
-                                                 {"DLP_MANAGER", 2}};
+                                                 {"DLP_MANAGER", 2}, {"ACCESS_DOWNLOAD_DIR", 17}};
 
     if (flagsMap.count(flagStr)) {
         return 1 << flagsMap.at(flagStr);
@@ -1393,6 +1394,8 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawningCtx *appProperty)
         if (index > 0) {
             SetAppPermissionFlags(appProperty, index);
         }
+    } else {
+        SetAppMsgFlags(appProperty, APP_FLAGS_ACCESS_DOWNLOAD_DIR);
     }
 
     // check app sandbox switch

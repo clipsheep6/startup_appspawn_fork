@@ -247,6 +247,13 @@ APPSPAWN_INLINE int SetAppPermissionFlags(const AppSpawningCtx *property, uint32
     return SetAppSpawnMsgFlag(property->message, TLV_PERMISSION, index);
 }
 
+APPSPAWN_INLINE int SetAppMsgFlags(const AppSpawningCtx *property, uint32_t index)
+{
+    APPSPAWN_CHECK(property != NULL && property->message != NULL,
+        return -1, "Invalid property for name %{public}u", TLV_MSG_FLAGS);
+    return SetAppSpawnMsgFlag(property->message, TLV_MSG_FLAGS, index);
+}
+
 #ifdef __cplusplus
 }
 #endif

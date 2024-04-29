@@ -338,6 +338,14 @@
                             "sandbox-flags" : [ "bind", "rec" ],
                             "check-action-status": "false"
                         }
+                    ]}, {
+                        "flags": "ACCESS_DOWNLOAD_DIR",
+                        "mount-paths": [{
+                            "src-path": "/storage/media/<currentUserId>/local/files/Docs/Downloads/<PackageName>",
+                            "sandbox-path": "/storage/Users/<currentUserId>/Downloads",
+                            "sandbox-flags": [ "bind", "rec" ],
+                            "options": "support_overwrite=1"
+                        }
                     ]}
             ],
             "symbol-links" : [
