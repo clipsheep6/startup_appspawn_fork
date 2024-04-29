@@ -695,11 +695,6 @@
             "sandbox-switch": "ON",
             "gids": [1006],
             "mount-paths": [{
-                    "src-path": "/storage/media/<currentUserId>/local/files/Docs",
-                    "sandbox-path": "/storage/Users/<currentUserId>",
-                    "sandbox-flags": [ "bind", "rec" ]
-                },
-                {
                     "src-path": "/data/app/el1/<currentUserId>/base",
                     "sandbox-path": "/storage/Users/<currentUserId>/appdata/el1",
                     "sandbox-flags-customized": [ "MS_NODEV", "MS_RDONLY" ],
@@ -707,7 +702,6 @@
                     "fs-type": "sharefs",
                     "options": "support_overwrite=1"
                 },
-
                 {
                     "src-path": "/data/app/el2/<currentUserId>/base",
                     "sandbox-path": "/storage/Users/<currentUserId>/appdata/el2",
@@ -715,16 +709,6 @@
                     "dac-override-sensitive": "true",
                     "fs-type": "sharefs",
                     "options": "support_overwrite=1"
-                },
-                {
-                    "src-path": "/data/service/el1/public/storage_daemon/share/public",
-                    "sandbox-path": "/storage/Share",
-                    "sandbox-flags": [ "bind", "rec" ]
-                },
-                {
-                    "src-path": "/mnt/data/external",
-                    "sandbox-path": "/storage/External",
-                    "sandbox-flags": [ "bind", "rec" ]
                 }
             ]
         }],

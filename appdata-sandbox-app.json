@@ -192,9 +192,6 @@
             "name": "ohos.permission.FILE_CROSS_APP",
             "gids": ["file_manager"],
             "mount-paths": [{
-                "src-path": "/storage/media/<currentUserId>/local/files/Docs",
-                "sandbox-path": "/storage/Users/<currentUserId>"
-            }, {
                 "src-path": "/data/app/el1/<currentUserId>/base",
                 "sandbox-path": "/storage/Users/<currentUserId>/appdata/el1",
                 "category": "dac_override"
