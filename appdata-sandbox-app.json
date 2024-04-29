@@ -288,6 +288,14 @@
                 "src-path": "/mnt/share/<currentUserId>/<PackageName_index>"
             }],
             "mount-groups": []
+        }, {
+            "name": "ACCESS_DOWNLOAD_DIR",
+            "mount-paths": [{
+                "sandbox-path": "/storage/Users/<currentUserId>/Downloads",
+                "src-path": "/storage/media/<currentUserId>/local/files/Docs/Downloads/<PackageName>",
+                "category": ""
+            }],
+            "mount-groups": []
         }],
         "package-name": [{
             "name": "com.ohos.medialibrary.medialibrarydata",
