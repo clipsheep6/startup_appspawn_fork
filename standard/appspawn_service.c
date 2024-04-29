@@ -816,7 +816,7 @@ static AppSpawnMsgNode *ProcessSpawnBegetctlMsg(AppSpawnConnection *connection, 
     const char *cmdMsg = (const char *)GetAppSpawnMsgExtInfo(message, MSG_EXT_NAME_BEGET_PID, &len);
     APPSPAWN_CHECK(cmdMsg != NULL, DeleteAppSpawnMsg(message); return NULL, "Failed to get extInfo");
     AppSpawnedProcess *appInfo = GetSpawnedProcess(atoi(cmdMsg));
-    APPSPAWN_CHECK(appInfo != NULL, DeleteAppSpawnMsg(message); return NULL, "Failed to get app info")
+    APPSPAWN_CHECK(appInfo != NULL, DeleteAppSpawnMsg(message); return NULL, "Failed to get app info");
     AppSpawnMsgNode *msgNode = RebuildAppSpawnMsgNode(message, appInfo);
     APPSPAWN_CHECK(msgNode != NULL, DeleteAppSpawnMsg(message); return NULL, "Failed to rebuild app message node");
     int ret = DecodeAppSpawnMsg(msgNode);
