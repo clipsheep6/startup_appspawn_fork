@@ -19,6 +19,7 @@
 #include <sys/wait.h>
 
 #include "hilog/log.h"
+#include "appspawn_utils.h"
 
 #include "hnp_api.h"
 
@@ -82,11 +83,16 @@ static int StartHnpProcess(char *const argv[], char *const apcEnv[])
     return exitVal;
 }
 
-int NativeInstallHnp(const char *userId, const char *packages[], int count, const char *installPath, int installOptions)
+int NativeInstallHnpEx(const char *userId, const char *packages[], int count, const char *installPath, int installOptions)
 {
     char *argv[MAX_ARGV_NUM] = {0};
     char *apcEnv[MAX_ENV_NUM] = {0};
     int index = 0;
+
+    if (!IsDeveloperModeOpen()) {
+        HNPAPI_LOG("\r\n [HNP API] native package install not in developer mode");
+        return HNP_API_NOT_IN_DEVELOPER_MODE;
+    }
 
     if ((userId == NULL) || (packages == NULL) || (count == 0)) {
         return HNP_API_ERRNO_PARAM_INVALID;
@@ -117,11 +123,16 @@ int NativeInstallHnp(const char *userId, const char *packages[], int count, cons
     return StartHnpProcess(argv, apcEnv);
 }
 
-int NativeUnInstallHnp(const char *userId, const char *hnpName, const char *hnpVersion, const char *installPath)
+int NativeUnInstallHnpEx(const char *userId, const char *hnpName, const char *hnpVersion, const char *installPath)
 {
     char *argv[MAX_ARGV_NUM] = {0};
     char *apcEnv[MAX_ENV_NUM] = {0};
     int index = 0;
+
+    if (!IsDeveloperModeOpen()) {
+        HNPAPI_LOG("\r\n [HNP API] native package uninstall not in developer mode");
+        return HNP_API_NOT_IN_DEVELOPER_MODE;
+    }
 
     if ((userId == NULL) || (hnpName == NULL) || (hnpVersion == NULL)) {
         return HNP_API_ERRNO_PARAM_INVALID;
@@ -145,6 +156,24 @@ int NativeUnInstallHnp(const char *userId, const char *hnpName, const char *hnpV
     }
 
     return StartHnpProcess(argv, apcEnv);
+}
+
+int NativeInstallHnp(const char *userId, const char *hnpRootPath, const char *packageName, int installOptions)
+{
+    (void)userId;
+    (void)hnpRootPath;
+    (void)packageName;
+    (void)installOptions;
+
+    return 0;
+}
+
+int NativeUnInstallHnp(const char *userId, const char *packageName)
+{
+    (void)userId;
+    (void)packageName;
+
+    return 0;
 }
 
 #ifdef __cplusplus

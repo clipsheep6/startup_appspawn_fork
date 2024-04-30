@@ -49,7 +49,6 @@ namespace {
     constexpr static mode_t BASIC_MOUNT_FLAGS = MS_REC | MS_BIND;
     constexpr std::string_view APL_SYSTEM_CORE("system_core");
     constexpr std::string_view APL_SYSTEM_BASIC("system_basic");
-    const std::string MODULE_TEST_BUNDLE_NAME("moduleTestProcessName");
     const std::string APP_JSON_CONFIG("/appdata-sandbox.json");
     const std::string g_physicalAppInstallPath = "/data/app/el1/bundle/public/";
     const std::string g_sandboxGroupPath = "/data/storage/el2/group/";
@@ -563,7 +562,8 @@ static int32_t HandleSpecialAppMount(const AppSpawningCtx *appProperty,
 static uint32_t ConvertFlagStr(const std::string &flagStr)
 {
     const std::map<std::string, int> flagsMap = {{"0", 0}, {"START_FLAGS_BACKUP", 1},
-                                                 {"DLP_MANAGER", 2}};
+                                                 {"DLP_MANAGER", 2},
+                                                 {"DEVELOPER_MODE", 17}};
 
     if (flagsMap.count(flagStr)) {
         return 1 << flagsMap.at(flagStr);
@@ -778,7 +778,7 @@ int32_t SandboxUtils::DoSandboxFilePermissionBind(AppSpawningCtx *appProperty,
     nlohmann::json permissionAppConfig = wholeConfig[g_permissionPrefix][0];
     for (nlohmann::json::iterator it = permissionAppConfig.begin(); it != permissionAppConfig.end(); ++it) {
         const std::string permission = it.key();
-        int index = GetPermissionIndex(permission.c_str());
+        int index = GetPermissionIndex(nullptr, permission.c_str());
         APPSPAWN_LOGV("DoSandboxFilePermissionBind mountPermissionFlags %{public}d", index);
         if (CheckAppPermissionFlagSet(appProperty, (uint32_t)index)) {
             DoAddGid(appProperty, permissionAppConfig[permission][0], permission.c_str(), g_permissionPrefix);
@@ -1409,7 +1409,7 @@ int32_t SandboxUtils::SetAppSandboxProperty(AppSpawningCtx *appProperty)
     APPSPAWN_CHECK(rc == 0, return rc, "unshare failed, packagename is %{public}s", bundleName.c_str());
 
     if (CheckAppFullMountEnable()) {
-        int index = GetPermissionIndex(FILE_CROSS_APP_MODE.c_str());
+        int index = GetPermissionIndex(nullptr, FILE_CROSS_APP_MODE.c_str());
         if (index > 0) {
             SetAppPermissionFlags(appProperty, index);
         }

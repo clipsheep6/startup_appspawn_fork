@@ -24,6 +24,7 @@
 #include <sys/wait.h>
 
 #include "cJSON.h"
+#include "appspawn_client.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +45,7 @@ typedef struct TagAppSpawnForkArg AppSpawnForkArg;
 typedef struct TagAppSpawnMsgNode AppSpawnMsgNode;
 typedef struct TagAppSpawnMgr AppSpawnMgr;
 
+int ConvertEnvValue(const char *srcEnv, char *dstEnv, int len);
 void SetHapDomainSetcontextResult(int result);
 
 void ProcessSignal(const struct signalfd_siginfo *siginfo);
@@ -63,6 +65,9 @@ int WriteToFile(const char *path, int truncated, pid_t pids[], uint32_t count);
 int GetCgroupPath(const AppSpawnedProcess *appInfo, char *buffer, uint32_t buffLen);
 
 void SetDeveloperMode(bool mode);
+
+int LoadPermission(AppSpawnClientType type);
+void DeletePermission(AppSpawnClientType type);
 
 #define STUB_NEED_CHECK 0x01
 typedef int (*ExecvFunc)(const char *pathname, char *const argv[]);
