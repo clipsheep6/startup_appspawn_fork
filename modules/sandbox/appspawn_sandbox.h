@@ -264,11 +264,17 @@ typedef struct {
     char name[0];
 } AppSandboxVarNode;
 
+typedef struct TagVarExtraData VarExtraData;
+typedef struct cJSON cJSON;
+typedef int (*VarReplaceWithName)(const SandboxContext *context,
+    const char *varName, SandboxBuffer *sandboxBuffer, uint32_t *valueLen, const VarExtraData *extraData);
 typedef struct TagVarExtraData {
     uint32_t sandboxTag;
     uint32_t operation;
+    VarReplaceWithName varReplaceWithName;
     union {
         PathMountNode *depNode;
+        cJSON *json;
     } data;
 } VarExtraData;
 

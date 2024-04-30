@@ -42,15 +42,6 @@
 #include "app_spawn_stub.h"
 
 namespace OHOS {
-typedef struct {
-    int32_t bundleIndex;
-    char bundleName[APP_LEN_BUNDLE_NAME];  // process name
-} AppBundleInfo;
-
-typedef struct {
-    uint32_t hapFlags;
-    char apl[APP_APL_MAX_LEN];
-} AppDomainInfo;
 
 const uint32_t AppSpawnTestServer::defaultProtectTime = 60000; // 60000 60s
 
@@ -694,4 +685,9 @@ MODULE_CONSTRUCTOR(void)
 {
     MakeDirRec(APPSPAWN_MSG_DIR "appspawn", 0771, 1);
     MakeDirRec(APPSPAWN_MSG_DIR "nwebspawn", 0771, 1);
+}
+
+MODULE_DESTRUCTOR(void)
+{
+    DeleteAppSpawnHookMgr();
 }

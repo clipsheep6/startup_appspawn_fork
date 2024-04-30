@@ -184,6 +184,14 @@ static int ReplaceVariable(const SandboxContext *context,
         sandboxBuffer->current += strlen(APPSPAWN_LIB_NAME);
         return 0;
     }
+    if (extraData != NULL && extraData->varReplaceWithName != NULL) { // do not has <>
+        varName[*varLen - 1] = '\0';
+        ret = extraData->varReplaceWithName(context, varName + 1, sandboxBuffer, &valueLen, extraData);
+        APPSPAWN_CHECK(ret == 0 && valueLen < (sandboxBuffer->bufferLen - sandboxBuffer->current),
+            return -1, "Failed to fill real data");
+        sandboxBuffer->current += valueLen;
+        return 0;
+    }
     // no match revered origin data
     APPSPAWN_LOGE("ReplaceVariable var '%{public}s' no match variable", varName);
     ret = memcpy_s(sandboxBuffer->buffer + sandboxBuffer->current,
