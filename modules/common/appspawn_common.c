@@ -85,7 +85,7 @@ static bool IsUnlockStatus(uint32_t uid)
         return true;
     }
     free(path);
-    APPSPAWN_LOGI("this is lock status");
+    APPSPAWN_LOGI("this is lock status!");
     return false;
 }
 
