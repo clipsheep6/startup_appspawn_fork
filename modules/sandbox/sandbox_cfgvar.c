@@ -137,6 +137,44 @@ static int ReplaceVariableForDepPath(const SandboxContext *context,
     return 0;
 }
 
+static int ReplaceVariableForpackageName(const SandboxContext *context,
+    const char *buffer, uint32_t bufferLen, uint32_t *realLen, const VarExtraData *extraData)
+{
+    APPSPAWN_CHECK(context != NULL, return -1, "Invalid extra data ");
+    AppSpawnMsgBundleInfo *bundleInfo = (AppSpawnMsgBundleInfo *)GetSpawningMsgInfo(context, TLV_BUNDLE_INFO);
+    APPSPAWN_CHECK(bundleInfo != NULL, return APPSPAWN_TLV_NONE,
+        "No bundle info in msg %{public}s", context->bundleName);
+    uint32_t flags = CheckAppSpawnMsgFlag(context->message, TLV_MSG_FLAGS, APP_FLAGS_CLONE_ENABLE) ? 1 : 0;
+    flags |= CheckAppSpawnMsgFlag(context->message, TLV_MSG_FLAGS, APP_FLAGS_EXTENSION_SANDBOX) ? 0x2 : 0;
+    char *extension = GetAppSpawnMsgExtInfo(context->message, MSG_EXT_NAME_APP_EXTENSION, NULL);
+    int32_t len = 0;
+    switch (flags) {
+        case 0:  // default,
+            len = sprintf_s((char *)buffer, bufferLen, "%s", bundleInfo->bundleName);
+            break;
+        case 1:  // 1 clone/packageName/bundleIndex
+            len = sprintf_s((char *)buffer, bufferLen, "clone/%s/%u", bundleInfo->bundleName, bundleInfo->bundleIndex);
+            break;
+        case 2: {  // 2 extension/packageName/<extensionType>
+            APPSPAWN_CHECK(extension != NULL, return -1, "Invalid extension data ");
+            len = sprintf_s((char *)buffer, bufferLen, "extension/%s/%s", bundleInfo->bundleName, extension);
+            break;
+        }
+        case 3: {  // 3 clone/extension/packageName/bundleIndex/<extensionType>
+            APPSPAWN_CHECK(extension != NULL, return -1, "Invalid extension data ");
+            len = sprintf_s((char *)buffer, bufferLen, "clone/extension/%s/%u/%s",
+                bundleInfo->bundleName, bundleInfo->bundleIndex, extension);
+            break;
+        }
+        default:
+            break;
+    }
+    APPSPAWN_CHECK(len > 0 && ((uint32_t)len < bufferLen),
+        return -1, "Failed to format path app: %{public}s flags %{public}u", context->bundleName, flags);
+    *realLen = (uint32_t)len;
+    return 0;
+}
+
 static int GetVariableName(char *varData, uint32_t len, const char *varStart, uint32_t *varLen)
 {
     uint32_t i = 0;
@@ -182,6 +220,14 @@ static int ReplaceVariable(const SandboxContext *context,
             sandboxBuffer->bufferLen - sandboxBuffer->current, APPSPAWN_LIB_NAME, strlen(APPSPAWN_LIB_NAME));
         APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy real data");
         sandboxBuffer->current += strlen(APPSPAWN_LIB_NAME);
+        return 0;
+    }
+    if (extraData != NULL && extraData->varReplaceWithName != NULL) { // do not has <>
+        varName[*varLen - 1] = '\0';
+        ret = extraData->varReplaceWithName(context, varName + 1, sandboxBuffer, &valueLen, extraData);
+        APPSPAWN_CHECK(ret == 0 && valueLen < (sandboxBuffer->bufferLen - sandboxBuffer->current),
+            return -1, "Failed to fill real data");
+        sandboxBuffer->current += valueLen;
         return 0;
     }
     // no match revered origin data
@@ -289,6 +335,7 @@ void AddDefaultVariable(void)
     AddVariableReplaceHandler("<deps-sandbox-path>", ReplaceVariableForDepSandboxPath);
     AddVariableReplaceHandler("<deps-src-path>", ReplaceVariableForDepSrcPath);
     AddVariableReplaceHandler("<deps-path>", ReplaceVariableForDepPath);
+    AddVariableReplaceHandler("<VariablePackageName>", ReplaceVariableForpackageName);
 }
 
 void ClearVariable(void)

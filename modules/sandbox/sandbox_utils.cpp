@@ -1546,9 +1546,11 @@ int32_t SetAppSandboxProperty(AppSpawnMgr *content, AppSpawningCtx *property)
     return ret;
 }
 
+#ifndef APPSPAWN_SANDBOX_NEW
 MODULE_CONSTRUCTOR(void)
 {
     APPSPAWN_LOGV("Load sandbox module ...");
     (void)AddServerStageHook(STAGE_SERVER_PRELOAD, HOOK_PRIO_SANDBOX, LoadAppSandboxConfig);
     (void)AddAppSpawnHook(STAGE_CHILD_EXECUTE, HOOK_PRIO_SANDBOX, SetAppSandboxProperty);
 }
+#endif

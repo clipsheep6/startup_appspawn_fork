@@ -38,7 +38,6 @@ typedef struct {
     int nsInitPidFd;  // ns pid fd of pid_ns_init
 } AppSpawnNamespace;
 
-static pid_t GetPidByName(const char *name);
 static int AppSpawnExtDataCompareDataId(ListNode *node, void *data)
 {
     AppSpawnExtData *extData = (AppSpawnExtData *)ListEntry(node, AppSpawnExtData, node);
@@ -96,49 +95,51 @@ static AppSpawnNamespace *CreateAppSpawnNamespace(void)
     return namespace;
 }
 
-static pid_t GetPidByName(const char *name)
+static int ReadFileToBuffer(char *buffer, uint32_t buffLen, const char *name)
 {
+    int ret = snprintf_s(buffer, buffLen, buffLen - 1, "/proc/%s/comm", name);
+    APPSPAWN_CHECK(ret > 0, return -1, "Failed to format path %{public}s", name);
+
+    FILE *file = fopen(buffer, "r");
+    APPSPAWN_CHECK_ONLY_EXPER(file != NULL, return -1);
+
+    char *tmp = fgets(buffer, buffLen, file);
+    (void)fclose(file);
+    if (tmp != NULL) {
+        buffer[strcspn(buffer, "\n")] = 0;
+        return 0;
+    }
+    return -1;
+}
+
+APPSPAWN_STATIC pid_t GetPidByName(const char *name)
+{
+    APPSPAWN_CHECK_ONLY_EXPER(name != NULL, return -1);
     int pid = -1;  // initial pid set to -1
     DIR *dir = opendir("/proc");
-    if (dir == NULL) {
-        return -1;
-    }
+    APPSPAWN_CHECK_ONLY_EXPER(dir != NULL, return -1);
 
+    char buffer[PATH_MAX];
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
         if (entry->d_type != DT_DIR) {
             continue;
         }
-        long pidNum = strtol(entry->d_name, NULL, 10);  // pid will not exceed a 10-digit decimal number
-        if (pidNum <= 0) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
 
-        char path[32];  // path that contains the process name
-        if (snprintf_s(path, sizeof(path), sizeof(path) - 1, "/proc/%s/comm", entry->d_name) < 0) {
-            continue;
+        if (ReadFileToBuffer(buffer, sizeof(buffer), entry->d_name) == 0) {
+            if (strcmp(buffer, name) != 0) {
+                continue;
+            }
+            long pidNum = strtol(entry->d_name, NULL, 10);  // pid will not exceed a 10-digit decimal number
+            APPSPAWN_CHECK_ONLY_EXPER(pidNum > 0, return -1);
+            APPSPAWN_LOGI("get pid of %{public}s success", name);
+            pid = (int)pidNum;
+            break;
         }
-        FILE *file = fopen(path, "r");
-        if (file == NULL) {
-            continue;
-        }
-        char buffer[32];  // read the process name
-        if (fgets(buffer, sizeof(buffer), file) == NULL) {
-            (void)fclose(file);
-            continue;
-        }
-        buffer[strcspn(buffer, "\n")] = 0;
-        if (strcmp(buffer, name) != 0) {
-            (void)fclose(file);
-            continue;
-        }
-
-        APPSPAWN_LOGI("get pid of %{public}s success", name);
-        pid = (int)pidNum;
-        (void)fclose(file);
-        break;
     }
-
     closedir(dir);
     return pid;
 }
@@ -160,20 +161,15 @@ static int GetNsPidFd(pid_t pid)
 {
     char nsPath[256];  // filepath of ns pid
     int ret = snprintf_s(nsPath, sizeof(nsPath), sizeof(nsPath) - 1, "/proc/%d/ns/pid", pid);
-    if (ret < 0) {
-        APPSPAWN_LOGE("SetPidNamespace failed, snprintf_s error:%{public}s", strerror(errno));
-        return -1;
-    }
+    APPSPAWN_CHECK(ret >= 0, return -1, "Failed to format path for %{public}d", pid);
     int nsFd = open(nsPath, O_RDONLY);
-    if (nsFd < 0) {
-        APPSPAWN_LOGE("open ns pid:%{public}d failed, err:%{public}s", pid, strerror(errno));
-        return -1;
-    }
+    APPSPAWN_CHECK(nsFd >= 0, return -1, "open ns pid:%{public}d failed, err:%{public}s", pid, strerror(errno));
     return nsFd;
 }
 
 APPSPAWN_STATIC int PreLoadEnablePidNs(AppSpawnMgr *content)
 {
+    APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return -1);
     APPSPAWN_LOGI("Enable pid namespace flags: 0x%{public}x", content->content.sandboxNsFlags);
     if (IsColdRunMode(content)) {
         return 0;
@@ -187,33 +183,22 @@ APPSPAWN_STATIC int PreLoadEnablePidNs(AppSpawnMgr *content)
     AppSpawnNamespace *namespace = CreateAppSpawnNamespace();
     APPSPAWN_CHECK(namespace != NULL, return -1, "Failed to create namespace");
 
-    int ret = -1;
     // check if process pid_ns_init exists, this is the init process for pid namespace
     pid_t pid = GetPidByName("pid_ns_init");
     if (pid == -1) {
         APPSPAWN_LOGI("Start Create pid_ns_init %{public}d", pid);
         pid = clone(NsInitFunc, NULL, CLONE_NEWPID, NULL);
-        if (pid < 0) {
-            APPSPAWN_LOGE("clone pid ns init failed");
-            DeleteAppSpawnNamespace(namespace);
-            return ret;
-        }
+        APPSPAWN_CHECK(pid >= 0, DeleteAppSpawnNamespace(namespace);
+            return APPSPAWN_SYSTEM_ERROR, "clone pid ns init failed");
     } else {
         APPSPAWN_LOGI("pid_ns_init exists, no need to create");
     }
 
     namespace->nsSelfPidFd = GetNsPidFd(getpid());
-    if (namespace->nsSelfPidFd < 0) {
-        APPSPAWN_LOGE("open ns pid of appspawn fail");
-        DeleteAppSpawnNamespace(namespace);
-        return ret;
-    }
-
     namespace->nsInitPidFd = GetNsPidFd(pid);
-    if (namespace->nsInitPidFd < 0) {
-        APPSPAWN_LOGE("open ns pid of pid_ns_init fail");
+    if (namespace->nsSelfPidFd < 0 || namespace->nsInitPidFd < 0) {
         DeleteAppSpawnNamespace(namespace);
-        return ret;
+        return APPSPAWN_SYSTEM_ERROR;
     }
     OH_ListAddTail(&content->extData, &namespace->extData.node);
     APPSPAWN_LOGI("Enable pid namespace success.");

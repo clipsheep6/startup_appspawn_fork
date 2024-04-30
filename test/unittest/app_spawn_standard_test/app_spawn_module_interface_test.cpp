@@ -144,7 +144,7 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_App_Spawn_Hook_001, TestSize.Level
     EXPECT_EQ(appCtx != nullptr, 1);
 
     int ret = 0;
-    for (int i = 0; i < STAGE_MAX; i++) {
+    for (int i = 0; i <= STAGE_MAX; i++) {
         AppSpawnClient *client = reinterpret_cast<AppSpawnClient *>(appCtx);
         AppSpawnContent *content = reinterpret_cast<AppSpawnContent *>(mgr);
 
@@ -237,6 +237,26 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_RegChildLooper_001, TestSize.Level
     RegChildLooper(nullptr, TestChildLoop);
 }
 
+HWTEST(AppSpawnModuleInterfaceTest, AppSpawnProcessMsg_001, TestSize.Level0)
+{
+    AppSpawnMgr *mgr = CreateAppSpawnMgr(MODE_FOR_NWEB_SPAWN);
+    EXPECT_EQ(mgr != nullptr, 1);
+    AppSpawningCtx *appCtx = CreateAppSpawningCtx();
+    EXPECT_EQ(appCtx != nullptr, 1);
+
+    int ret = AppSpawnProcessMsg(&mgr->content, &appCtx->client, nullptr);
+    EXPECT_EQ(ret != 0, 1);
+    ret = AppSpawnProcessMsg(&mgr->content, nullptr, nullptr);
+    EXPECT_EQ(ret != 0, 1);
+    ret = AppSpawnProcessMsg(nullptr, &appCtx->client, nullptr);
+    EXPECT_EQ(ret != 0, 1);
+    ret = AppSpawnProcessMsg(nullptr, nullptr, nullptr);
+    EXPECT_EQ(ret != 0, 1);
+
+    DeleteAppSpawningCtx(appCtx);
+    DeleteAppSpawnMgr(mgr);
+}
+
 /**
  * @brief MakeDirRec
  * int MakeDirRec(const char *path, mode_t mode, int lastPath);
@@ -248,6 +268,8 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_MakeDirRec_001, TestSize.Level0)
     ret = MakeDirRec(APPSPAWN_BASE_DIR "/test_appspawn/3", 0, 0);
     EXPECT_EQ(ret, 0);
     ret = MakeDirRec(APPSPAWN_BASE_DIR "/test_appspawn/1", 0711, 0); // create file
+    EXPECT_EQ(ret, 0);
+    ret = MakeDirRec(APPSPAWN_BASE_DIR "/test_appspawn/2", 0711, 1); // create path
     EXPECT_EQ(ret, 0);
     ret = MakeDirRec(APPSPAWN_BASE_DIR "/test_appspawn/2", 0711, 1); // create path
     EXPECT_EQ(ret, 0);
@@ -278,6 +300,11 @@ int TestSplitStringHandle(const char *str, void *context)
     return 0;
 }
 
+int FailTestSplitStringHandle(const char *str, void *context)
+{
+    return -1;
+}
+
 HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_StringSplit_001, TestSize.Level0)
 {
     const char *testStr = "aaaa|bbbb|cccc  |dddd|   eeee| 1111 | 2222";
@@ -294,12 +321,14 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_StringSplit_001, TestSize.Level0)
     EXPECT_NE(ret, 0);
     ret = StringSplit(nullptr, nullptr, nullptr, nullptr);
     EXPECT_NE(ret, 0);
+    ret = StringSplit(testStr, "|", nullptr, FailTestSplitStringHandle);
+    EXPECT_NE(ret, 0);
 }
 
 HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_GetLastStr_001, TestSize.Level0)
 {
-    const char *testStr = "aaaa|bbbb|cccc  |dddd|   eeee| 1111 | 2222";
-    char *tmp = GetLastStr(testStr, "2222");
+    const char *testStr = "aaaa|bbbb|cccc  |dddd|   eeee| 1111 | 2222  ";
+    char *tmp = GetLastStr(testStr, "|");
     EXPECT_EQ(tmp != nullptr, 1);
 
     tmp = GetLastStr(testStr, nullptr);
@@ -307,24 +336,72 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_GetLastStr_001, TestSize.Level0)
 
     tmp = GetLastStr(nullptr, nullptr);
     EXPECT_EQ(tmp != nullptr, 0);
-    tmp = GetLastStr(nullptr, "2222");
+    tmp = GetLastStr(nullptr, "|");
+    EXPECT_EQ(tmp != nullptr, 0);
+
+    const char *testStr1 = "aaaa|bbbb|cccc  |dddd|   eeee| 1111 | 2222";
+    tmp = GetLastStr(testStr1, "|");
+    EXPECT_EQ(tmp != nullptr, 1);
+    tmp = GetLastStr(testStr1, "*");
     EXPECT_EQ(tmp != nullptr, 0);
 }
 
 HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_DumpCurrentDir_001, TestSize.Level0)
 {
     char path[PATH_MAX] = {};
+    DumpCurrentDir(path, sizeof(path), APPSPAWN_BASE_DIR);
     DumpCurrentDir(path, sizeof(path), APPSPAWN_BASE_DIR "/test_appspawn/");
     DumpCurrentDir(path, sizeof(path), nullptr);
     DumpCurrentDir(path, 0, nullptr);
     DumpCurrentDir(path, 0, APPSPAWN_BASE_DIR "/test_appspawn/");
     DumpCurrentDir(nullptr, sizeof(path), APPSPAWN_BASE_DIR "/test_appspawn/");
     DumpCurrentDir(nullptr, sizeof(path), nullptr);
+
+    int ret = MakeDirRec(APPSPAWN_BASE_DIR "/test_appspawn/10", 0711, 0); // create file
+    EXPECT_EQ(ret, 0);
+    DumpCurrentDir(path, sizeof(path), APPSPAWN_BASE_DIR "/test_appspawn/10");
+
+}
+
+HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_AppSpawnDump_001, TestSize.Level0)
+{
+    AppSpawnDump("test %{public}s", "...");
+    AppSpawnDump("test 11111111111111111111111111111111111111111111111111111111111111111111111111111111 \
+        2222222222222222222222222222222222222222222222 %{public}s", "...");
+    AppSpawnDump(nullptr);
+    AppSpawnDump("test %{private}s", "...");
+
+    SetDumpToStream(nullptr);
+    AppSpawnDump("test %{public}s", "...");
+}
+
+HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_ReadFile_001, TestSize.Level0)
+{
+    char *buffer = ReadFile(nullptr);
+    EXPECT_EQ(buffer == nullptr, 1);
+    buffer = ReadFile("");
+    EXPECT_EQ(buffer == nullptr, 1);
+    buffer = ReadFile("/etc/init.cfg");
+    EXPECT_EQ(buffer != nullptr, 1);
+    if (buffer) {
+        free(buffer);
+    }
+    int ret = MakeDirRec(APPSPAWN_BASE_DIR "/test_appspawn/11", 0711, 0); // create file
+    EXPECT_EQ(ret, 0);
+    FILE *f = fopen(APPSPAWN_BASE_DIR "/test_appspawn/11", "wb");
+    if (f != NULL) {
+        fclose(f);
+    }
+    buffer = ReadFile(APPSPAWN_BASE_DIR "/test_appspawn/11");
+    EXPECT_EQ(buffer == nullptr, 1);
+    if (buffer) {
+        free(buffer);
+    }
 }
 
 static int TestParseAppSandboxConfig(const cJSON *root, ParseJsonContext *context)
 {
-    return 0;
+    return -1;
 }
 
 HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_ParseJsonConfig_001, TestSize.Level0)
@@ -332,12 +409,12 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_ParseJsonConfig_001, TestSize.Leve
     int ret = 0;
 #ifdef APPSPAWN_SANDBOX_NEW
     ret = ParseJsonConfig("etc/sandbox", WEB_SANDBOX_FILE_NAME, TestParseAppSandboxConfig, nullptr);
-    EXPECT_EQ(ret, 0);
+    EXPECT_NE(ret, 0);
     ret = ParseJsonConfig("etc/sandbox", APP_SANDBOX_FILE_NAME, TestParseAppSandboxConfig, nullptr);
-    EXPECT_EQ(ret, 0);
+    EXPECT_NE(ret, 0);
 #else
     ret = ParseJsonConfig("etc/sandbox", APP_SANDBOX_FILE_NAME, TestParseAppSandboxConfig, nullptr);
-    EXPECT_EQ(ret, 0);
+    EXPECT_NE(ret, 0);
 #endif
     ret = ParseJsonConfig("etc/sandbox", APP_SANDBOX_FILE_NAME, nullptr, nullptr);
     EXPECT_NE(ret, 0);
@@ -350,6 +427,8 @@ HWTEST(AppSpawnModuleInterfaceTest, App_Spawn_ParseJsonConfig_001, TestSize.Leve
     ret = ParseJsonConfig(nullptr, nullptr, TestParseAppSandboxConfig, nullptr);
     EXPECT_NE(ret, 0);
     ret = ParseJsonConfig(nullptr, nullptr, nullptr, nullptr);
+    EXPECT_NE(ret, 0);
+    ret = ParseJsonConfig("test/sandbox", nullptr, nullptr, nullptr);
     EXPECT_NE(ret, 0);
 }
 

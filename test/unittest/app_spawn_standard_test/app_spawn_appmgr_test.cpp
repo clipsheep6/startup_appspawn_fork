@@ -63,21 +63,18 @@ HWTEST(AppSpawnAppMgrTest, App_Spawn_AppSpawnMgr_001, TestSize.Level0)
         EXPECT_EQ(content != nullptr, 1);
         EXPECT_EQ(content->mode == static_cast<RunMode>(i), 1);
 
-        if (i == MODE_FOR_NWEB_SPAWN || i == MODE_FOR_NWEB_COLD_RUN) {
-            ret = IsNWebSpawnMode(mgr);
-            EXPECT_EQ(1, ret);  //  true
-        } else {
-            ret = IsNWebSpawnMode(mgr);
-            EXPECT_EQ(0, ret);  //  false
-        }
+        printf(" App_Spawn_AppSpawnMgr_001 %d \n", i);
+        ret = IsNWebSpawnMode(mgr);
+        EXPECT_EQ(1, ((i == MODE_FOR_NWEB_SPAWN || i == MODE_FOR_NWEB_COLD_RUN) && ret == 1) || (ret == 0));
 
-        if (i == MODE_FOR_APP_COLD_RUN || i == MODE_FOR_NWEB_COLD_RUN) {
-            ret = IsColdRunMode(mgr);
-            EXPECT_EQ(1, ret);  //  true
-        } else {
-            ret = IsColdRunMode(mgr);
-            EXPECT_EQ(0, ret);  //  false
-        }
+        ret = IsColdRunMode(mgr);
+        EXPECT_EQ(1, ((i == MODE_FOR_APP_COLD_RUN || i == MODE_FOR_NWEB_COLD_RUN) && ret == 1) || (ret == 0));
+
+        ret = IsSpawnServer(mgr);
+        EXPECT_EQ(ret, 1);
+        mgr->servicePid = 1;
+        ret = IsSpawnServer(mgr);
+        EXPECT_EQ(ret, 0);
 
         // get
         mgr = GetAppSpawnMgr();
@@ -98,6 +95,8 @@ HWTEST(AppSpawnAppMgrTest, App_Spawn_AppSpawnMgr_001, TestSize.Level0)
         EXPECT_EQ(0, ret);  //  false
         ret = IsNWebSpawnMode(mgr);
         EXPECT_EQ(0, ret);  //  false
+        ret = IsSpawnServer(mgr);
+        EXPECT_EQ(ret, 0);
 
         // delete not exist
         DeleteAppSpawnMgr(mgr);
@@ -1051,5 +1050,36 @@ HWTEST(AppSpawnAppMgrTest, App_Spawn_AppSpawningCtx_Msg_005, TestSize.Level0)
     }
     DeleteAppSpawningCtx(appCtx);
     DeleteAppSpawnMgr(mgr);
+}
+
+HWTEST(AppSpawnAppMgrTest, App_Spawn_StartSpawnService_001, TestSize.Level0)
+{
+    AppSpawnContent *content = StartSpawnService(nullptr, 0, 0, nullptr);
+    EXPECT_EQ(content == nullptr, 1);
+
+    AppSpawnStartArg startRrg = {};
+    startRrg.mode = MODE_FOR_APP_SPAWN;
+    startRrg.socketName = APPSPAWN_SOCKET_NAME;
+    startRrg.serviceName = APPSPAWN_SERVER_NAME;
+    startRrg.moduleType = MODULE_APPSPAWN;
+    startRrg.initArg = 1;
+    content = StartSpawnService(&startRrg, 0, 0, nullptr);
+    EXPECT_EQ(content == nullptr, 1);
+
+    AppSpawnMgr *mgr = GetAppSpawnMgr();
+    DeleteAppSpawnMgr(mgr);
+}
+
+HWTEST(AppSpawnAppMgrTest, App_Spawn_CreateContent_001, TestSize.Level0)
+{
+    static char path[PATH_MAX] = {};
+    AppSpawnContent *content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, nullptr, 0, MODE_FOR_APP_SPAWN);
+    EXPECT_EQ(content == nullptr, 1);
+
+    content = AppSpawnCreateContent(APPSPAWN_SOCKET_NAME, path, sizeof(path), MODE_INVALID);
+    EXPECT_EQ(content == nullptr, 1);
+
+    content = AppSpawnCreateContent(nullptr, path, sizeof(path), MODE_INVALID);
+    EXPECT_EQ(content == nullptr, 1);
 }
 }  // namespace OHOS

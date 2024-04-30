@@ -53,6 +53,13 @@ static inline void SetFdCtrl(int fd, int opt)
     }
 }
 
+static inline void KillProcess(pid_t pid, int sig)
+{
+    if (pid > 0 && kill(pid, sig) != 0) {
+        APPSPAWN_LOGE("unable to kill process, pid: %{public}d errno: %{public}d", pid, errno);
+    }
+}
+
 static void AppQueueDestroyProc(const AppSpawnMgr *mgr, AppSpawnedProcess *appInfo, void *data)
 {
     pid_t pid = appInfo->pid;
@@ -62,9 +69,7 @@ static void AppQueueDestroyProc(const AppSpawnMgr *mgr, AppSpawnedProcess *appIn
     OH_ListRemove(&appInfo->node);
     OH_ListInit(&appInfo->node);
     free(appInfo);
-    if (pid > 0 && kill(pid, SIGKILL) != 0) {
-        APPSPAWN_LOGE("unable to kill process, pid: %{public}d errno: %{public}d", pid, errno);
-    }
+    KillProcess(pid, SIGKILL);
 }
 
 static void StopAppSpawn(void)
@@ -144,21 +149,15 @@ APPSPAWN_STATIC void ProcessSignal(const struct signalfd_siginfo *siginfo)
 
 static void AppSpawningCtxOnClose(const AppSpawnMgr *mgr, AppSpawningCtx *ctx, void *data)
 {
-    if (ctx->message == NULL || ctx->message->connection != data) {
-        return;
-    }
+    APPSPAWN_CHECK_ONLY_EXPER(ctx->message != NULL && ctx->message->connection == data, return);
     APPSPAWN_LOGI("Kill process, pid: %{public}d app: %{public}s", ctx->pid, GetProcessName(ctx));
-    if (ctx->pid > 0 && kill(ctx->pid, SIGKILL) != 0) {
-        APPSPAWN_LOGE("unable to kill process, pid: %{public}d errno: %{public}d", ctx->pid, errno);
-    }
+    KillProcess(ctx->pid, SIGKILL);
     DeleteAppSpawningCtx(ctx);
 }
 
 static void OnClose(const TaskHandle taskHandle)
 {
-    if (!IsSpawnServer(GetAppSpawnMgr())) {
-        return;
-    }
+    APPSPAWN_CHECK_ONLY_EXPER(IsSpawnServer(GetAppSpawnMgr()), return);
     AppSpawnConnection *connection = (AppSpawnConnection *)LE_GetUserData(taskHandle);
     APPSPAWN_CHECK(connection != NULL, return, "Invalid connection");
     if (connection->receiverCtx.timer) {
@@ -188,17 +187,15 @@ static void SendMessageComplete(const TaskHandle taskHandle, BufferHandle handle
     APPSPAWN_CHECK(connection != NULL, return, "Invalid connection");
     uint32_t bufferSize = sizeof(AppSpawnResponseMsg);
     AppSpawnResponseMsg *msg = (AppSpawnResponseMsg *)LE_GetBufferInfo(handle, NULL, &bufferSize);
-    if (msg == NULL) {
-        return;
-    }
+    APPSPAWN_CHECK_ONLY_EXPER(msg != NULL, return);
+
     AppSpawnedProcess *appInfo = GetSpawnedProcess(msg->result.pid);
-    if (appInfo == NULL) {
-        return;
-    }
+    APPSPAWN_CHECK(appInfo != NULL, return, "can not find app for %{public}d", msg->result.pid);
+
     APPSPAWN_LOGI("SendMessageComplete connectionId: %{public}u result %{public}d app %{public}s pid %{public}d",
         connection->connectionId, LE_GetSendResult(handle), appInfo->name, msg->result.pid);
-    if (LE_GetSendResult(handle) != 0 && msg->result.pid > 0) {
-        kill(msg->result.pid, SIGKILL);
+    if (LE_GetSendResult(handle) != 0) {
+        KillProcess(msg->result.pid, SIGKILL);
     }
 }
 
@@ -367,11 +364,8 @@ APPSPAWN_STATIC int WriteMsgToChild(AppSpawningCtx *property, bool isNweb)
         ret = memcpy_s((char *)buffer + sizeof(AppSpawnMsg), memSize - sizeof(AppSpawnMsg),
             property->message->buffer, property->message->msgHeader.msgLen - sizeof(AppSpawnMsg));
     }
-    if (ret != 0) {
-        APPSPAWN_LOGE("Failed to copy msg fileName %{public}s ", GetProcessName(property));
-        munmap((char *)buffer, memSize);
-        return APPSPAWN_SYSTEM_ERROR;
-    }
+    APPSPAWN_CHECK(ret == 0, munmap((char *)buffer, memSize);
+        return APPSPAWN_SYSTEM_ERROR, "Failed to copy msg fileName %{public}s ", GetProcessName(property));
     property->forkCtx.msgSize = memSize;
     property->forkCtx.childMsg = buffer;
     APPSPAWN_LOGV("Write msg to child: %{public}u success", property->client.id);
@@ -380,14 +374,9 @@ APPSPAWN_STATIC int WriteMsgToChild(AppSpawningCtx *property, bool isNweb)
 
 static int InitForkContext(AppSpawningCtx *property)
 {
-    if (pipe(property->forkCtx.fd) == -1) {
-        APPSPAWN_LOGE("create pipe fail, errno: %{public}d", errno);
-        return errno;
-    }
-    int option = fcntl(property->forkCtx.fd[0], F_GETFD);
-    if (option > 0) {
-        (void)fcntl(property->forkCtx.fd[0], F_SETFD, option | O_NONBLOCK);
-    }
+    int ret = pipe(property->forkCtx.fd);
+    APPSPAWN_CHECK(ret != -1, return APPSPAWN_SYSTEM_ERROR, "create pipe fail, errno: %{public}d", errno);
+    SetFdCtrl(property->forkCtx.fd[0], O_NONBLOCK);
     return 0;
 }
 
@@ -407,12 +396,6 @@ static int AddChildWatcher(AppSpawningCtx *property)
         status = LE_StartTimer(LE_GetDefaultLoop(), property->forkCtx.timer, timeout * 1000, 0); // 1000 1s
     }
     if (status != LE_SUCCESS) {
-        if (property->forkCtx.timer != NULL) {
-            LE_StopTimer(LE_GetDefaultLoop(), property->forkCtx.timer);
-        }
-        property->forkCtx.timer = NULL;
-        LE_RemoveWatcher(LE_GetDefaultLoop(), property->forkCtx.watcherHandle);
-        property->forkCtx.watcherHandle = NULL;
         APPSPAWN_LOGE("Failed to watch child %{public}d", property->pid);
         return APPSPAWN_SYSTEM_ERROR;
     }
@@ -454,13 +437,11 @@ static void ProcessSpawnReqMsg(AppSpawnConnection *connection, AppSpawnMsgNode *
     clock_gettime(CLOCK_MONOTONIC, &property->spawnStart);
     ret = AppSpawnProcessMsg(GetAppSpawnContent(), &property->client, &property->pid);
     AppSpawnHookExecute(STAGE_PARENT_POST_FORK, 0, GetAppSpawnContent(), &property->client);
-    if (ret != 0) { // wait child process result
-        SendResponse(connection, &message->msgHeader, ret, 0);
-        DeleteAppSpawningCtx(property);
-        return;
+    if (ret == 0) { // wait child process result
+        ret = AddChildWatcher(property);
     }
-    if (AddChildWatcher(property) != 0) { // wait child process result
-        kill(property->pid, SIGKILL);
+    if (ret != 0) { // wait child process result
+        KillProcess(property->pid, SIGKILL);
         SendResponse(connection, &message->msgHeader, ret, 0);
         DeleteAppSpawningCtx(property);
         return;
@@ -611,6 +592,7 @@ static int AppSpawnColdStartApp(struct AppSpawnContent *content, AppSpawnClient 
     ret = execv(path, (char **)formatCmds);
     if (ret != 0) {
         APPSPAWN_LOGE("Failed to execv, errno: %{public}d", errno);
+        return APPSPAWN_SYSTEM_ERROR;
     }
     APPSPAWN_LOGV("ColdStartApp::processName: %{public}s end", GetProcessName(property));
     return 0;
@@ -624,30 +606,25 @@ static AppSpawningCtx *GetAppSpawningCtxFromArg(AppSpawnMgr *content, int argc, 
     property->client.flags = atoi(argv[FLAGS_VALUE_INDEX]);
     property->client.flags &= ~APP_COLD_START;
 
+    AppSpawnMsgNode *message = NULL;
     uint32_t size = atoi(argv[SHM_SIZE_INDEX]);
     property->client.id = atoi(argv[CLIENT_ID_INDEX]);
     uint8_t *buffer = (uint8_t *)GetMapMem(property->client.id,
         argv[PARAM_VALUE_INDEX], size, true, IsNWebSpawnMode(content));
-    if (buffer == NULL) {
-        APPSPAWN_LOGE("Failed to map errno %{public}d %{public}s", property->client.id, argv[PARAM_VALUE_INDEX]);
-        NotifyResToParent(&content->content, &property->client, APPSPAWN_SYSTEM_ERROR);
-        DeleteAppSpawningCtx(property);
-        return NULL;
-    }
+    if (buffer != NULL) {
+        uint32_t msgRecvLen = 0;
+        uint32_t remainLen = 0;
+        int ret = GetAppSpawnMsgFromBuffer(buffer, ((AppSpawnMsg *)buffer)->msgLen, &message, &msgRecvLen, &remainLen);
+        // release map
+        munmap((char *)buffer, size);
 
-    uint32_t msgRecvLen = 0;
-    uint32_t remainLen = 0;
-    AppSpawnMsgNode *message = NULL;
-    int ret = GetAppSpawnMsgFromBuffer(buffer, ((AppSpawnMsg *)buffer)->msgLen, &message, &msgRecvLen, &remainLen);
-    // release map
-    munmap((char *)buffer, size);
-
-    if (ret == 0 && DecodeAppSpawnMsg(message) == 0 && CheckAppSpawnMsg(message) == 0) {
-        property->message = message;
-        message = NULL;
-        return property;
+        if (ret == 0 && DecodeAppSpawnMsg(message) == 0 && CheckAppSpawnMsg(message) == 0) {
+            property->message = message;
+            message = NULL;
+            return property;
+        }
     }
-    NotifyResToParent(&content->content, &property->client, APPSPAWN_MSG_INVALID);
+    NotifyResToParent(&content->content, &property->client, APPSPAWN_SYSTEM_ERROR);
     DeleteAppSpawnMsg(message);
     DeleteAppSpawningCtx(property);
     return NULL;

@@ -93,12 +93,16 @@ int SetSelfTokenID(uint64_t tokenId)
 
 void SetTraceDisabled(int disable) {}
 
+static bool g_SeccompPolicyResult = true;
+void SetSeccompPolicyResult(bool result)
+{
+    g_SeccompPolicyResult = result;
+}
+
 #ifdef WITH_SECCOMP
 bool SetSeccompPolicyWithName(SeccompFilterType filter, const char *filterName)
 {
-    static int result = 0;
-    result++;
-    return true;  // (result % 3) == 0; // 3 is test data
+    return g_SeccompPolicyResult;
 }
 
 bool IsEnableSeccomp(void)
@@ -150,7 +154,15 @@ int GetParameter(const char *key, const char *def, char *value, uint32_t len)
     if (strcmp(key, "test.variable.001") == 0) {
         return strcpy_s(value, len, "test.variable.001") == 0 ? strlen("test.variable.001") : -1;
     }
+    if (strcmp(key, "const.filemanager.full_mount.enable") == 0) {
+        return strcpy_s(value, len, "true") == 0 ? strlen("true") : -1;
+    }
     return -1;
+}
+
+int SystemReadParam(const char *key, char *value, uint32_t *len)
+{
+	return -1;
 }
 
 int SetParameter(const char *key, const char *value)

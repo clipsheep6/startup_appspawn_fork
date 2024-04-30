@@ -178,11 +178,19 @@ int MountStub(const char *originPath, const char *destinationPath,
     printf("mountFlags %lx args->mountFlags %lx \n", mountFlags, args->mountFlags);
     printf("mountSharedFlag 0x%x args->mountSharedFlag 0x%x \n", mountSharedFlag, args->mountSharedFlag);
 
-    if (originPath != NULL && (strcmp(originPath, args->originPath) == 0)) {
+    if (originPath != NULL && args->originPath != NULL && (strcmp(originPath, args->originPath) == 0)) {
         int result = (destinationPath != NULL && (strcmp(destinationPath, args->destinationPath) == 0) &&
             (mountFlags == args->mountFlags) &&
             (args->fsType == NULL || (fsType != NULL && strcmp(fsType, args->fsType) == 0)) &&
             (args->options == NULL || (options != NULL && strcmp(options, args->options) == 0)));
+        errno = result ? 0 : -EINVAL;
+        node->result = result ? 0 : -EINVAL;
+        printf("MountStub result %d node->result %d \n", result, node->result);
+        return errno;
+    }
+    if (originPath == NULL && args->originPath == NULL) {
+        int result = (destinationPath != NULL && (strcmp(destinationPath, args->destinationPath) == 0) &&
+            (mountSharedFlag == args->mountSharedFlag));
         errno = result ? 0 : -EINVAL;
         node->result = result ? 0 : -EINVAL;
         printf("MountStub result %d node->result %d \n", result, node->result);
@@ -193,6 +201,11 @@ int MountStub(const char *originPath, const char *destinationPath,
 
 int SymlinkStub(const char *target, const char *linkName)
 {
+    printf("linkName '%s' \n", linkName);
+    if (strcmp(linkName, "/mnt/sandbox/100/app-root/appspawn_ut/etc") == 0) {
+        errno = EINVAL;
+        return -1;
+    }
     return 0;
 }
 
@@ -238,6 +251,9 @@ int AccessStub(const char *pathName, int mode)
     if (strstr(pathName, "/data/app/el5/100/base/com.example.myapplication") != NULL) {
         return -1;
     }
+    if (strstr(pathName, "/mnt/sandbox/100/app-root/data/appspawn_ut/lib/ld-musl-arm.so.1") != NULL) {
+        return -1;
+    }
     return 0;
 }
 
@@ -250,8 +266,7 @@ int ExecvStub(const char *pathName, char *const argv[])
     }
 
     ExecvFunc func = (ExecvFunc)node->arg;
-    func(pathName, argv);
-    return 0;
+    return func(pathName, argv);
 }
 
 int ExecvpStub(const char *pathName, char *const argv[])

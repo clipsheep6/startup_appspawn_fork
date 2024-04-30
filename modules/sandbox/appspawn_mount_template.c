@@ -97,9 +97,6 @@ uint32_t GetMountCategory(const char *name)
 const MountArgTemplate *GetMountArgTemplate(uint32_t category)
 {
     uint32_t count = ARRAY_LENGTH(DEF_MOUNT_ARG_TMP);
-    if (category > count) {
-        return NULL;
-    }
     for (uint32_t i = 0; i < count; i++) {
         if (DEF_MOUNT_ARG_TMP[i].category == category) {
             return &DEF_MOUNT_ARG_TMP[i];
@@ -156,7 +153,6 @@ static void DumpSandboxFlags(char *buffer, uint32_t bufferSize, unsigned long fl
 
 static void DumpMode(const char *info, mode_t mode)
 {
-    APPSPAWN_CHECK_ONLY_EXPER(info != NULL, return);
     char buffer[64] = {0};  // 64 to show flags
     DumpSandboxFlags(buffer, sizeof(buffer), mode, PATH_MODE_MAP, ARRAY_LENGTH(PATH_MODE_MAP));
     APPSPAPWN_DUMP("%{public}s[0x%{public}x] %{public}s", info, (uint32_t)(mode), buffer);
@@ -164,7 +160,6 @@ static void DumpMode(const char *info, mode_t mode)
 
 static void DumpMountFlags(const char *info, unsigned long mountFlags)
 {
-    APPSPAWN_CHECK_ONLY_EXPER(info != NULL, return);
     char buffer[128] = {0};  // 64 to show flags
     DumpSandboxFlags(buffer, sizeof(buffer), mountFlags, MOUNT_FLAGS_MAP, ARRAY_LENGTH(MOUNT_FLAGS_MAP));
     APPSPAPWN_DUMP("%{public}s[0x%{public}x] %{public}s", info, (uint32_t)(mountFlags), buffer);
@@ -172,6 +167,7 @@ static void DumpMountFlags(const char *info, unsigned long mountFlags)
 
 void DumpMountPathMountNode(const PathMountNode *pathNode)
 {
+    APPSPAWN_CHECK_ONLY_EXPER(pathNode != NULL, return);
     const MountArgTemplate *tmp = GetMountArgTemplate(pathNode->category);
     if (tmp == NULL) {
         return;

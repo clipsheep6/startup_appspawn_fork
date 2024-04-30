@@ -30,6 +30,7 @@ typedef struct TagParseJsonContext ParseJsonContext;
 typedef int (*ParseConfig)(const cJSON *root, ParseJsonContext *context);
 int ParseJsonConfig(const char *path, const char *fileName, ParseConfig parseConfig, ParseJsonContext *context);
 cJSON *GetJsonObjFromFile(const char *jsonPath);
+char *ReadFile(const char *fileName);
 
 __attribute__((always_inline)) inline char *GetStringFromJsonObj(const cJSON *json, const char *key)
 {

@@ -66,7 +66,7 @@ static int SandboxNodeCompareProc(ListNode *node, ListNode *newNode)
 
 SandboxMountNode *CreateSandboxMountNode(uint32_t dataLen, uint32_t type)
 {
-    APPSPAWN_CHECK(dataLen >= sizeof(SandboxMountNode) && dataLen <= sizeof(PathMountNode),
+    APPSPAWN_CHECK(dataLen >= sizeof(SandboxMountNode) && dataLen <= (sizeof(PathMountNode) + sizeof(PathDemandInfo)),
         return NULL, "Invalid dataLen %{public}u", dataLen);
     SandboxMountNode *node = (SandboxMountNode *)calloc(1, dataLen);
     APPSPAWN_CHECK(node != NULL, return NULL, "Failed to create mount node %{public}u", type);
@@ -158,7 +158,7 @@ SandboxMountNode *GetFirstSandboxMountNode(const SandboxSection *section)
     return (SandboxMountNode *)ListEntry(section->front.next, SandboxMountNode, node);
 }
 
-void DumpSandboxMountNode(const SandboxMountNode *sandboxNode, uint32_t index)
+static void DumpSandboxMountNode(const SandboxMountNode *sandboxNode, uint32_t index)
 {
     APPSPAWN_CHECK_ONLY_EXPER(sandboxNode != NULL, return);
     switch (sandboxNode->type) {
@@ -460,6 +460,7 @@ AppSpawnSandboxCfg *CreateAppSpawnSandbox(void)
     sandbox->maxPermissionIndex = -1;
     sandbox->depNodeCount = 0;
     sandbox->depGroupNodes = NULL;
+    sandbox->rootPath = NULL;
 
     AddDefaultVariable();
     AddDefaultExpandAppSandboxConfigHandle();
@@ -512,12 +513,13 @@ APPSPAWN_STATIC int SandboxHandleServerExit(AppSpawnMgr *content)
 
 int SpawnBuildSandboxEnv(AppSpawnMgr *content, AppSpawningCtx *property)
 {
-    AppSpawnSandboxCfg *appSandbox = GetAppSpawnSandbox(content);
-    APPSPAWN_CHECK(appSandbox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));
     // no sandbox
     if (CheckAppMsgFlagsSet(property, APP_FLAGS_NO_SANDBOX)) {
         return 0;
     }
+
+    AppSpawnSandboxCfg *appSandbox = GetAppSpawnSandbox(content);
+    APPSPAWN_CHECK(appSandbox != NULL, return -1, "Failed to get sandbox for %{public}s", GetProcessName(property));
     // CLONE_NEWPID 0x20000000
     // CLONE_NEWNET 0x40000000
     if ((content->content.sandboxNsFlags & CLONE_NEWPID) == CLONE_NEWPID) {
@@ -604,7 +606,7 @@ APPSPAWN_STATIC int SandboxUnmountPath(const AppSpawnMgr *content, const AppSpaw
     APPSPAWN_CHECK_ONLY_EXPER(appInfo != NULL, return -1);
     APPSPAWN_LOGV("Sandbox process %{public}s %{public}u exit", appInfo->name, appInfo->uid);
     AppSpawnSandboxCfg *sandbox = GetAppSpawnSandbox(content);
-    return UnmountDepPaths(sandbox, appInfo->uid);
+    return UnmountDepPaths(sandbox, appInfo->uid, appInfo->name);
 }
 
 #ifdef APPSPAWN_SANDBOX_NEW

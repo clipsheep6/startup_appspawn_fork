@@ -61,7 +61,6 @@ void exit(int code)
 APPSPAWN_STATIC int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *client)
 {
     APPSPAWN_CHECK(content != NULL && client != NULL, return -1, "Invalid arg for appspawn child");
-    APPSPAWN_LOGI("AppSpawnChild id %{public}u flags: 0x%{public}x", client->id, client->flags);
 
     int ret = AppSpawnExecuteClearEnvHook(content, client);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0,
@@ -69,6 +68,7 @@ APPSPAWN_STATIC int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *clie
         AppSpawnEnvClear(content, client);
         return 0);
 
+    APPSPAWN_LOGI("AppSpawnChild id %{public}u flags: 0x%{public}x", client->id, client->flags);
     if (client->flags & APP_COLD_START) {
         // cold start fail, to start normal
         if (content->coldStartApp != NULL && content->coldStartApp(content, client) == 0) {
@@ -93,6 +93,7 @@ APPSPAWN_STATIC int AppSpawnChild(AppSpawnContent *content, AppSpawnClient *clie
 
     (void)AppSpawnExecutePostReplyHook(content, client);
 
+    ret = APPSPAWN_SYSTEM_ERROR;
     if (content->runChildProcessor != NULL) {
         ret = content->runChildProcessor(content, client);
     }

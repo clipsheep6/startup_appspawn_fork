@@ -17,73 +17,90 @@
 #include "appspawn_manager.h"
 #include "appspawn_utils.h"
 
+static int g_execHookResult[STAGE_MAX] = {0};
+
+void TestSetExecHookResult(AppSpawnHookStage stage, int result)
+{
+    g_execHookResult[stage] = result;
+}
+
+void TestRestoreExecHookResult(AppSpawnHookStage stage)
+{
+    g_execHookResult[stage] = 0;
+}
+
 static int TestPluginReportProcessExit(const AppSpawnMgr *content, const AppSpawnedProcess *appInfo)
 {
     APPSPAWN_LOGI("Process %{public}s exit", appInfo->name);
-    return 0;
+    return g_execHookResult[STAGE_SERVER_APP_DIED];
 }
 
 static int TestPluginReportProcessAdd(const AppSpawnMgr *content, const AppSpawnedProcess *appInfo)
 {
     APPSPAWN_LOGI("Process %{public}s add", appInfo->name);
-    return 0;
+    return g_execHookResult[STAGE_SERVER_APP_ADD];
 }
 
 static int TestPluginPreload(AppSpawnMgr *content)
 {
     APPSPAWN_LOGI("TestPlugin preload");
-    return 0;
+    return g_execHookResult[STAGE_SERVER_PRELOAD];
 }
 
 static int TestPluginExit(AppSpawnMgr *content)
 {
     APPSPAWN_LOGI("TestPlugin exit");
-    return 0;
+    return g_execHookResult[STAGE_SERVER_EXIT];
 }
-
 
 static int TestPluginPreFork(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGI("TestPlugin pre fork for %{public}s ", GetProcessName(property));
-    return 0;
+    return g_execHookResult[STAGE_PARENT_PRE_FORK];
+}
+
+static int TestPluginPostFork(AppSpawnMgr *content, AppSpawningCtx *property)
+{
+    APPSPAWN_LOGI("TestPlugin post fork for %{public}s ", GetProcessName(property));
+    return g_execHookResult[STAGE_PARENT_POST_FORK];
 }
 
 static int TestPluginPreReply(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGI("TestPlugin pre reply to client for %{public}s ", GetProcessName(property));
-    return 0;
+    return g_execHookResult[STAGE_PARENT_PRE_RELY];
 }
 
 static int TestPluginPostReply(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGI("TestPlugin post reply to client for %{public}s ", GetProcessName(property));
-    return 0;
+    return g_execHookResult[STAGE_PARENT_POST_RELY];
 }
 
 static int ChildPreColdBoot(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGI("TestPlugin pre cold boot for %{public}s ", GetProcessName(property));
-    return 0;
+    return g_execHookResult[STAGE_CHILD_PRE_COLDBOOT];
 }
 static int ChildExecute(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGI("TestPlugin set app property for %{public}s ", GetProcessName(property));
-    return 0;
+    return g_execHookResult[STAGE_CHILD_EXECUTE];
 }
 static int ChildPreRely(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGI("TestPlugin pre reply to parent for %{public}s ", GetProcessName(property));
-    return 0;
+    return g_execHookResult[STAGE_CHILD_PRE_RELY];
 }
 static int ChildPostRely(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGI("TestPlugin post reply to parent for %{public}s ", GetProcessName(property));
-    return 0;
+    return g_execHookResult[STAGE_CHILD_POST_RELY];
 }
 static int ChildPreRun(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGI("TestPlugin pre child run for %{public}s ", GetProcessName(property));
-    return 0;
+    return g_execHookResult[STAGE_CHILD_PRE_RUN];
 }
 
 MODULE_CONSTRUCTOR(void)
@@ -94,6 +111,7 @@ MODULE_CONSTRUCTOR(void)
     AddServerStageHook(STAGE_SERVER_EXIT, 0, TestPluginExit);
     AddPreloadHook(HOOK_PRIO_LOWEST - 1, TestPluginPreload);
     AddAppSpawnHook(STAGE_PARENT_PRE_FORK, HOOK_PRIO_COMMON - 1, TestPluginPreFork);
+    AddAppSpawnHook(STAGE_PARENT_POST_FORK, HOOK_PRIO_COMMON - 1, TestPluginPostFork);
     AddAppSpawnHook(STAGE_PARENT_POST_RELY, HOOK_PRIO_COMMON - 1, TestPluginPostReply);
     AddAppSpawnHook(STAGE_PARENT_PRE_RELY, HOOK_PRIO_COMMON - 1, TestPluginPreReply);
     AddAppSpawnHook(STAGE_CHILD_PRE_COLDBOOT, HOOK_PRIO_COMMON - 1, ChildPreColdBoot);

@@ -204,6 +204,7 @@ typedef struct TagSandboxContext {
     uint32_t dlpUiExtType : 1;
     uint32_t appFullMountEnable : 1;
     uint32_t nwebspawn : 1;
+    uint32_t sandboxNsFlags;
     char *rootPath;
 } SandboxContext;
 
@@ -251,8 +252,9 @@ int StagedMountSystemConst(const AppSpawnSandboxCfg *sandbox, const AppSpawningC
 int StagedMountPreUnShare(const SandboxContext *context, const AppSpawnSandboxCfg *sandbox);
 int StagedMountPostUnshare(const SandboxContext *context, const AppSpawnSandboxCfg *sandbox);
 // 在子进程退出时，由父进程发起unmount操作
-int UnmountDepPaths(const AppSpawnSandboxCfg *sandbox, uid_t uid);
-int UnmountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, uid_t uid, const char *name);
+int UnmountDepPaths(const AppSpawnSandboxCfg *sandbox, uid_t uid, const char *bundleName);
+// appspawn 进程退出时，清空全局的沙盒设置。或者长时间用户都不在线，删除对应的沙盒
+int UnmountSandboxConfigs(const AppSpawnSandboxCfg *sandbox, const char *name, uid_t uid, const char *bundleName);
 
 /**
  * @brief Variable op
@@ -264,11 +266,17 @@ typedef struct {
     char name[0];
 } AppSandboxVarNode;
 
+typedef struct TagVarExtraData VarExtraData;
+typedef struct cJSON cJSON;
+typedef int (*VarReplaceWithName)(const SandboxContext *context,
+    const char *varName, SandboxBuffer *sandboxBuffer, uint32_t *valueLen, const VarExtraData *extraData);
 typedef struct TagVarExtraData {
     uint32_t sandboxTag;
     uint32_t operation;
+    VarReplaceWithName varReplaceWithName;
     union {
         PathMountNode *depNode;
+        cJSON *json;
     } data;
 } VarExtraData;
 
