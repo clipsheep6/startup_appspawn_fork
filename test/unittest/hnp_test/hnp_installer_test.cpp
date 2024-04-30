@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <cerrno>
 
+#include "appspawn_utils.h"
 #include "hnp_base.h"
 #include "hnp_pack.h"
 #include "hnp_installer.h"
@@ -36,6 +37,7 @@
 using namespace testing;
 using namespace testing::ext;
 
+#define HNP_UID_PATH "/data/app/el1/bundle/10000"
 #define HNP_BASE_PATH "/data/app/el1/bundle/10000/hnp"
 
 #ifdef __cplusplus
@@ -319,6 +321,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_001, TestSize.Level0)
     rmdir("hnp_out");
     HnpDeleteFolder(HNP_BASE_PATH);
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     HnpPackWithBin();
 
@@ -354,6 +357,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_001, TestSize.Level0)
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithBinDelete();
 
     GTEST_LOG_(INFO) << "Hnp_Installer_001 end";
@@ -370,6 +374,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_002, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Hnp_Installer_002 start";
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     HnpPackWithBin();
 
@@ -400,6 +405,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_002, TestSize.Level0)
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithBinDelete();
 
     GTEST_LOG_(INFO) << "Hnp_Installer_002 end";
@@ -418,6 +424,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_003, TestSize.Level0)
 
     char arg1[] = "hnp";
     char arg2[] = "install";
+    HnpCreateFolder(HNP_UID_PATH);
 
     { // scr path bin not exist
         EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
@@ -449,6 +456,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_003, TestSize.Level0)
         HnpPackWithBinDelete();
     }
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
 
     GTEST_LOG_(INFO) << "Hnp_Installer_003 end";
 }
@@ -464,6 +472,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_004, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Hnp_Installer_004 start";
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     HnpPackWithBin();
 
@@ -511,6 +520,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_004, TestSize.Level0)
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithBinDelete();
 
     GTEST_LOG_(INFO) << "Hnp_Installer_004 end";
@@ -527,6 +537,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_005, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Hnp_Installer_005 start";
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     HnpPackWithCfg();
 
@@ -547,6 +558,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_005, TestSize.Level0)
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithCfgDelete();
 
     GTEST_LOG_(INFO) << "Hnp_Installer_005 end";
@@ -563,6 +575,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_006, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Hnp_Install_006 start";
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     EXPECT_EQ(mkdir(HNP_BASE_PATH"/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
 
@@ -587,6 +600,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_006, TestSize.Level0)
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithCfgDelete();
 
     GTEST_LOG_(INFO) << "Hnp_Install_006 end";
@@ -611,6 +625,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_007, TestSize.Level0)
     rmdir("hnp_out");
     HnpDeleteFolder(HNP_BASE_PATH);
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     HnpPackWithBin();
 
@@ -650,6 +665,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_007, TestSize.Level0)
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithBinDelete();
 
     GTEST_LOG_(INFO) << "Hnp_Install_007 end";
@@ -669,23 +685,25 @@ HWTEST(HnpInstallerTest, Hnp_Install_API_001, TestSize.Level0)
     int ret;
     const char *packages[1] = {"./hnp_out/sample.hnp"};
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     EXPECT_EQ(mkdir(HNP_BASE_PATH"/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
 
     HnpPackWithCfg();
 
     { //param is invalid
-        ret = NativeInstallHnp(NULL, packages, 1, HNP_BASE_PATH"/test", 1);
+        ret = NativeInstallHnpEx(NULL, packages, 1, HNP_BASE_PATH"/test", 1);
         EXPECT_EQ(ret, HNP_API_ERRNO_PARAM_INVALID);
     }
     { //ok
-        ret = NativeInstallHnp("10000", packages, 1, HNP_BASE_PATH"/test", 1);
+        ret = NativeInstallHnpEx("10000", packages, 1, HNP_BASE_PATH"/test", 1);
         EXPECT_EQ(ret, 0);
         EXPECT_EQ(access(HNP_BASE_PATH"/test/bin/outt", F_OK), 0);
         EXPECT_EQ(access(HNP_BASE_PATH"/test/bin/out2", F_OK), 0);
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithCfgDelete();
 
     GTEST_LOG_(INFO) << "Hnp_Install_API_001 end";
@@ -705,17 +723,19 @@ HWTEST(HnpInstallerTest, Hnp_Install_API_002, TestSize.Level0)
     int ret;
     const char *packages[1] = {"./hnp_out/sample.hnp"};
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     EXPECT_EQ(mkdir(HNP_BASE_PATH"/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
 
     HnpPackWithCfg();
 
     { //st dir path is invalid
-        ret = NativeInstallHnp("10001", packages, 1, NULL, 1);
+        ret = NativeInstallHnpEx("10001", packages, 1, NULL, 1);
         EXPECT_NE(ret, 0);
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithCfgDelete();
 
     GTEST_LOG_(INFO) << "Hnp_Install_API_002 end";
@@ -735,6 +755,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_API_003, TestSize.Level0)
     int ret;
     const char *packages[2] = {"./hnp_out/sample.hnp", "./hnp_out2/sample2.hnp"};
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     EXPECT_EQ(mkdir(HNP_BASE_PATH"/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
 
@@ -742,7 +763,7 @@ HWTEST(HnpInstallerTest, Hnp_Install_API_003, TestSize.Level0)
     HnpPackWithSimple2Bin();
 
     { //ok
-        ret = NativeInstallHnp("10000", packages, 2, HNP_BASE_PATH"/test", 1);
+        ret = NativeInstallHnpEx("10000", packages, 2, HNP_BASE_PATH"/test", 1);
         EXPECT_EQ(ret, 0);
         EXPECT_EQ(access(HNP_BASE_PATH"/test/bin/outt", F_OK), 0);
         EXPECT_EQ(access(HNP_BASE_PATH"/test/bin/out2", F_OK), 0);
@@ -750,10 +771,51 @@ HWTEST(HnpInstallerTest, Hnp_Install_API_003, TestSize.Level0)
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithCfgDelete();
     HnpPackWithBinSimple2Delete();
 
     GTEST_LOG_(INFO) << "Hnp_Install_API_003 end";
+}
+
+/**
+* @tc.name: Hnp_Install_API_004
+* @tc.desc:  Verify develop mode NativeInstallHnp succeed.
+* @tc.type: FUNC
+* @tc.require:issueI9JCQ1
+* @tc.author:
+*/
+HWTEST(HnpInstallerTest, Hnp_Install_API_004, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Hnp_Install_API_004 start";
+
+    int ret;
+    const char *packages[1] = {"./hnp_out/sample.hnp"};
+
+    HnpCreateFolder(HNP_UID_PATH);
+    EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
+    EXPECT_EQ(mkdir(HNP_BASE_PATH"/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
+
+    HnpPackWithCfg();
+
+    { //ok
+        ret = NativeInstallHnpEx("10000", packages, 1, HNP_BASE_PATH"/test", 1);
+        if (IsDeveloperModeOpen()) {
+            GTEST_LOG_(INFO) << "this is developer mode";
+            EXPECT_EQ(ret, 0);
+            EXPECT_EQ(access(HNP_BASE_PATH"/test/bin/outt", F_OK), 0);
+            EXPECT_EQ(access(HNP_BASE_PATH"/test/bin/out2", F_OK), 0);
+        } else {
+            GTEST_LOG_(INFO) << "this is not developer mode";
+            EXPECT_EQ(ret, HNP_API_NOT_IN_DEVELOPER_MODE);
+        }
+    }
+
+    HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
+    HnpPackWithCfgDelete();
+
+    GTEST_LOG_(INFO) << "Hnp_Install_API_004 end";
 }
 
 /**
@@ -767,6 +829,7 @@ HWTEST(HnpInstallerTest, Hnp_UnInstall_001, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Hnp_UnInstall_001 start";
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     HnpPackWithBin();
     HnpInstall();
@@ -806,6 +869,7 @@ HWTEST(HnpInstallerTest, Hnp_UnInstall_001, TestSize.Level0)
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithBinDelete();
 
     GTEST_LOG_(INFO) << "Hnp_UnInstall_001 end";
@@ -822,6 +886,7 @@ HWTEST(HnpInstallerTest, Hnp_UnInstall_002, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Hnp_UnInstall_002 start";
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     EXPECT_EQ(mkdir(HNP_BASE_PATH"/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     HnpPackWithCfg();
@@ -859,6 +924,7 @@ HWTEST(HnpInstallerTest, Hnp_UnInstall_002, TestSize.Level0)
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithCfgDelete();
 
     GTEST_LOG_(INFO) << "Hnp_UnInstall_002 end";
@@ -875,6 +941,7 @@ HWTEST(HnpInstallerTest, Hnp_UnInstall_003, TestSize.Level0)
 {
     GTEST_LOG_(INFO) << "Hnp_UnInstall_003 start";
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     HnpPackWithBin();
     HnpInstall();
@@ -920,6 +987,7 @@ HWTEST(HnpInstallerTest, Hnp_UnInstall_003, TestSize.Level0)
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithBinDelete();
 
     GTEST_LOG_(INFO) << "Hnp_UnInstall_003 end";
@@ -938,21 +1006,23 @@ HWTEST(HnpInstallerTest, Hnp_UnInstall_API_001, TestSize.Level0)
 
     int ret;
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     EXPECT_EQ(mkdir(HNP_BASE_PATH"/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     HnpPackWithCfg();
     HnpInstallPrivate();
 
     { // param is invalid
-        ret = NativeUnInstallHnp(NULL, "sample", "1.1", "/test");
+        ret = NativeUnInstallHnpEx(NULL, "sample", "1.1", "/test");
         EXPECT_EQ(ret, HNP_API_ERRNO_PARAM_INVALID);
     }
     { // ok
-        ret = NativeUnInstallHnp("10000", "sample", "1.1", HNP_BASE_PATH"/test");
+        ret = NativeUnInstallHnpEx("10000", "sample", "1.1", HNP_BASE_PATH"/test");
         EXPECT_EQ(ret, 0);
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithCfgDelete();
 
     GTEST_LOG_(INFO) << "Hnp_UnInstall_API_001 end";
@@ -971,20 +1041,59 @@ HWTEST(HnpInstallerTest, Hnp_UnInstall_API_002, TestSize.Level0)
 
     int ret;
 
+    HnpCreateFolder(HNP_UID_PATH);
     EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     EXPECT_EQ(mkdir(HNP_BASE_PATH"/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
     HnpPackWithCfg();
     HnpInstallPrivate();
 
     { // param uninstall path is invalid
-        ret = NativeUnInstallHnp("10000", "sample", "1.1", "/test");
+        ret = NativeUnInstallHnpEx("10000", "sample", "1.1", "/test");
         EXPECT_NE(ret, 0);
     }
 
     HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
     HnpPackWithCfgDelete();
 
     GTEST_LOG_(INFO) << "Hnp_UnInstall_API_002 end";
+}
+
+/**
+* @tc.name: Hnp_UnInstall_API_003
+* @tc.desc:  Verify develop mode NativeUnInstallHnp succeed.
+* @tc.type: FUNC
+* @tc.require:issueI9JCQ1
+* @tc.author:
+*/
+HWTEST(HnpInstallerTest, Hnp_UnInstall_API_003, TestSize.Level0)
+{
+    GTEST_LOG_(INFO) << "Hnp_UnInstall_API_003 start";
+
+    int ret;
+
+    HnpCreateFolder(HNP_UID_PATH);
+    EXPECT_EQ(mkdir(HNP_BASE_PATH, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
+    EXPECT_EQ(mkdir(HNP_BASE_PATH"/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), 0);
+    HnpPackWithCfg();
+    HnpInstallPrivate();
+
+    {
+        ret = NativeUnInstallHnpEx("10000", "sample", "1.1", HNP_BASE_PATH"/test");
+        if (IsDeveloperModeOpen()) {
+            GTEST_LOG_(INFO) << "this is developer mode";
+            EXPECT_EQ(ret, 0);
+        } else {
+            GTEST_LOG_(INFO) << "this is not developer mode";
+            EXPECT_EQ(ret, HNP_API_NOT_IN_DEVELOPER_MODE);
+        }
+    }
+
+    HnpDeleteFolder(HNP_BASE_PATH);
+    HnpDeleteFolder(HNP_UID_PATH);
+    HnpPackWithCfgDelete();
+
+    GTEST_LOG_(INFO) << "Hnp_UnInstall_API_003 end";
 }
 
 }

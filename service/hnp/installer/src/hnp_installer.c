@@ -48,7 +48,6 @@ static int HnpGenerateSoftLinkAllByJson(const char *installPath, const char *dst
     char srcFile[MAX_FILE_PATH_LEN];
     char dstFile[MAX_FILE_PATH_LEN];
     NativeBinLink *currentLink = hnpCfg->links;
-    char *fileName;
     char *fileNameTmp;
 
     if (access(dstPath, F_OK) != 0) {
@@ -61,6 +60,7 @@ static int HnpGenerateSoftLinkAllByJson(const char *installPath, const char *dst
 
     for (unsigned int i = 0; i < hnpCfg->linkNum; i++) {
         int ret = sprintf_s(srcFile, MAX_FILE_PATH_LEN, "%s/%s", installPath, currentLink->source);
+        char *fileName;
         if (ret < 0) {
             HNP_LOGE("sprintf install bin src file unsuccess.");
             return HNP_ERRNO_BASE_SPRINTF_FAILED;
@@ -103,7 +103,7 @@ static int HnpGenerateSoftLinkAll(const char *installPath, const char *dstPath)
     DIR *dir;
     struct dirent *entry;
 
-    ret = sprintf_s(srcPath, MAX_FILE_PATH_LEN, "%s/bin/", installPath);
+    ret = sprintf_s(srcPath, MAX_FILE_PATH_LEN, "%s/bin", installPath);
     if (ret < 0) {
         HNP_LOGE("sprintf install bin path unsuccess.");
         return HNP_ERRNO_BASE_SPRINTF_FAILED;
@@ -117,6 +117,7 @@ static int HnpGenerateSoftLinkAll(const char *installPath, const char *dstPath)
     if (access(dstPath, F_OK) != 0) {
         ret = mkdir(dstPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         if ((ret != 0) && (errno != EEXIST)) {
+            closedir(dir);
             HNP_LOGE("mkdir [%s] unsuccess, ret=%d, errno:%d", dstPath, ret, errno);
             return HNP_ERRNO_BASE_MKDIR_PATH_FAILED;
         }
@@ -157,7 +158,7 @@ static int HnpGenerateSoftLink(const char *installPath, const char *hnpBasePath,
     int ret = 0;
     char binPath[MAX_FILE_PATH_LEN];
 
-    ret = sprintf_s(binPath, MAX_FILE_PATH_LEN, "%s/bin/", hnpBasePath);
+    ret = sprintf_s(binPath, MAX_FILE_PATH_LEN, "%s/bin", hnpBasePath);
     if (ret < 0) {
         HNP_LOGE("sprintf install bin path unsuccess.");
         return HNP_ERRNO_BASE_SPRINTF_FAILED;
