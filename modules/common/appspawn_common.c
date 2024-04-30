@@ -153,6 +153,7 @@ static int SetProcessName(const AppSpawnMgr *content, const AppSpawningCtx *prop
     // set short name
     isRet = prctl(PR_SET_NAME, shortName) == -1;
     APPSPAWN_CHECK(!isRet, return errno, "prctl(PR_SET_NAME) error: %{public}d", errno);
+    APPSPAWN_CHECK(content->content.longProcNameLen > len, return 0, "Invalid process name buffer");
 
     // reset longProcName
     isRet = memset_s(content->content.longProcName,
@@ -169,8 +170,6 @@ static int SetProcessName(const AppSpawnMgr *content, const AppSpawningCtx *prop
 static int SetKeepCapabilities(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
-    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_TLV_NONE,
-        "No tlv %{public}d in msg %{public}s", TLV_DOMAIN_INFO, GetProcessName(property));
 
     // set keep capabilities when user not root.
     if (dacInfo->uid != 0) {
@@ -284,8 +283,6 @@ static int SetXpmConfig(const AppSpawnMgr *content, const AppSpawningCtx *proper
 static int SetUidGid(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
-    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_TLV_NONE,
-        "No tlv %{public}d in msg %{public}s", TLV_DAC_INFO, GetProcessName(property));
 
     // set gids
     int ret = setgroups(dacInfo->gidCount, (const gid_t *)(&dacInfo->gidTable[0]));
@@ -390,19 +387,17 @@ static int32_t WaitForDebugger(const AppSpawningCtx *property)
     if (CheckAppMsgFlagsSet(property, APP_FLAGS_NATIVEDEBUG) && CheckAppMsgFlagsSet(property, APP_FLAGS_DEBUGGABLE)) {
         uint32_t count = 0;
         while (CheckTraceStatus() != 0) {
+            count++;
 #ifndef APPSPAWN_TEST
             usleep(1000 * 100);  // sleep 1000 * 100 microsecond
-#else
-            if (count > 0) {
-                break;
-            }
-#endif
-            count++;
             // remind users to connect to the debugger every 60 * 10 times
             if (count % (10 * 60) == 0) {
                 count = 0;
                 APPSPAWN_LOGI("wait for debugger, please attach the process");
             }
+#else
+            break;
+#endif
         }
     }
     return 0;
@@ -443,6 +438,10 @@ static int SpawnEnableCache(AppSpawnMgr *content, AppSpawningCtx *property)
 static int SpawnSetProperties(AppSpawnMgr *content, AppSpawningCtx *property)
 {
     APPSPAWN_LOGV("Spawning: set child property");
+    AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
+    APPSPAWN_CHECK(dacInfo != NULL, return APPSPAWN_TLV_NONE,
+        "No tlv %{public}d in msg %{public}s", TLV_DAC_INFO, GetProcessName(property));
+
     (void)umask(DEFAULT_UMASK);
     int ret = SetKeepCapabilities(content, property);
     APPSPAWN_CHECK_ONLY_EXPER(ret == 0, return ret);

@@ -110,7 +110,11 @@ int SetUidGidFilter(const AppSpawnMgr *content)
     }
     if (!ret) {
         APPSPAWN_LOGE("Failed to set APPSPAWN seccomp filter and exit");
+#ifndef APPSPAWN_TEST
         _exit(0x7f);
+#else
+        return EINVAL;
+#endif
     }
     APPSPAWN_LOGV("SetUidGidFilter success");
 #endif
@@ -149,7 +153,7 @@ int SetInternetPermission(const AppSpawningCtx *property)
 int32_t SetEnvInfo(const AppSpawnMgr *content, const AppSpawningCtx *property)
 {
     uint32_t size = 0;
-    char *envStr = reinterpret_cast<char *>(GetAppPropertyExt(property, "AppEnv", &size));
+    char *envStr = reinterpret_cast<char *>(GetAppPropertyExt(property, MSG_EXT_NAME_APP_ENV, &size));
     if (size == 0 || envStr == NULL) {
         return 0;
     }

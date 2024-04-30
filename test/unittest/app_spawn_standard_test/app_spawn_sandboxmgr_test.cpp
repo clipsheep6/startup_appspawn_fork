@@ -27,6 +27,8 @@
 #include "appspawn_permission.h"
 #include "appspawn_sandbox.h"
 #include "appspawn_utils.h"
+#include "init_param.h"
+#include "parameter.h"
 #include "securec.h"
 
 #include "app_spawn_stub.h"
@@ -36,6 +38,7 @@ using namespace testing;
 using namespace testing::ext;
 
 namespace OHOS {
+static AppSpawnTestHelper g_testHelper;
 class AppSpawnSandboxMgrTest : public testing::Test {
 public:
     static void SetUpTestCase() {}
@@ -43,6 +46,84 @@ public:
     void SetUp() {}
     void TearDown() {}
 };
+
+static int HandleSplitString(const char *str, void *context)
+{
+    std::vector<std::string> *results = reinterpret_cast<std::vector<std::string> *>(context);
+    results->push_back(std::string(str));
+    return 0;
+}
+
+static int TestJsonUtilSplit(const char *args[], uint32_t argc, const std::string &input, const std::string &pattern)
+{
+    std::vector<std::string> results;
+    StringSplit(input.c_str(), pattern.c_str(), reinterpret_cast<void *>(&results), HandleSplitString);
+    if (argc != results.size()) {
+        return -1;
+    }
+    for (size_t i = 0; i < argc; i++) {
+        if (strcmp(args[i], results[i].c_str()) != 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_JsonUtil_001, TestSize.Level0)
+{
+    const char *args[] = {"S_IRUSR", "S_IWOTH", "S_IRWXU"};
+    std::string cmd = "   S_IRUSR   S_IWOTH      S_IRWXU   ";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_JsonUtil_002, TestSize.Level0)
+{
+    const char *args[] = {"S_IRUSR", "S_IWOTH", "S_IRWXU"};
+    std::string cmd = "S_IRUSR   S_IWOTH      S_IRWXU";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_JsonUtil_003, TestSize.Level0)
+{
+    const char *args[] = {"S_IRUSR", "S_IWOTH", "S_IRWXU"};
+    std::string cmd = "  S_IRUSR   S_IWOTH      S_IRWXU";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_JsonUtil_004, TestSize.Level0)
+{
+    const char *args[] = {"S_IRUSR", "S_IWOTH", "S_IRWXU"};
+    std::string cmd = "S_IRUSR   S_IWOTH      S_IRWXU  ";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_JsonUtil_005, TestSize.Level0)
+{
+    const char *args[] = {"S_IRUSR"};
+    std::string cmd = "  S_IRUSR    ";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_JsonUtil_006, TestSize.Level0)
+{
+    const char *args[] = {"S_IRUSR", "S_IWOTH", "S_IRWXU"};
+    std::string cmd = "  S_IRUSR |  S_IWOTH    |  S_IRWXU  ";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, "|"), 0);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_JsonUtil_007, TestSize.Level0)
+{
+    const char *args[] = {"send", "--type", "2"};
+    std::string cmd = "send --type 2 ";
+    size_t size = sizeof(args) / sizeof(args[0]);
+    ASSERT_EQ(TestJsonUtilSplit(args, size, cmd, " "), 0);
+}
 
 /**
  * @brief AppSpawnSandboxCfg
@@ -58,7 +139,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_AppSpawnSandboxCfg_001, TestSize.Level0
 
     sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     sandbox = GetAppSpawnSandbox(mgr);
     EXPECT_EQ(sandbox != nullptr, 1);
@@ -85,7 +166,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_AppSpawnSandboxCfg_002, TestSize.Level0
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     // for appspawn
     int ret = LoadAppSandboxConfig(sandbox, 0);
@@ -107,7 +188,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_AppSpawnSandboxCfg_003, TestSize.Level0
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
     int ret = 0;
 #ifdef APPSPAWN_SANDBOX_NEW
     // for nwebspawn
@@ -138,7 +219,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxSection_001, TestSize.Level0)
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     const uint32_t nameCount = 3;
     const uint32_t lenCount = 7;
@@ -185,7 +266,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxSection_002, TestSize.Level0)
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     const uint32_t nameCount = 3;
     const uint32_t lenCount = 7;
@@ -222,7 +303,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxSection_003, TestSize.Level0)
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     SandboxSection *section = CreateSandboxSection("system-const", sizeof(SandboxSection), SANDBOX_TAG_SYSTEM_CONST);
     EXPECT_EQ(section != nullptr, 1);
@@ -248,7 +329,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxSection_004, TestSize.Level0)
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     AddSandboxSection(nullptr, &sandbox->requiredQueue);
     AddSandboxSection(nullptr, nullptr);
@@ -290,7 +371,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxMountNode_001, TestSize.Level0)
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     SandboxSection *section = CreateSandboxSection("system-const", sizeof(SandboxSection), SANDBOX_TAG_SYSTEM_CONST);
     EXPECT_EQ(section != nullptr, 1);
@@ -325,7 +406,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxMountNode_002, TestSize.Level0)
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     SandboxSection *section = CreateSandboxSection("system-const", sizeof(SandboxSection), SANDBOX_TAG_SYSTEM_CONST);
     EXPECT_EQ(section != nullptr, 1);
@@ -356,7 +437,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxMountNode_003, TestSize.Level0)
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     SandboxSection *section = CreateSandboxSection("system-const", sizeof(SandboxSection), SANDBOX_TAG_SYSTEM_CONST);
     EXPECT_EQ(section != nullptr, 1);
@@ -404,7 +485,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxMountNode_004, TestSize.Level0)
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     SandboxSection *section = CreateSandboxSection("system-const", sizeof(SandboxSection), SANDBOX_TAG_SYSTEM_CONST);
     EXPECT_EQ(section != nullptr, 1);
@@ -438,6 +519,69 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxMountNode_004, TestSize.Level0)
     EXPECT_EQ(pathNode != nullptr, 0);
     pathNode = GetSymbolLinkNode(nullptr, testPath, nullptr);
     EXPECT_EQ(pathNode != nullptr, 0);
+
+    DeleteAppSpawnSandbox(sandbox);
+    DeleteAppSpawnMgr(mgr);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxMountNode_005, TestSize.Level0)
+{
+    AppSpawnMgr *mgr = CreateAppSpawnMgr(MODE_FOR_APP_SPAWN);
+    EXPECT_EQ(mgr != nullptr, 1);
+
+    AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
+    EXPECT_EQ(sandbox != nullptr, 1);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
+
+    SandboxSection *section = CreateSandboxSection("system-const", sizeof(SandboxSection), SANDBOX_TAG_SYSTEM_CONST);
+    EXPECT_EQ(section != nullptr, 1);
+    AddSandboxSection(section, &sandbox->requiredQueue);
+
+    SandboxMountNode *path = CreateSandboxMountNode(sizeof(SymbolLinkNode), SANDBOX_TAG_SYMLINK);
+    EXPECT_EQ(path != nullptr, 1);
+    path->type = SANDBOX_TAG_INVALID;
+    AddSandboxMountNode(path, section);
+    DumpAppSpawnSandboxCfg(sandbox);
+    DeleteSandboxMountNode(path);
+
+    DeleteAppSpawnSandbox(sandbox);
+    DeleteAppSpawnMgr(mgr);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxMountNode_006, TestSize.Level0)
+{
+    AppSpawnMgr *mgr = CreateAppSpawnMgr(MODE_FOR_NWEB_SPAWN);
+    EXPECT_EQ(mgr != nullptr, 1);
+
+    AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
+    EXPECT_EQ(sandbox != nullptr, 1);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
+
+    SandboxSection *section = CreateSandboxSection("system-const", sizeof(SandboxSection), SANDBOX_TAG_SYSTEM_CONST);
+    EXPECT_EQ(section != nullptr, 1);
+    AddSandboxSection(section, &sandbox->requiredQueue);
+
+    SandboxMountNode *path = CreateSandboxMountNode(sizeof(PathMountNode), SANDBOX_TAG_MOUNT_PATH);
+    EXPECT_EQ(path != nullptr, 1);
+    PathMountNode *pathNode = reinterpret_cast<PathMountNode *>(path);
+    const char *testPath = "xxx/xxx/xxx";
+    pathNode->source = strdup(testPath);
+    pathNode->target = strdup(testPath);
+    AddSandboxMountNode(path, section);
+
+    pathNode = GetPathMountNode(section, SANDBOX_TAG_MOUNT_PATH, testPath, testPath);
+    EXPECT_EQ(pathNode != nullptr, 1);
+    DumpMountPathMountNode(pathNode);
+    pathNode->category = 100; // 100 test
+    DumpMountPathMountNode(pathNode);
+
+    pathNode->category = 1;
+    pathNode->mountSharedFlag = 1;
+    DumpMountPathMountNode(pathNode);
+    pathNode->mountSharedFlag = 0;
+    DumpMountPathMountNode(pathNode);
+
+    DumpMountPathMountNode(nullptr);
 
     DeleteAppSpawnSandbox(sandbox);
     DeleteAppSpawnMgr(mgr);
@@ -479,8 +623,9 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Mount_001, TestSize.Level0)
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
-
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
+    sandbox->rootPath = strdup("/mnt/sandbox/<currentUserId>/app-root");
+    EXPECT_EQ(sandbox->rootPath != nullptr, 1);
     AppSpawningCtx *property = TestCreateAppSpawningCtx();
     EXPECT_EQ(property != nullptr, 1);
 
@@ -519,7 +664,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Mount_002, TestSize.Level0)
 
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     SandboxContext context = {};
     // 只做异常测试，正常流程需要基于业务流进行测试
@@ -553,19 +698,25 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Mount_003, TestSize.Level0)
     AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
     EXPECT_EQ(sandbox != nullptr, 1);
     sandbox->rootPath = strdup("/data/appspawn_ut/sandbox/");
-    OH_ListAddTail(&sandbox->extData.node, &mgr->extData);
+    OH_ListAddTail(&mgr->extData, &sandbox->extData.node);
 
     // 只做异常测试，正常流程需要基于业务流进行测试
     const AppSpawnSandboxCfg *inputAppSpawnSandboxCfg[2] = {sandbox, nullptr};
     const char *inputName[2] = {"test", nullptr};
 
     for (uint32_t k = 0; k < 2; k++) {  // 2
-        int ret = UnmountDepPaths(inputAppSpawnSandboxCfg[k], 0);
+        int ret = UnmountDepPaths(inputAppSpawnSandboxCfg[k], 0, nullptr);
         EXPECT_EQ(ret == 0, k == 0);
     }
     for (uint32_t i = 0; i < 2; i++) {      // 2
         for (uint32_t k = 0; k < 2; k++) {  // 2
-            int ret = UnmountSandboxConfigs(inputAppSpawnSandboxCfg[k], 0, inputName[i]);
+            int ret = UnmountSandboxConfigs(inputAppSpawnSandboxCfg[k], inputName[i], 0, nullptr);
+            EXPECT_EQ(ret == 0, k == 0 && i == 0);
+        }
+    }
+    for (uint32_t i = 0; i < 2; i++) {      // 2
+        for (uint32_t k = 0; k < 2; k++) {  // 2
+            int ret = UnmountSandboxConfigs(inputAppSpawnSandboxCfg[k], inputName[i], 0, "test");
             EXPECT_EQ(ret == 0, k == 0 && i == 0);
         }
     }
@@ -577,7 +728,7 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Mount_003, TestSize.Level0)
  * @brief SandboxMountPath
  *
  */
-HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Add_App_SandboxMountPath_001, TestSize.Level0)
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxMountPath_001, TestSize.Level0)
 {
     MountArg arg = {};
     arg.originPath = "/data/";
@@ -588,9 +739,17 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Add_App_SandboxMountPath_001, TestSize.
     EXPECT_EQ(ret, 0);
     ret = SandboxMountPath(&arg);
     EXPECT_EQ(ret, 0);
+    arg.destinationPath = nullptr;
+    ret = SandboxMountPath(&arg);
+    EXPECT_NE(ret, 0);
+    arg.originPath = nullptr;
+    ret = SandboxMountPath(&arg);
+    EXPECT_NE(ret, 0);
     ret = SandboxMountPath(nullptr);
     EXPECT_NE(ret, 0);
     arg.mountSharedFlag = -1;
+    arg.originPath = "/data/";
+    arg.destinationPath = "/data/appspawn/test";
     ret = SandboxMountPath(&arg);
     EXPECT_EQ(ret, 0);
 }
@@ -756,5 +915,211 @@ HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Permission_004, TestSize.Level0)
     EXPECT_EQ(permission == nullptr, 1);
 
     AppSpawnClientDestroy(clientHandle);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Permission_005, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
+    EXPECT_EQ(sandbox != nullptr, 1);
+    int ret = LoadAppSandboxConfig(sandbox, 0);
+    EXPECT_EQ(ret, 0);
+
+    ret = AddSandboxPermissionNode("com.permission.test001", &sandbox->permissionQueue);
+    EXPECT_EQ(ret, 0);
+    ret = PermissionRenumber(&sandbox->permissionQueue);
+    EXPECT_EQ(ret > 0, 1);
+
+    ret = GetPermissionIndexInQueue(&sandbox->permissionQueue, "com.permission.test001");
+    EXPECT_EQ(ret >= 0, 1);
+
+    const SandboxPermissionNode *node = GetPermissionNodeInQueue(&sandbox->permissionQueue, "com.permission.test001");
+    EXPECT_EQ(node != nullptr, 1);
+    node = GetPermissionNodeInQueueByIndex(&sandbox->permissionQueue, 0);
+    EXPECT_EQ(node != nullptr, 1);
+
+    ret = DeleteSandboxPermissions(&sandbox->permissionQueue);
+    EXPECT_EQ(ret, 0);
+    DeleteAppSpawnSandbox(sandbox);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Permission_006, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
+    EXPECT_EQ(sandbox != nullptr, 1);
+    int ret = LoadAppSandboxConfig(sandbox, 0);
+    EXPECT_EQ(ret, 0);
+
+    ret = AddSandboxPermissionNode(nullptr, &sandbox->permissionQueue);
+    EXPECT_NE(ret, 0);
+    ret = PermissionRenumber(&sandbox->permissionQueue);
+    EXPECT_EQ(ret > 0, 1);
+
+    ret = GetPermissionIndexInQueue(&sandbox->permissionQueue, nullptr);
+    EXPECT_EQ(ret, INVALID_PERMISSION_INDEX);
+
+    const SandboxPermissionNode *node = GetPermissionNodeInQueue(&sandbox->permissionQueue, nullptr);
+    EXPECT_EQ(node == nullptr, 1);
+    node = GetPermissionNodeInQueueByIndex(&sandbox->permissionQueue, 0);
+    EXPECT_EQ(node != nullptr, 1);
+
+    ret = DeleteSandboxPermissions(&sandbox->permissionQueue);
+    EXPECT_EQ(ret, 0);
+    DeleteAppSpawnSandbox(sandbox);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Permission_007, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
+    EXPECT_EQ(sandbox != nullptr, 1);
+    int ret = LoadAppSandboxConfig(sandbox, 0);
+    EXPECT_EQ(ret, 0);
+
+    ret = AddSandboxPermissionNode("com.permission.test001", nullptr);
+    EXPECT_NE(ret, 0);
+    ret = PermissionRenumber(nullptr);
+    EXPECT_NE(ret, 0);
+
+    ret = GetPermissionIndexInQueue(nullptr, "com.permission.test001");
+    EXPECT_NE(ret, 0);
+
+    const SandboxPermissionNode *node = GetPermissionNodeInQueue(nullptr, "com.permission.test001");
+    EXPECT_EQ(node == nullptr, 1);
+    node = GetPermissionNodeInQueueByIndex(nullptr, 0);
+    EXPECT_EQ(node == nullptr, 1);
+
+    ret = DeleteSandboxPermissions(nullptr);
+    EXPECT_NE(ret, 0);
+    DeleteAppSpawnSandbox(sandbox);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Parameter_001, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
+    EXPECT_EQ(sandbox != nullptr, 1);
+    sandbox->rootPath = strdup("/data/appspawn_ut/sandbox/");
+
+    bool appFullMountEnable = false;
+    char value[] = "false";
+    int32_t ret = GetParameter("const.filemanager.full_mount.enable", "false", value, sizeof(value));
+    if (ret > 0 && (strcmp(value, "true") == 0)) {
+        appFullMountEnable = true;
+    }
+    ret = LoadAppSandboxConfig(sandbox, 0);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(appFullMountEnable, sandbox->appFullMountEnable);
+    DeleteAppSpawnSandbox(sandbox);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Parameter_002, TestSize.Level0)
+{
+    AppSpawnSandboxCfg *sandbox = CreateAppSpawnSandbox();
+    EXPECT_EQ(sandbox != nullptr, 1);
+    sandbox->rootPath = strdup("/data/appspawn_ut/sandbox/");
+
+    bool pidNamespaceSupport = true;
+    char buffer[10] = {0};
+    uint32_t buffSize = sizeof(buffer);
+    if (SystemGetParameter("const.sandbox.pidns.support", buffer, &buffSize) != 0) {
+        pidNamespaceSupport = true;
+    }
+    if (!strcmp(buffer, "false")) {
+        pidNamespaceSupport = false;
+    }
+    int ret = LoadAppSandboxConfig(sandbox, 0);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(pidNamespaceSupport, sandbox->pidNamespaceSupport);
+    DeleteAppSpawnSandbox(sandbox);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_Category_001, TestSize.Level0)
+{
+    uint32_t category = GetMountCategory(nullptr);
+    EXPECT_EQ(category, MOUNT_TMP_DEFAULT);
+    category = GetMountCategory("");
+    EXPECT_EQ(category, MOUNT_TMP_DEFAULT);
+
+    category = GetMountCategory("default");
+    EXPECT_EQ(category, MOUNT_TMP_DEFAULT);
+
+    category = GetMountCategory("rdonly");
+    EXPECT_EQ(category, MOUNT_TMP_RDONLY);
+    category = GetMountCategory("epfs");
+    EXPECT_EQ(category, MOUNT_TMP_EPFS);
+
+    category = GetMountCategory("dac_override");
+    EXPECT_EQ(category, MOUNT_TMP_DAC_OVERRIDE);
+    category = GetMountCategory("fuse");
+    EXPECT_EQ(category, MOUNT_TMP_FUSE);
+    category = GetMountCategory("dlp_fuse");
+    EXPECT_EQ(category, MOUNT_TMP_DLP_FUSE);
+    category = GetMountCategory("shared");
+    EXPECT_EQ(category, MOUNT_TMP_SHRED);
+
+    const MountArgTemplate *temp = GetMountArgTemplate(MOUNT_TMP_SHRED);
+    EXPECT_EQ(temp != nullptr, 1);
+    EXPECT_EQ(strcmp(temp->name, "shared") == 0, 1);
+    temp = GetMountArgTemplate(MOUNT_TMP_EPFS);
+    EXPECT_EQ(temp != nullptr, 1);
+    EXPECT_EQ(strcmp(temp->name, "epfs") == 0, 1);
+    temp = GetMountArgTemplate(100); // 100 test
+    EXPECT_EQ(temp == nullptr, 1);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_SandboxFlagInfo_001, TestSize.Level0)
+{
+    static const SandboxFlagInfo infos[] = {
+        {"not-exists", (unsigned long)MOUNT_MODE_NOT_EXIST},
+        {"always", (unsigned long)MOUNT_MODE_ALWAYS}
+    };
+
+    const SandboxFlagInfo *info = GetSandboxFlagInfo("no-exist", nullptr, 0);
+    EXPECT_EQ(info == nullptr, 1);
+    info = GetSandboxFlagInfo("not-exists", infos, 0);
+    EXPECT_EQ(info == nullptr, 1);
+    info = GetSandboxFlagInfo("not-exists", infos, 2);// 2 test
+    EXPECT_EQ(info != nullptr, 1);
+    EXPECT_EQ(strcmp(info->name, "not-exists") == 0, 1);
+    info = GetSandboxFlagInfo("always", infos, 2); // 2 test
+    EXPECT_EQ(info != nullptr, 1);
+    EXPECT_EQ(strcmp(info->name, "always") == 0, 1);
+    info = GetSandboxFlagInfo("ttestt", infos, 2); // 2 test
+    EXPECT_EQ(info == nullptr, 1);
+    info = GetSandboxFlagInfo(nullptr, infos, 2); // 2 test
+    EXPECT_EQ(info == nullptr, 1);
+}
+
+HWTEST(AppSpawnSandboxMgrTest, App_Spawn_PathMode_001, TestSize.Level0)
+{
+    // S_IRUSR | S_IWOTH | S_IRWXU
+    int mode = GetPathMode("S_IRUSR");
+    EXPECT_EQ(mode, S_IRUSR);
+    mode = GetPathMode("S_IRGRP");
+    EXPECT_EQ(mode, S_IRGRP);
+    mode = GetPathMode("S_IROTH");
+    EXPECT_EQ(mode, S_IROTH);
+    mode = GetPathMode("S_IRWXU");
+    EXPECT_EQ(mode, S_IRWXU);
+
+    mode = GetPathMode("S_IWUSR");
+    EXPECT_EQ(mode, S_IWUSR);
+    mode = GetPathMode("S_IWGRP");
+    EXPECT_EQ(mode, S_IWGRP);
+    mode = GetPathMode("S_IWOTH");
+    EXPECT_EQ(mode, S_IWOTH);
+    mode = GetPathMode("S_IRWXG");
+    EXPECT_EQ(mode, S_IRWXG);
+
+    mode = GetPathMode("S_IXUSR");
+    EXPECT_EQ(mode, S_IXUSR);
+    mode = GetPathMode("S_IXGRP");
+    EXPECT_EQ(mode, S_IXGRP);
+    mode = GetPathMode("S_IXOTH");
+    EXPECT_EQ(mode, S_IXOTH);
+    mode = GetPathMode("S_IRWXO");
+    EXPECT_EQ(mode, S_IRWXO);
+    mode = GetPathMode("");
+    EXPECT_EQ(mode, 0);
+    mode = GetPathMode(nullptr);
+    EXPECT_EQ(mode, 0);
 }
 }  // namespace OHOS

@@ -22,6 +22,15 @@
 #include "appspawn_utils.h"
 #include "securec.h"
 
+static inline const char *GetPermissionName(const SandboxPermissionNode *permissionNode)
+{
+#ifdef APPSPAWN_CLIENT
+    return permissionNode->name;
+#else
+    return permissionNode->section.name;
+#endif
+}
+
 static int PermissionNodeCompareIndex(ListNode *node, void *data)
 {
     SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)ListEntry(node, SandboxMountNode, node);
@@ -31,22 +40,14 @@ static int PermissionNodeCompareIndex(ListNode *node, void *data)
 static int PermissionNodeCompareName(ListNode *node, void *data)
 {
     SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)ListEntry(node, SandboxMountNode, node);
-#ifdef APPSPAWN_CLIENT
-    return strcmp(permissionNode->name, (char *)data);
-#else
-    return strcmp(permissionNode->section.name, (char *)data);
-#endif
+    return strcmp(GetPermissionName(permissionNode), (char *)data);
 }
 
 static int PermissionNodeCompareProc(ListNode *node, ListNode *newNode)
 {
     SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)ListEntry(node, SandboxMountNode, node);
     SandboxPermissionNode *newPermissionNode = (SandboxPermissionNode *)ListEntry(newNode, SandboxMountNode, node);
-#ifdef APPSPAWN_CLIENT
-    return strcmp(permissionNode->name, newPermissionNode->name);
-#else
-    return strcmp(permissionNode->section.name, newPermissionNode->section.name);
-#endif
+    return strcmp(GetPermissionName(permissionNode), GetPermissionName(newPermissionNode));
 }
 
 int AddSandboxPermissionNode(const char *name, SandboxQueue *queue)
@@ -105,13 +106,9 @@ int32_t PermissionRenumber(SandboxQueue *queue)
     while (node != &queue->front) {
         SandboxPermissionNode *permissionNode = (SandboxPermissionNode *)ListEntry(node, SandboxMountNode, node);
         permissionNode->permissionIndex = ++index;
-#ifdef APPSPAWN_CLIENT
+
         APPSPAWN_LOGV("Permission index %{public}d name %{public}s",
-            permissionNode->permissionIndex, permissionNode->name);
-#else
-        APPSPAWN_LOGV("Permission index %{public}d name %{public}s",
-            permissionNode->permissionIndex, permissionNode->section.name);
-#endif
+            permissionNode->permissionIndex, GetPermissionName(permissionNode));
         node = node->next;
     }
     return index + 1;
@@ -119,18 +116,14 @@ int32_t PermissionRenumber(SandboxQueue *queue)
 
 const SandboxPermissionNode *GetPermissionNodeInQueue(SandboxQueue *queue, const char *permission)
 {
-    if (queue == NULL || permission == NULL) {
-        return NULL;
-    }
+    APPSPAWN_CHECK_ONLY_EXPER(queue != NULL && permission != NULL, return NULL);
     ListNode *node = OH_ListFind(&queue->front, (void *)permission, PermissionNodeCompareName);
     return (SandboxPermissionNode *)ListEntry(node, SandboxMountNode, node);
 }
 
 const SandboxPermissionNode *GetPermissionNodeInQueueByIndex(SandboxQueue *queue, int32_t index)
 {
-    if (queue == NULL) {
-        return NULL;
-    }
+    APPSPAWN_CHECK_ONLY_EXPER(queue != NULL, return NULL);
     ListNode *node = OH_ListFind(&queue->front, (void *)&index, PermissionNodeCompareIndex);
     return (SandboxPermissionNode *)ListEntry(node, SandboxMountNode, node);
 }

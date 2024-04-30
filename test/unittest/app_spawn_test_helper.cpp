@@ -42,15 +42,6 @@
 #include "app_spawn_stub.h"
 
 namespace OHOS {
-typedef struct {
-    int32_t bundleIndex;
-    char bundleName[APP_LEN_BUNDLE_NAME];  // process name
-} AppBundleInfo;
-
-typedef struct {
-    uint32_t hapFlags;
-    char apl[APP_APL_MAX_LEN];
-} AppDomainInfo;
 
 const uint32_t AppSpawnTestServer::defaultProtectTime = 60000; // 60000 60s
 
@@ -116,11 +107,7 @@ void AppSpawnTestServer::ServiceThread()
             StartCheckHandler();
             AppSpawnMgr *content = reinterpret_cast<AppSpawnMgr *>(content_);
             APPSPAWN_CHECK_ONLY_EXPER(content != NULL, return);
-            AppSpawnedProcess *info = GetSpawnedProcessByName(NWEBSPAWN_SERVER_NAME);
-            if (info != NULL) {
-                APPSPAWN_LOGV("Save nwebspawn pid: %{public}d %{public}d", info->pid, serverId_);
-                appPid_.store(info->pid);
-            }
+
             // register
             RegChildLooper(&content->content, TestChildLoopRun);
         }
@@ -198,14 +185,6 @@ void AppSpawnTestServer::Stop()
     }
 }
 
-void AppSpawnTestServer::KillNWebSpawnServer()
-{
-    APPSPAWN_LOGV("Kill nwebspawn %{public}d", serverId_);
-    if (appPid_ > 0) {
-        kill(appPid_, SIGKILL);
-    }
-}
-
 void AppSpawnTestServer::StopSpawnService(void)
 {
     APPSPAWN_LOGV("StopSpawnService ");
@@ -229,7 +208,6 @@ void AppSpawnTestServer::ProcessIdle(const TimerHandle taskHandle, void *context
 void AppSpawnTestServer::ProcessIdle(const IdleHandle taskHandle, void *context)
 #endif
 {
-    APPSPAWN_LOGV("AppSpawnTestServer::ProcessIdle");
     AppSpawnTestServer *server = reinterpret_cast<AppSpawnTestServer *>(const_cast<void *>(context));
     if (server->stop_) {
         server->StopSpawnService();
@@ -424,16 +402,14 @@ AppSpawnReqMsgHandle AppSpawnTestHelper::CreateMsg(AppSpawnClientHandle handle, 
         (void)strcpy_s(dacInfo.userName, sizeof(dacInfo.userName), "test-app-name");
         ret = AppSpawnReqMsgSetAppDacInfo(reqHandle, &dacInfo);
         APPSPAWN_CHECK(ret == 0, break, "Failed to add dac %{public}s", processName_.c_str());
-
-        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 12345678);  // 12345678
-        APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", processName_.c_str());
-
         if (defaultMsgFlags_ != 0) {
             (void)AppSpawnReqMsgSetFlags(reqHandle, TLV_MSG_FLAGS, defaultMsgFlags_);
         }
         if (base) {
             return reqHandle;
         }
+        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, 12345678);  // 12345678
+        APPSPAWN_CHECK(ret == 0, break, "Failed to add access token %{public}s", processName_.c_str());
         const char *testData = "ssssssssssssss sssssssss ssssssss";
         ret = AppSpawnReqMsgAddExtInfo(reqHandle, "tlv-name-1",
             reinterpret_cast<uint8_t *>(const_cast<char *>(testData)), strlen(testData));
@@ -694,4 +670,9 @@ MODULE_CONSTRUCTOR(void)
 {
     MakeDirRec(APPSPAWN_MSG_DIR "appspawn", 0771, 1);
     MakeDirRec(APPSPAWN_MSG_DIR "nwebspawn", 0771, 1);
+}
+
+MODULE_DESTRUCTOR(void)
+{
+    DeleteAppSpawnHookMgr();
 }

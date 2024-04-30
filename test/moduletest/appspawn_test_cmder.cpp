@@ -299,7 +299,7 @@ int AppSpawnTestCommander::CreateOtherMsg(AppSpawnReqMsgHandle &reqHandle, pid_t
         APPSPAWN_CHECK(ret == 0, return ret, "Failed to termination message req %{public}s", processName_.c_str());
     }
     if (msgType_ == MSG_DUMP) {
-        int ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(msgType_), processName_.c_str(), &reqHandle);
+        int ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(msgType_), "app-dump", &reqHandle);
         APPSPAWN_CHECK(ret == 0, return ret, "Failed to dump req %{public}s", processName_.c_str());
         ret = AppSpawnReqMsgAddStringInfo(reqHandle, "pty-name", ptyName_.c_str());
         APPSPAWN_CHECK(ret == 0, return -1, "Failed to add ptyName_ %{public}s", ptyName_.c_str());
@@ -380,10 +380,14 @@ int AppSpawnTestCommander::CreateMsg(AppSpawnReqMsgHandle &reqHandle,
 
 int AppSpawnTestCommander::SendMsg()
 {
+    int ret = 0;
     const char *server = appSpawn_ ? APPSPAWN_SERVER_NAME : NWEBSPAWN_SERVER_NAME;
     printf("Send msg to server '%s' \n", server);
+    if (clientHandle_ == NULL) {
+        ret = AppSpawnClientInit(appSpawn_ ? APPSPAWN_SERVER_NAME : NWEBSPAWN_SERVER_NAME, &clientHandle_);
+        APPSPAWN_CHECK(ret == 0, return -1, "Failed to create client %{public}d", appSpawn_);
+    }
     AppSpawnReqMsgHandle reqHandle = INVALID_REQ_HANDLE;
-    int ret = 0;
     if (msgType_ == MSG_DUMP) {
         while (!dumpFlags) {
             usleep(20000);  // 20000

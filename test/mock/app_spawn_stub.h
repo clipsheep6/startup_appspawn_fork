@@ -44,6 +44,7 @@ typedef struct TagAppSpawnedProcess AppSpawnedProcess;
 typedef struct TagAppSpawnForkArg AppSpawnForkArg;
 typedef struct TagAppSpawnMsgNode AppSpawnMsgNode;
 typedef struct TagAppSpawnMgr AppSpawnMgr;
+typedef struct TagSandboxSection SandboxSection;
 
 void SetHapDomainSetcontextResult(int result);
 
@@ -54,6 +55,8 @@ void CloseClientSocket(int socketId);
 
 int ParseAppSandboxConfig(const cJSON *appSandboxConfig, AppSpawnSandboxCfg *sandbox);
 AppSpawnSandboxCfg *CreateAppSpawnSandbox(void);
+int MountSandboxConfig(const SandboxContext *context,
+    const AppSpawnSandboxCfg *sandbox, const SandboxSection *section, uint32_t op);
 void AddDefaultVariable(void);
 
 int AppSpawnClearEnv(AppSpawnMgr *content, AppSpawningCtx *property);
@@ -67,6 +70,9 @@ void SetDeveloperMode(bool mode);
 
 int LoadPermission(AppSpawnClientType type);
 void DeletePermission(AppSpawnClientType type);
+
+int PreLoadEnablePidNs(AppSpawnMgr *content);
+pid_t GetPidByName(const char *name);
 
 #define STUB_NEED_CHECK 0x01
 typedef int (*ExecvFunc)(const char *pathname, char *const argv[]);
@@ -83,6 +89,9 @@ typedef struct {
     void *arg;
 } StubNode;
 StubNode *GetStubNode(int type);
+
+void SetSeccompPolicyResult(bool result);
+
 #ifdef __cplusplus
 }
 #endif

@@ -35,8 +35,7 @@ using namespace OHOS::AppSpawn;
 using nlohmann::json;
 
 namespace OHOS {
-AppSpawnTestHelper g_testHelper;
-
+static AppSpawnTestHelper g_testHelper;
 class AppSpawnSandboxTest : public testing::Test {
 public:
     static void SetUpTestCase();

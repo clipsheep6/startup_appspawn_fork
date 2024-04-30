@@ -104,6 +104,7 @@ ohos_unittest("AppSpawn_ut") {
   sources += [
     "${appspawn_path}/test/mock/app_spawn_stub.cpp",
     "${appspawn_path}/test/mock/app_system_stub.c",
+    "${appspawn_path}/test/moduletest/plugin-sample/appspawn_plugin_sample.c",
   ]
 
   # add test
@@ -114,6 +115,7 @@ ohos_unittest("AppSpawn_ut") {
     "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_child_test.cpp",
     "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_cold_run_test.cpp",
     "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_command_lexer_test.cpp",
+    "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_module_common_test.cpp",
     "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_module_interface_test.cpp",
     "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_sandboxmgr_test.cpp",
     "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_service_test.cpp",
@@ -122,7 +124,12 @@ ohos_unittest("AppSpawn_ut") {
   ]
 
   if (defined(appspawn_sandbox_new) && appspawn_sandbox_new) {
-    sources += [ "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_sandbox_new_test.cpp" ]
+    sources += [
+      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_sandbox_expand_test.cpp",
+      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_sandbox_load_test.cpp",
+      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_sandbox_mount_test.cpp",
+      "${appspawn_path}/test/unittest/app_spawn_standard_test/app_spawn_sandbox_new_test.cpp",
+    ]
     defines += [ "APPSPAWN_SANDBOX_NEW" ]
   } else {
     sources += [

@@ -37,9 +37,6 @@ static AppSpawnMgr *g_appSpawnMgr = NULL;
 AppSpawnMgr *CreateAppSpawnMgr(int mode)
 {
     APPSPAWN_CHECK_ONLY_EXPER(mode < MODE_INVALID, return NULL);
-    if (g_appSpawnMgr != NULL) {
-        return g_appSpawnMgr;
-    }
     AppSpawnMgr *appMgr = (AppSpawnMgr *)calloc(1, sizeof(AppSpawnMgr));
     APPSPAWN_CHECK(appMgr != NULL, return NULL, "Failed to alloc memory for appspawn");
     appMgr->content.longProcName = NULL;
@@ -283,6 +280,7 @@ void DeleteAppSpawningCtx(AppSpawningCtx *property)
         }
     }
     DeleteAppSpawnMsg(property->message);
+    property->message = NULL;
 
     OH_ListRemove(&property->node);
     if (property->forkCtx.timer) {
@@ -405,12 +403,14 @@ int ProcessTerminationStatusMsg(const AppSpawnMsgNode *message, AppSpawnResult *
     APPSPAWN_CHECK_ONLY_EXPER(g_appSpawnMgr != NULL && message != NULL, return -1);
     APPSPAWN_CHECK_ONLY_EXPER(result != NULL, return -1);
     if (!IsNWebSpawnMode(g_appSpawnMgr)) {
+        APPSPAWN_LOGE("Appspawn not support this msg ");
         return APPSPAWN_MSG_INVALID;
     }
     result->result = -1;
     result->pid = 0;
     pid_t *pid = (pid_t *)GetAppSpawnMsgInfo(message, TLV_RENDER_TERMINATION_INFO);
     if (pid == NULL) {
+        APPSPAWN_LOGE("Can not get pid");
         return -1;
     }
     // get render process termination status, only nwebspawn need this logic.

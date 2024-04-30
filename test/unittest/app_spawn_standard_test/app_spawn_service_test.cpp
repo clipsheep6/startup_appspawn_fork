@@ -15,6 +15,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <csignal>
 #include <memory>
 #include <string>
 #include <thread>
@@ -243,6 +244,97 @@ HWTEST(AppSpawnServiceTest, App_Spawn_006, TestSize.Level0)
         thread5.join();
     } while (0);
     AppSpawnClientDestroy(clientHandle);
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief 测试孵化失败
+ *
+ */
+HWTEST(AppSpawnServiceTest, App_Spawn_007, TestSize.Level0)
+{
+    int ret = 0;
+    TestSetExecHookResult(STAGE_CHILD_PRE_COLDBOOT, APPSPAWN_TLV_NONE);
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnResult result = {};
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create client %{public}s", APPSPAWN_SERVER_NAME);
+        AppSpawnReqMsgHandle reqHandle = g_testServer->CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
+
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_DEBUGGABLE);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_NATIVEDEBUG);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
+
+        ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to send msg %{public}d", ret);
+        if (ret == 0 && result.pid > 0) {
+            APPSPAWN_LOGI("App_Spawn_005 Kill pid %{public}d ", result.pid);
+            kill(result.pid, SIGKILL);
+        }
+    } while (0);
+    AppSpawnClientDestroy(clientHandle);
+    TestRestoreExecHookResult(STAGE_CHILD_PRE_COLDBOOT);
+    ASSERT_EQ(result.result, APPSPAWN_TLV_NONE);
+    ASSERT_EQ(ret, 0);
+}
+
+HWTEST(AppSpawnServiceTest, App_Spawn_008, TestSize.Level0)
+{
+    int ret = 0;
+    TestSetExecHookResult(STAGE_CHILD_EXECUTE, APPSPAWN_SANDBOX_MOUNT_FAIL);
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnResult result = {};
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create client %{public}s", APPSPAWN_SERVER_NAME);
+        AppSpawnReqMsgHandle reqHandle = g_testServer->CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
+
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_DEBUGGABLE);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_NATIVEDEBUG);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
+
+        ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to send msg %{public}d", ret);
+        if (ret == 0 && result.pid > 0) {
+            APPSPAWN_LOGI("App_Spawn_005 Kill pid %{public}d ", result.pid);
+            kill(result.pid, SIGKILL);
+        }
+    } while (0);
+    AppSpawnClientDestroy(clientHandle);
+    TestRestoreExecHookResult(STAGE_CHILD_EXECUTE);
+    ASSERT_EQ(result.result, APPSPAWN_SANDBOX_MOUNT_FAIL);
+    ASSERT_EQ(ret, 0);
+}
+
+HWTEST(AppSpawnServiceTest, App_Spawn_009, TestSize.Level0)
+{
+    int ret = 0;
+    TestSetExecHookResult(STAGE_CHILD_PRE_RELY, APPSPAWN_SANDBOX_MOUNT_FAIL);
+    AppSpawnClientHandle clientHandle = nullptr;
+    AppSpawnResult result = {};
+    do {
+        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create client %{public}s", APPSPAWN_SERVER_NAME);
+        AppSpawnReqMsgHandle reqHandle = g_testServer->CreateMsg(clientHandle, MSG_SPAWN_NATIVE_PROCESS, 0);
+
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_DEBUGGABLE);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_NATIVEDEBUG);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_BUNDLE_RESOURCES);
+        AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ACCESS_BUNDLE_DIR);
+
+        ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
+        APPSPAWN_CHECK(ret == 0, break, "Failed to send msg %{public}d", ret);
+        if (ret == 0 && result.pid > 0) {
+            APPSPAWN_LOGI("App_Spawn_005 Kill pid %{public}d ", result.pid);
+            kill(result.pid, SIGKILL);
+        }
+    } while (0);
+    AppSpawnClientDestroy(clientHandle);
+    TestRestoreExecHookResult(STAGE_CHILD_PRE_RELY);
+    ASSERT_EQ(result.result, APPSPAWN_SANDBOX_MOUNT_FAIL);
     ASSERT_EQ(ret, 0);
 }
 
@@ -537,28 +629,230 @@ HWTEST(AppSpawnServiceTest, App_Spawn_Msg_008, TestSize.Level0)
 }
 
 /**
- * @brief 必须最后一个，kill nwebspawn，appspawn的线程结束
+ * @brief 异常消息，msg不正确
  *
  */
-HWTEST(AppSpawnServiceTest, App_Spawn_NWebSpawn_001, TestSize.Level0)
+HWTEST(AppSpawnServiceTest, App_Spawn_Illegal_Msg_001, TestSize.Level0)
 {
     int ret = 0;
-    AppSpawnClientHandle clientHandle = nullptr;
+    int socketId = -1;
     do {
-        ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &clientHandle);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to create client %{public}s", APPSPAWN_SERVER_NAME);
-        AppSpawnReqMsgHandle reqHandle = g_testServer->CreateMsg(clientHandle, MSG_APP_SPAWN, 0);
-        AppSpawnResult result = {};
-        ret = AppSpawnClientSendMsg(clientHandle, reqHandle, &result);
-        APPSPAWN_CHECK(ret == 0, break, "Failed to send msg %{public}d", ret);
-        // kill nwebspawn
-        APPSPAWN_LOGV("App_Spawn_NWebSpawn_001 Kill nwebspawn");
-        g_testServer->KillNWebSpawnServer();
-    } while (0);
-    AppSpawnClientDestroy(clientHandle);
-    ASSERT_EQ(ret, 0);
+        socketId = g_testServer->CreateSocket();
+        APPSPAWN_CHECK(socketId >= 0, break, "Failed to create socket %{public}s", APPSPAWN_SERVER_NAME);
+        std::vector<uint8_t> buffer(1024, 0);  // 1024 1k
+        uint32_t msgLen = 0;
+        ret = g_testServer->CreateSendMsg(buffer, MSG_APP_SPAWN, msgLen, {AppSpawnTestHelper::AddBaseTlv});
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create msg %{public}s", g_testServer->GetDefaultTestAppBundleName());
 
+        AppSpawnMsg *msg = reinterpret_cast<AppSpawnMsg *>(buffer.data());
+        msg->msgType = 10; // 10 invalid msg
+
+        int len = write(socketId, buffer.data(), msgLen);
+        APPSPAWN_CHECK(len > 0, break, "Failed to send msg %{public}s", g_testServer->GetDefaultTestAppBundleName());
+        // recv
+        len = read(socketId, buffer.data(), buffer.size());  // timeout EAGAIN
+        APPSPAWN_CHECK(len > 0, ret = -1; break, "Can not receive timeout %{public}d", errno);
+        AppSpawnResponseMsg *response = reinterpret_cast<AppSpawnResponseMsg *>(buffer.data());
+        ASSERT_EQ(response->result.result, APPSPAWN_MSG_INVALID);
+        ret = 0;
+    } while (0);
+    if (socketId >= 0) {
+        CloseClientSocket(socketId);
+    }
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief 错误的消息magic，连接被关闭
+ *
+ */
+HWTEST(AppSpawnServiceTest, App_Spawn_Illegal_Msg_002, TestSize.Level0)
+{
+    int ret = 0;
+    int socketId = -1;
+    do {
+        socketId = g_testServer->CreateSocket();
+        APPSPAWN_CHECK(socketId >= 0, break, "Failed to create socket %{public}s", APPSPAWN_SERVER_NAME);
+        std::vector<uint8_t> buffer(1024, 0);  // 1024 1k
+        uint32_t msgLen = 0;
+        ret = g_testServer->CreateSendMsg(buffer, MSG_APP_SPAWN, msgLen, {AppSpawnTestHelper::AddBaseTlv});
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create msg %{public}s", g_testServer->GetDefaultTestAppBundleName());
+
+        AppSpawnMsg *msg = reinterpret_cast<AppSpawnMsg *>(buffer.data());
+        msg->magic = 0;
+
+        int len = write(socketId, buffer.data(), msgLen);
+        APPSPAWN_CHECK(len > 0, break, "Failed to send msg %{public}s", g_testServer->GetDefaultTestAppBundleName());
+        // recv
+        len = read(socketId, buffer.data(), buffer.size());  // timeout EAGAIN
+        APPSPAWN_CHECK(len <= 0, ret = -1; break, "Can not receive timeout %{public}d", errno);
+        ret = 0;
+    } while (0);
+    if (socketId >= 0) {
+        CloseClientSocket(socketId);
+    }
+    ASSERT_EQ(ret, 0);
+}
+
+static int AddIllegalDomainInfoTlv(uint8_t *buffer, uint32_t bufferLen, uint32_t &realLen, uint32_t &tlvCount)
+{
+    AppDomainInfo domainInfo = {0, "normal"};
+
+    AppSpawnTlv tlv = {};
+    tlv.tlvType = TLV_DOMAIN_INFO;
+    tlv.tlvLen = sizeof(AppSpawnTlv) + sizeof(domainInfo) + 100;
+
+    int ret = memcpy_s(buffer, bufferLen, &tlv, sizeof(tlv));
+    APPSPAWN_CHECK(ret == 0, return -1, "Failed to memcpy_s bufferSize");
+    ret = memcpy_s(buffer + sizeof(tlv), bufferLen - sizeof(tlv), &domainInfo, sizeof(domainInfo));
+    APPSPAWN_CHECK(ret == 0, return -1, "Failed to memcpy_s bufferSize");
+    realLen = sizeof(AppSpawnTlv) + sizeof(domainInfo);
+    tlvCount++;
+    return 0;
+}
+
+/**
+ * @brief 错误的消息magic，AppDomainInfo tlv错误
+ *
+ */
+HWTEST(AppSpawnServiceTest, App_Spawn_Illegal_Msg_003, TestSize.Level0)
+{
+    int ret = 0;
+    int socketId = -1;
+    do {
+        socketId = g_testServer->CreateSocket();
+        APPSPAWN_CHECK(socketId >= 0, break, "Failed to create socket %{public}s", APPSPAWN_SERVER_NAME);
+        std::vector<uint8_t> buffer(1024, 0);  // 1024 1k
+        uint32_t msgLen = 0;
+        ret = g_testServer->CreateSendMsg(buffer, MSG_APP_SPAWN, msgLen, {AddIllegalDomainInfoTlv});
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create msg %{public}s", g_testServer->GetDefaultTestAppBundleName());
+
+        int len = write(socketId, buffer.data(), msgLen);
+        APPSPAWN_CHECK(len > 0, break, "Failed to send msg %{public}s", g_testServer->GetDefaultTestAppBundleName());
+        // recv
+        len = read(socketId, buffer.data(), buffer.size());  // timeout EAGAIN
+        APPSPAWN_CHECK(len <= 0, ret = -1; break, "Can not receive timeout %{public}d", errno);
+        ret = 0;
+    } while (0);
+    if (socketId >= 0) {
+        CloseClientSocket(socketId);
+    }
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief 测试连接错误，被拒接
+ *
+ */
+HWTEST(AppSpawnServiceTest, App_Spawn_Connect_Error_001, TestSize.Level0)
+{
+    int ret = 0;
+    int socketId = -1;
+    setuid(3081); // 3081 test uid
+    setgid(3081); // 3081 test gid
+    do {
+        socketId = g_testServer->CreateSocket();
+        APPSPAWN_CHECK(socketId >= 0, break, "Failed to create socket %{public}s", APPSPAWN_SERVER_NAME);
+        std::vector<uint8_t> buffer(1024, 0);  // 1024 1k
+        uint32_t msgLen = 0;
+        ret = g_testServer->CreateSendMsg(buffer, MSG_APP_SPAWN, msgLen, {AddIllegalDomainInfoTlv});
+        APPSPAWN_CHECK(ret == 0, break, "Failed to create msg %{public}s", g_testServer->GetDefaultTestAppBundleName());
+
+        int len = write(socketId, buffer.data(), msgLen);
+        APPSPAWN_CHECK(len > 0, break, "Failed to send msg %{public}s", g_testServer->GetDefaultTestAppBundleName());
+        // recv
+        len = read(socketId, buffer.data(), buffer.size());  // timeout EAGAIN
+        APPSPAWN_CHECK(len <= 0, ret = -1; break, "Can not receive timeout %{public}d", errno);
+        ret = 0;
+    } while (0);
+    if (socketId >= 0) {
+        CloseClientSocket(socketId);
+    }
+    setuid(0);
+    setgid(0);
     g_testServer->Stop();
     delete g_testServer;
+    g_testServer = nullptr;
+    ASSERT_EQ(ret, 0);
+}
+
+/**
+ * @brief 在g_testServer stop之后执行
+ *  测试nwebspawn service 退出，appspawn 回收
+ *
+ */
+HWTEST(AppSpawnServiceTest, App_Spawn_And_Nweb_Spawn_001, TestSize.Level0)
+{
+    if (g_testServer != nullptr) {
+        g_testServer->Stop();
+        delete g_testServer;
+        g_testServer = nullptr;
+    }
+    AppSpawnContent *content = nullptr;
+    CmdArgs *args = nullptr;
+    do {
+        // 启动appspawn
+        std::string cmd = "appspawn -mode appspawn ";
+        content = AppSpawnTestHelper::StartSpawnServer(cmd, args);
+        APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
+        ASSERT_EQ(content->mode, MODE_FOR_APP_SPAWN);
+
+        pid_t pid = NWebSpawnLaunch();
+        if (pid == 0) { // nwebspawn 进程
+            usleep(200000); // 200000 200ms
+            APPSPAWN_LOGV("Nwebspawn service exit %{public}d", getpid());
+            exit(0);
+        }
+        APPSPAWN_LOGV("Start nwebspawn service %{public}d", pid);
+        // 添加nwebspawn到appspawn
+        AddSpawnedProcess(pid, NWEBSPAWN_SERVER_NAME);
+        // 等待nwebspawn进程退出
+        content->runAppSpawn(content, args->argc, args->argv);
+    } while (0);
+    if (args) {
+        free(args);
+    }
+    DeleteAppSpawnMgr(GetAppSpawnMgr());
+}
+
+/**
+ * @brief 测试appspawn service 退出，回收nwebspawn service
+ *
+ */
+HWTEST(AppSpawnServiceTest, App_Spawn_And_Nweb_Spawn_002, TestSize.Level0)
+{
+    AppSpawnContent *content = nullptr;
+    CmdArgs *args = nullptr;
+    do {
+        // 启动appspawn
+        std::string cmd = "appspawn -mode appspawn ";
+        content = AppSpawnTestHelper::StartSpawnServer(cmd, args);
+        APPSPAWN_CHECK_ONLY_EXPER(content != nullptr, break);
+        ASSERT_EQ(content->mode, MODE_FOR_APP_SPAWN);
+
+        pid_t pid = NWebSpawnLaunch();
+        if (pid == 0) { // nwebspawn 进程
+            usleep(200000); // 200000 200ms
+            APPSPAWN_LOGV("Nwebspawn service exit %{public}d", getpid());
+            exit(0);
+        }
+        APPSPAWN_LOGV("Start nwebspawn service %{public}d", pid);
+        // 添加nwebspawn到appspawn
+        AddSpawnedProcess(pid, NWEBSPAWN_SERVER_NAME);
+        // 执行appspawn 退出
+        struct signalfd_siginfo siginfo = {};
+        siginfo.ssi_signo = SIGURG;
+        siginfo.ssi_uid = 0;
+        ProcessSignal(&siginfo);
+
+        siginfo.ssi_signo = SIGTERM;
+        siginfo.ssi_uid = 0;
+        ProcessSignal(&siginfo);
+        content->runAppSpawn(content, args->argc, args->argv);
+    } while (0);
+    if (args) {
+        free(args);
+    }
+    DeleteAppSpawnMgr(GetAppSpawnMgr());
 }
 }  // namespace OHOS
