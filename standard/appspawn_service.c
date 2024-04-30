@@ -393,7 +393,7 @@ static int InitForkContext(AppSpawningCtx *property)
 
 static int AddChildWatcher(AppSpawningCtx *property)
 {
-    uint32_t timeout = WAIT_CHILD_RESPONSE_TIMEOUT;
+    uint32_t timeout = GetSpawnTimeout(WAIT_CHILD_RESPONSE_TIMEOUT);
     LE_WatchInfo watchInfo = {};
     watchInfo.fd = property->forkCtx.fd[0];
     watchInfo.flags = WATCHER_ONCE;
@@ -426,6 +426,10 @@ static void ProcessSpawnReqMsg(AppSpawnConnection *connection, AppSpawnMsgNode *
         SendResponse(connection, &message->msgHeader, ret, 0);
         DeleteAppSpawnMsg(message);
         return;
+    }
+
+    if (IsDeveloperModeOpen()) {
+        SetAppSpawnMsgFlag(message, TLV_MSG_FLAGS, APP_FLAGS_DEVELOPER_MODE);
     }
 
     AppSpawningCtx *property = CreateAppSpawningCtx();
