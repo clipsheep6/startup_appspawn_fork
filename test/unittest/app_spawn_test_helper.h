@@ -41,6 +41,16 @@
 
 namespace OHOS {
 typedef struct {
+    int32_t bundleIndex;
+    char bundleName[APP_LEN_BUNDLE_NAME];  // process name
+} AppBundleInfo;
+
+typedef struct {
+    uint32_t hapFlags;
+    char apl[APP_APL_MAX_LEN];
+} AppDomainInfo;
+
+typedef struct {
     int argc;
     char *argv[0];
 } CmdArgs;
@@ -240,5 +250,27 @@ private:
     static void OnReceiveRequest(const TaskHandle taskHandle, const uint8_t *buffer, uint32_t buffLen);
     TaskHandle serverHandle_ = 0;
 };
+
+AppSpawnTestHelper *GetAppSpawnTestHelper();
 }  // namespace OHOS
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+const char *GetSandboxCommonCfg();
+const char *GetSandboxPackageNameCfg();
+const char *GetSandboxPermissionCfg();
+const char *GetSandboxspawnFlagsCfg();
+
+AppSpawningCtx *TestCreateAppSpawningCtx();
+SandboxContext *TestGetSandboxContext(const AppSpawningCtx *property, int nwebspawn);
+int TestParseAppSandboxConfig(AppSpawnSandboxCfg *sandbox, const char *buffer);
+
+void TestSetExecHookResult(AppSpawnHookStage stage, int result);
+void TestRestoreExecHookResult(AppSpawnHookStage stage);
+
+#ifdef __cplusplus
+}
+#endif
 #endif  // APPSPAWN_TEST_HELPER_H

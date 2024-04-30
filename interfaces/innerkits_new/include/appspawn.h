@@ -246,6 +246,7 @@ int AppSpawnClientAddPermission(AppSpawnClientHandle handle, AppSpawnReqMsgHandl
 #define MSG_EXT_NAME_OVERLAY "Overlay"
 #define MSG_EXT_NAME_DATA_GROUP "DataGroup"
 #define MSG_EXT_NAME_APP_ENV "AppEnv"
+#define MSG_EXT_NAME_APP_EXTENSION "AppExtension"
 
 int AppSpawnReqMsgAddExtInfo(AppSpawnReqMsgHandle reqHandle, const char *name, const uint8_t *value, uint32_t valueLen);
 
