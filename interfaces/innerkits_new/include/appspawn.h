@@ -161,6 +161,7 @@ typedef enum {
     APP_FLAGS_ISOLATED_SANDBOX,
     APP_FLAGS_EXTENSION_SANDBOX,
     APP_FLAGS_CLONE_ENABLE,
+    APP_FLAGS_DEVELOPER_MODE = 17,
     APP_FLAGS_BEGETCTL_BOOT, // Start an app from begetctl.
     MAX_FLAGS_INDEX = 63,
 } AppFlagsIndex;
