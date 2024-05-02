@@ -256,7 +256,7 @@ static const std::string g_spawnFlagsConfig = "{ \
                 \"app-apl-name\" : \"system\" \
             }, { \
                 \"sandbox-path\": \"/data/storage/el1/backup\", \
-                \"src-path\": \"/data/service/el1/<currentUserId>/backup/bundles/<PackageName>\" \
+                \"src-path\": \"/data/app/el1/<currentUserId>/backup/bundles/<PackageName>\" \
             }], \
             \"mount-groups\": [] \
         }, { \
