@@ -100,7 +100,7 @@ static int ReplaceVariableByParameter(const char *varData, SandboxBuffer *sandbo
 static int ReplaceVariableForDepSandboxPath(const SandboxContext *context,
     const char *buffer, uint32_t bufferLen, uint32_t *realLen, const VarExtraData *extraData)
 {
-    APPSPAWN_CHECK(extraData != NULL, return -1, "Invalid extra data ");
+    APPSPAWN_CHECK(extraData != NULL && extraData->data.depNode != NULL, return -1, "Invalid extra data ");
     uint32_t len = strlen(extraData->data.depNode->target);
     int ret = memcpy_s((char *)buffer, bufferLen, extraData->data.depNode->target, len);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy real data");
@@ -111,7 +111,7 @@ static int ReplaceVariableForDepSandboxPath(const SandboxContext *context,
 static int ReplaceVariableForDepSrcPath(const SandboxContext *context,
     const char *buffer, uint32_t bufferLen, uint32_t *realLen, const VarExtraData *extraData)
 {
-    APPSPAWN_CHECK(extraData != NULL, return -1, "Invalid extra data ");
+    APPSPAWN_CHECK(extraData != NULL && extraData->data.depNode != NULL, return -1, "Invalid extra data ");
     uint32_t len = strlen(extraData->data.depNode->source);
     int ret = memcpy_s((char *)buffer, bufferLen, extraData->data.depNode->source, len);
     APPSPAWN_CHECK(ret == 0, return -1, "Failed to copy real data");
@@ -122,7 +122,7 @@ static int ReplaceVariableForDepSrcPath(const SandboxContext *context,
 static int ReplaceVariableForDepPath(const SandboxContext *context,
     const char *buffer, uint32_t bufferLen, uint32_t *realLen, const VarExtraData *extraData)
 {
-    APPSPAWN_CHECK(extraData != NULL, return -1, "Invalid extra data ");
+    APPSPAWN_CHECK(extraData != NULL && extraData->data.depNode != NULL, return -1, "Invalid extra data ");
     char *path = extraData->data.depNode->source;
     if (CHECK_FLAGS_BY_INDEX(extraData->operation, MOUNT_PATH_OP_REPLACE_BY_SANDBOX)) {
         path = extraData->data.depNode->target;
@@ -141,6 +141,14 @@ static int ReplaceVariableForpackageName(const SandboxContext *context,
     const char *buffer, uint32_t bufferLen, uint32_t *realLen, const VarExtraData *extraData)
 {
     APPSPAWN_CHECK(context != NULL, return -1, "Invalid extra data ");
+    if (extraData != NULL && extraData->variablePackageName != NULL) {
+        int len = sprintf_s((char *)buffer, bufferLen, "%s", extraData->variablePackageName);
+        APPSPAWN_CHECK(len > 0 && ((uint32_t)len < bufferLen),
+            return -1, "Failed to format path app: %{public}s", context->bundleName);
+        *realLen = (uint32_t)len;
+        return 0;
+    }
+
     AppSpawnMsgBundleInfo *bundleInfo = (AppSpawnMsgBundleInfo *)GetSpawningMsgInfo(context, TLV_BUNDLE_INFO);
     APPSPAWN_CHECK(bundleInfo != NULL, return APPSPAWN_TLV_NONE,
         "No bundle info in msg %{public}s", context->bundleName);
@@ -327,7 +335,7 @@ void AddDefaultVariable(void)
     AddVariableReplaceHandler("<deps-sandbox-path>", ReplaceVariableForDepSandboxPath);
     AddVariableReplaceHandler("<deps-src-path>", ReplaceVariableForDepSrcPath);
     AddVariableReplaceHandler("<deps-path>", ReplaceVariableForDepPath);
-    AddVariableReplaceHandler("<VariablePackageName>", ReplaceVariableForpackageName);
+    AddVariableReplaceHandler("<variablePackageName>", ReplaceVariableForpackageName);
 }
 
 void ClearVariable(void)

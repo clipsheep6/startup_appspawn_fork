@@ -2126,7 +2126,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_004, TestSize.Level0)
     SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
     ASSERT_EQ(context != nullptr, 1);
 
-    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    const char *value = GetSandboxRealVar(context, 0, "/system/<variablePackageName>/module", nullptr, nullptr);
     APPSPAWN_LOGV("value %{public}s", value);
     ASSERT_EQ(value != nullptr, 1);
     ASSERT_EQ(strcmp(value, "/system/com.example.myapplication/module") == 0, 1);
@@ -2143,7 +2143,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_005, TestSize.Level0)
     SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
     ASSERT_EQ(context != nullptr, 1);
 
-    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    const char *value = GetSandboxRealVar(context, 0, "/system/<variablePackageName>/module", nullptr, nullptr);
     APPSPAWN_LOGV("value %{public}s", value);
     ASSERT_EQ(value != nullptr, 1);  // clone/packageName/bundleIndex
     ASSERT_EQ(strcmp(value, "/system/clone/com.example.myapplication/100/module") == 0, 1);
@@ -2168,7 +2168,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_006, TestSize.Level0)
     SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
     ASSERT_EQ(context != nullptr, 1);
 
-    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    const char *value = GetSandboxRealVar(context, 0, "/system/<variablePackageName>/module", nullptr, nullptr);
     APPSPAWN_LOGV("value %{public}s", value);
     ASSERT_EQ(value != nullptr, 1);  // extension/packageName/<extensionType>
     ASSERT_EQ(strcmp(value, "/system/extension/com.example.myapplication/test001/module") == 0, 1);
@@ -2196,7 +2196,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_007, TestSize.Level0)
     SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
     ASSERT_EQ(context != nullptr, 1);
 
-    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    const char *value = GetSandboxRealVar(context, 0, "/system/<variablePackageName>/module", nullptr, nullptr);
     APPSPAWN_LOGV("value %{public}s", value);
     ASSERT_EQ(value != nullptr, 1);  // clone/extension/packageName/bundleIndex/<extensionType>
     ASSERT_EQ(strcmp(value, "/system/clone/extension/com.example.myapplication/100/test001/module") == 0, 1);
@@ -2222,7 +2222,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_008, TestSize.Level0)
     SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
     ASSERT_EQ(context != nullptr, 1);
 
-    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    const char *value = GetSandboxRealVar(context, 0, "/system/<variablePackageName>/module", nullptr, nullptr);
     ASSERT_EQ(value == nullptr, 1);
 
     DeleteSandboxContext(context);
@@ -2245,7 +2245,7 @@ HWTEST(AppSpawnSandboxTest, App_Spawn_Sandbox_AppExtension_009, TestSize.Level0)
     SandboxContext *context = TestGetSandboxContext(spawningCtx, 0);
     ASSERT_EQ(context != nullptr, 1);
 
-    const char *value = GetSandboxRealVar(context, 0, "/system/<VariablePackageName>/module", nullptr, nullptr);
+    const char *value = GetSandboxRealVar(context, 0, "/system/<variablePackageName>/module", nullptr, nullptr);
     ASSERT_EQ(value == nullptr, 1);
 
     DeleteSandboxContext(context);

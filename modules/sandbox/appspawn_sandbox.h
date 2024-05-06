@@ -268,6 +268,7 @@ typedef struct {
 typedef struct TagVarExtraData {
     uint32_t sandboxTag;
     uint32_t operation;
+    char *variablePackageName;
     union {
         PathMountNode *depNode;
     } data;
