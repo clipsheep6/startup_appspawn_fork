@@ -310,9 +310,10 @@ static AppSpawnReqMsgNode *CreateAppSpawnReqMsg(uint32_t msgType, const char *pr
 
 static void GetSpecialGid(const char *bundleName, gid_t gidTable[], uint32_t *gidCount)
 {
-    // special handle bundle name medialibrary and scanner
+    // special handle bundle name medialibrary and scanner, ringtonelibrary
     const char *specialBundleNames[] = {
-        "com.ohos.medialibrary.medialibrarydata", "com.ohos.medialibrary.medialibrarydata:backup"
+        "com.ohos.medialibrary.medialibrarydata", "com.ohos.medialibrary.medialibrarydata:backup",
+        "com.ohos.ringtonelibrary.ringtonelibrarydata", "com.ohos.ringtonelibrary.ringtonelibrarydata:backup"
     };
 
     for (size_t i = 0; i < sizeof(specialBundleNames) / sizeof(specialBundleNames[0]); i++) {
