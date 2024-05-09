@@ -49,6 +49,7 @@ extern "C" {
 
 #define APP_STATE_IDLE 1
 #define APP_STATE_SPAWNING 2
+#define APPSPAWN_MAX_TIME 3000000
 
 #define APPSPAWN_INLINE __attribute__((always_inline)) inline
 
@@ -94,6 +95,11 @@ typedef struct TagAppSpawnedProcess {
     char name[0];
 } AppSpawnedProcess;
 
+typedef struct SpawnTime {
+    int minAppspawnTime;
+    int maxAppspawnTime;
+} SpawnTime;
+
 typedef struct TagAppSpawnMgr {
     AppSpawnContent content;
     TaskHandle server;
@@ -106,6 +112,7 @@ typedef struct TagAppSpawnMgr {
     struct timespec perLoadStart;
     struct timespec perLoadEnd;
     struct ListNode extData;
+    struct SpawnTime spawnTime;
 } AppSpawnMgr;
 
 /**

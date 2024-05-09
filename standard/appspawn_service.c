@@ -831,6 +831,11 @@ static void ProcessRecvMsg(AppSpawnConnection *connection, AppSpawnMsgNode *mess
             SendResponse(connection, msg, 0, 0);
             DeleteAppSpawnMsg(message);
             break;
+        case MSG_BEGET_TIMER:
+            SendResponse(connection, msg, GetAppSpawnMgr()->spawnTime.minAppspawnTime,
+                         GetAppSpawnMgr()->spawnTime.maxAppspawnTime);
+            DeleteAppSpawnMsg(message);
+            break;
         default:
             SendResponse(connection, msg, APPSPAWN_MSG_INVALID, 0);
             DeleteAppSpawnMsg(message);
