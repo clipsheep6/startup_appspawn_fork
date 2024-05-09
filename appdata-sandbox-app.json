@@ -260,10 +260,10 @@
             "name": "START_FLAGS_BACKUP",
             "mount-paths": [{
                 "sandbox-path": "/data/storage/el2/backup",
-                "src-path": "/data/service/el2/<currentUserId>/backup/bundles/<PackageName>"
+                "src-path": "/data/app/el2/<currentUserId>/backup/bundles/<PackageName>"
             }, {
                 "sandbox-path": "/data/storage/el1/backup",
-                "src-path": "/data/service/el1/<currentUserId>/backup/bundles/<PackageName>"
+                "src-path": "/data/app/el1/<currentUserId>/backup/bundles/<PackageName>"
             }],
             "mount-groups": []
         }, {
