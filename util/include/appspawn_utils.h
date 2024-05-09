@@ -118,6 +118,8 @@ void DumpCurrentDir(char *buffer, uint32_t bufferLen, const char *dirPath);
 int IsDeveloperModeOpen();
 void InitCommonEnv(void);
 
+int EnableNewNetNamespace(void);
+
 #ifndef APP_FILE_NAME
 #define APP_FILE_NAME   (strrchr((__FILE__), '/') ? strrchr((__FILE__), '/') + 1 : (__FILE__))
 #endif
