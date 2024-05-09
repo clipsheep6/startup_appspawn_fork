@@ -243,7 +243,6 @@ static int HnpInstallPathGet(const char *fileName, bool isForce, char* hnpVersio
 {
     int ret;
     char *hnpNameTmp;
-    char uninstallPath[MAX_FILE_PATH_LEN];
 
     /* 裁剪获取文件名使用 */
     ret = strcpy_s(hnpDstPath->hnpSoftwareName, MAX_FILE_PATH_LEN, fileName);
@@ -280,6 +279,7 @@ static int HnpInstallPathGet(const char *fileName, bool isForce, char* hnpVersio
             HNP_LOGE("hnp install path[%s] exist, but force is false", hnpDstPath->hnpSoftwarePath);
             return HNP_ERRNO_INSTALLER_PATH_IS_EXIST;
         } else {
+            char uninstallPath[MAX_FILE_PATH_LEN];
             ret = HnpGetUninstallPath(hnpDstPath->hnpSoftwarePath, uninstallPath);
             if (ret != 0) {
                 return ret;
@@ -346,7 +346,6 @@ static int HnpReadAndInstall(char *srcFile, NativeHnpPath *hnpDstPath, bool isFo
 static int HnpInsatllPre(int uid, char *softwarePath[], int count, char *installPath, bool isForce)
 {
     char srcFile[count][MAX_FILE_PATH_LEN];
-    char dstPath[MAX_FILE_PATH_LEN];
     NativeHnpPath hnpDstPath = {0};
     int ret;
     int i;
@@ -360,6 +359,7 @@ static int HnpInsatllPre(int uid, char *softwarePath[], int count, char *install
     }
 
     if (installPath == NULL) {
+        char dstPath[MAX_FILE_PATH_LEN];
         /* 拼接安装路径 */
         if (sprintf_s(dstPath, MAX_FILE_PATH_LEN, HNP_DEFAULT_INSTALL_ROOT_PATH"/%d", uid) < 0) {
             HNP_LOGE("hnp install sprintf unsuccess, uid:%d", uid);

@@ -118,8 +118,8 @@ static int GetHnpCfgInfo(const char *hnpCfgPath, const char *sourcePath, HnpCfgI
     /* 校验软连接的source文件是否存在 */
     linkArr = hnpCfg->links;
     for (unsigned int i = 0; i < hnpCfg->linkNum; i++, linkArr++) {
-        int ret = sprintf_s(linksource, MAX_FILE_PATH_LEN, "%s/%s", sourcePath, linkArr->source);
-        if (ret < 0) {
+        int len = sprintf_s(linksource, MAX_FILE_PATH_LEN, "%s/%s", sourcePath, linkArr->source);
+        if (len < 0) {
             free(hnpCfg->links);
             hnpCfg->links = NULL;
             HNP_LOGE("sprintf unsuccess.");
