@@ -54,6 +54,7 @@ typedef void *AppSpawnClientHandle;
 typedef struct {
     uint32_t uid;       // the UNIX uid that the child process setuid() to after fork()
     uint32_t gid;       // the UNIX gid that the child process setgid() to after fork()
+    uint32_t processType;
     uint32_t gidCount;  // the size of gidTable
     uint32_t gidTable[APP_MAX_GIDS];
     char userName[APP_USER_NAME];

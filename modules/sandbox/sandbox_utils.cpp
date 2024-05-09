@@ -110,6 +110,7 @@ namespace {
     const std::string g_ohosRender = "__internal__.com.ohos.render";
     const std::string g_sandBoxRootDirNweb = "/mnt/sandbox/com.ohos.render/";
     const std::string FILE_CROSS_APP_MODE = "ohos.permission.FILE_CROSS_APP";
+    const std::string g_ohos_file = "/vendor/etc";
 }
 
 static uint32_t GetAppMsgFlags(const AppSpawningCtx *property)
@@ -635,9 +636,19 @@ int SandboxUtils::DoAllMntPointsMount(const AppSpawningCtx *appProperty,
     nlohmann::json mountPoints = appConfig[g_mountPrefix];
     std::string sandboxRoot = GetSbxPathByConfig(appProperty, appConfig);
     unsigned int mountPointSize = mountPoints.size();
+    AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
+    if (dacInfo == nullptr) {
+        return 0;
+    }
 
     for (unsigned int i = 0; i < mountPointSize; i++) {
         nlohmann::json mntPoint = mountPoints[i];
+
+        if (section == g_ohosRender &&
+            dacInfo.processType == 0 &&
+            mntPoint[g_srcPath].get<std::string>() == g_ohos_file) {
+            continue;
+        }
 
         if (CheckMountConfig(mntPoint, appProperty, checkFlag) == false) {
             continue;

@@ -22,6 +22,7 @@
 #include <time.h>
 
 #include "appspawn_utils.h"
+#include "appspawn_manager.h"
 
 static void NotifyResToParent(struct AppSpawnContent *content, AppSpawnClient *client, int result)
 {
@@ -120,10 +121,19 @@ int AppSpawnProcessMsg(AppSpawnContent *content, AppSpawnClient *client, pid_t *
     pid_t pid = 0;
 #ifndef OHOS_LITE
     if (content->mode == MODE_FOR_NWEB_SPAWN) {
+        AppSpawningCtx * property = (AppSpawningCtx *)client;
+        AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
+        if (dacInfo == NULL) {
+            return -1;
+        }
         AppSpawnForkArg arg;
         arg.client = client;
         arg.content = content;
-        pid = clone(CloneAppSpawn, NULL, content->sandboxNsFlags | SIGCHLD, (void *)&arg);
+        if (dacInfo->processType == 1) {
+            pid = clone(CloneAppSpawn, NULL, CLONE_NEWNET | SIGCHLD, (void *)&arg);
+        } else {
+            pid = clone(CloneAppSpawn, NULL, content->sandboxNsFlags | SIGCHLD, (void *)&arg);
+        }
     } else {
 #else
     {

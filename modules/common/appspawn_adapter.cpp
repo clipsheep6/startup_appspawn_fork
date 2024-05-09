@@ -71,7 +71,15 @@ int SetSelinuxCon(const AppSpawnMgr *content, const AppSpawningCtx *property)
         return 0;
     }
     if (IsNWebSpawnMode(content)) {
-        setcon("u:r:isolated_render:s0");
+        AppSpawnMsgDacInfo *dacInfo = (AppSpawnMsgDacInfo *)GetAppProperty(property, TLV_DAC_INFO);
+        if (dacInfo == nullptr) {
+            return APPSPAWN_TLV_NONE;
+        }
+        if (dacInfo->processType == 1) {
+            setcon("u:r:isolated_gpu:s0");
+        } else {
+            setcon("u:r:isolated_render:s0");
+        }
         return 0;
     }
     AppSpawnMsgDomainInfo *msgDomainInfo = (AppSpawnMsgDomainInfo *)GetAppProperty(property, TLV_DOMAIN_INFO);
